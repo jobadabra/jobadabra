@@ -1,0 +1,109 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "LinkedIn Easy Apply (spec docs/superpowers/specs/2026-11-13-linkedin-easy-apply-design.md, plan 3/5): the recorded stand-in its controller and tests use; never LinkedIn itself · Page cases"
+ },
+ "shape": "a four-step apply dialog in a native modal <dialog> (showModal, as the real page): contact (an e-mail menu, a country-code menu, a phone box), saved resumes as radios, three required years-of-experience boxes named only by aria-label, a review step whose last button is Submit application; each step is re-rendered in place and Next refuses while a required box is empty",
+ "why": "LinkedIn Easy Apply 3/5 (owner, 13 Nov 2026: \"You an use mine, but avodiing sending\"): one real Easy Apply dialog was walked to its review step with the owner's account and closed with Discard, never sent; its scrubbed outline (fields, labels, buttons, step order) is this page. The extension fills each step the person reaches, leaves the years it does not know to the person (D5, Only facts), and never presses Submit application.",
+ "sample": "hand-cut from the scrubbed outline of one real dialog (13 Nov 2026); classes scrambled like the original, names, company and hosts invented",
+ "contact": {
+  "phoneParts": [
+   "+41",
+   "79",
+   "555",
+   "01",
+   "23"
+  ]
+ },
+ "pages": [
+  {
+   "url": "https://e2e.linkedin.com/jobs/view/4000000001",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "text-entity-list-form-component-1",
+     "question": "Email address",
+     "value": "test.candidate@example.com",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "valueIs": [
+   "#text-entity-list-form-component-1|test.candidate@example.com"
+  ],
+  "valueHas": [
+   "#single-line-text-form-component-3|795550123"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel",
+ "then": [
+  {
+   "do": [
+    {
+     "click": "role=button[name=\"Next\"]"
+    },
+    {
+     "panel": "Fill again"
+    }
+   ],
+   "expect": {
+    "chosen": [
+     "#ea-resume-1"
+    ],
+    "notTold": [
+     "pressed the submit"
+    ],
+    "seconds": 60
+   }
+  },
+  {
+   "do": [
+    {
+     "click": "role=button[name=\"Next\"]"
+    },
+    {
+     "panel": "Fill again"
+    }
+   ],
+   "expect": {
+    "empty": [
+     "#single-line-text-form-component-q1",
+     "#single-line-text-form-component-q2",
+     "#single-line-text-form-component-q3"
+    ],
+    "pending": [
+     "How many years of work experience do you have with Kubernetes?",
+     "How many years of work experience do you have with Terraform?",
+     "How many years of work experience do you have with DevOps?"
+    ],
+    "notTold": [
+     "pressed the submit"
+    ],
+    "seconds": 60
+   }
+  }
+ ]
+}

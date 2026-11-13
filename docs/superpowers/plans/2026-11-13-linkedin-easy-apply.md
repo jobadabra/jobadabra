@@ -16,7 +16,7 @@ Owner's words (13 Nov 2026): "What about the \"Easy apply\" jobs or the ones tha
 |---|---|---|
 | 1/5 (#4008) | A "LinkedIn Easy Apply" switch in Settings → Connections beside LinkedIn jobs and in ⌘K, off by default; the D4 warning once; LinkedIn jobs first when it holds no sign-in; dev builds only until 4/5 (owner, 13 Nov 2026: "Dev builds only until 4/5", "LinkedIn jobs first", "Yes, build it") | nothing |
 | 2/5 (this) | The limits: 15 sends a day, 2 min apart (D2); any LinkedIn warning stops all LinkedIn 24 h through the shared pause, a second stop turns Easy Apply off (D3); `notePause` keeps the later time and switching LinkedIn jobs off keeps the pause (lg agreed, 13 Nov 2026) | 1/5 |
-| 3/5 | One real Easy Apply page recorded with the owner's account, stopped before Send (owner: "You an use mine, but avodiing sending"); the recorded stand-in for the tests | the LinkedIn pause ends (~16:47, 14 Nov 2026) |
+| 3/5 | One real Easy Apply page recorded with the owner's account, stopped before Send (owner: "You an use mine, but avodiing sending"); the recorded stand-in for the tests | none: recorded 13 Nov 2026 after one guest probe returned 200 (owner: "we can do a small test/request to see if the blocking is still there"); `desktop/e2e/recorded/linkedin-easy-apply-dialog-1` |
 | 4/5 | The Easy Apply controller: open, fill each step through the ladder, stop at ready; Submit only through the existing gate; D1's "LinkedIn may send" confirmation stamped on each Full automation item (owner: "In 4/5, with the sending"); the row shown in every build | 2/5, 3/5 |
 | 5/5 | The owner's proof run on his account, no send; the CLAUDE.md LinkedIn line quoting D1–D6 | 4/5 |
 

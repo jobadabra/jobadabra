@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Site Reliability Engineering Lead | Example Professionals | LinkedIn</title>
+<!-- Stand-in cut by hand from one real Easy Apply dialog (13 Nov 2026, owner's account, stopped before Send; scrubbed outline, no person's data): a native modal <dialog> (showModal: :modal was true on the real page, so it sits in the top layer above the extension's panel and the rest of the page is inert),
+     scrambled class names, the step re-rendered in place, questions named only by aria-label, "n/4 pages", Next → Review → Submit application. Names and hosts invented. -->
+<style>body{font:15px/1.4 system-ui,sans-serif;margin:0;background:#f4f2ee}dialog{width:min(680px,92vw);border:0;border-radius:8px;padding:0}.Xk2a{display:flex;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #ddd}.pQ9z{padding:16px 24px}.mN3r{margin:14px 0}.mN3r select,.mN3r input[type=text],.mN3r input[type=tel]{width:100%;padding:6px;box-sizing:border-box}.vB7t{display:flex;justify-content:flex-end;gap:8px;padding:12px 24px;border-top:1px solid #ddd}.eR1o{color:#b24020;font-size:13px}</style></head>
+<body><main><h1>Site Reliability Engineering Lead</h1><p>Example Professionals · Cracow (Hybrid)</p><button type="button" class="jA4c">Easy Apply</button></main>
+<dialog data-testid="dialog" aria-labelledby="jobs-apply-header">
+  <div class="Xk2a"><h2 id="jobs-apply-header">Apply to Example Professionals</h2><button type="button" class="fD8s" aria-label="Dismiss">✕</button></div>
+  <div class="pQ9z"><div role="progressbar" aria-valuenow="25" class="hT5w"></div><span class="kL0p" id="ea-progress">1/4 pages</span><form class="wZ6y" id="ea-step" novalidate></form></div>
+  <div class="vB7t" id="ea-buttons"></div>
+</dialog>
+<template data-step="1"><h3 class="gS2d">Contact info</h3>
+  <div class="yC1b"><span class="uI6n">Test Candidate</span><span class="uI6n">Platform Engineer @ Example Co</span></div>
+  <div class="mN3r"><label for="text-entity-list-form-component-1">Email address</label><select id="text-entity-list-form-component-1" required aria-describedby="ea-err-1"><option>Select an option</option><option>test.candidate@example.com</option></select><span class="eR1o" id="ea-err-1"></span></div>
+  <div class="mN3r"><label for="text-entity-list-form-component-2">Phone country code</label><select id="text-entity-list-form-component-2" required aria-describedby="ea-err-2"><option>Select an option</option><option>Poland (+48)</option><option selected>Switzerland (+41)</option></select><span class="eR1o" id="ea-err-2"></span></div>
+  <div class="mN3r"><label for="single-line-text-form-component-3">Mobile phone number</label><input id="single-line-text-form-component-3" type="tel" required aria-describedby="ea-err-3"><span class="eR1o" id="ea-err-3"></span></div>
+</template>
+<template data-step="2"><h3 class="gS2d">Resume</h3><p class="zO4q">Be sure to include an updated resume</p>
+  <fieldset class="bH3e"><legend class="cV9i">Resume</legend>
+    <div class="mN3r"><input type="radio" name="ea-resume" id="ea-resume-1" checked aria-label="CV - Test Candidate - Sep 2025.pdf"><span class="aA2s">CV - Test Candidate - Sep 2025.pdf</span></div>
+    <div class="mN3r"><input type="radio" name="ea-resume" id="ea-resume-2" aria-label="Resume-Test-Candidate-Jan-2024.pdf"><span class="aA2s">Resume-Test-Candidate-Jan-2024.pdf</span></div>
+    <div class="mN3r"><input type="radio" name="ea-resume" id="ea-resume-3" aria-label="Resume-Test-Candidate-Personal.pdf"><span class="aA2s">Resume-Test-Candidate-Personal.pdf</span></div>
+  </fieldset>
+  <label class="qW8e" for="ea-upload">Upload resume</label><input type="file" id="ea-upload" hidden accept=".pdf,.doc,.docx">
+</template>
+<template data-step="3"><h3 class="gS2d">Additional Questions</h3>
+  <div class="mN3r"><input type="text" id="single-line-text-form-component-q1" required maxlength="20" aria-label="How many years of work experience do you have with Kubernetes?" aria-describedby="ea-err-q1 ea-count-q1"><span class="eR1o" id="ea-err-q1"></span><span class="nP5f" id="ea-count-q1">0/20</span></div>
+  <div class="mN3r"><input type="text" id="single-line-text-form-component-q2" required maxlength="20" aria-label="How many years of work experience do you have with Terraform?" aria-describedby="ea-err-q2 ea-count-q2"><span class="eR1o" id="ea-err-q2"></span><span class="nP5f" id="ea-count-q2">0/20</span></div>
+  <div class="mN3r"><input type="text" id="single-line-text-form-component-q3" required maxlength="20" aria-label="How many years of work experience do you have with DevOps?" aria-describedby="ea-err-q3 ea-count-q3"><span class="eR1o" id="ea-err-q3"></span><span class="nP5f" id="ea-count-q3">0/20</span></div>
+</template>
+<template data-step="4"><h3 class="gS2d">Review your application</h3><p class="zO4q">The employer will also receive a copy of your profile</p>
+  <div class="mN3r"><span class="tY3u">Contact info</span> <button type="button" class="rE2w" aria-label="Edit Contact info">Edit</button></div>
+  <div class="mN3r"><span class="tY3u">Resume</span> <button type="button" class="rE2w" aria-label="Edit Resume">Edit</button></div>
+  <div class="mN3r"><span class="tY3u">Additional Questions</span> <button type="button" class="rE2w" aria-label="Edit Additional Questions">Edit</button></div>
+  <div class="mN3r"><input type="checkbox" id="follow-company-checkbox" checked aria-label="Follow Example Professionals to stay up to date with their page"></div>
+</template>
+<script>
+const BUTTONS = {1: ['Next'], 2: ['Back', 'Next'], 3: ['Back', 'Review'], 4: ['Back', 'Submit application']};
+const fired = kind => fetch('/__fired?kind=' + kind + '&form=' + encodeURIComponent(location.pathname), {method: 'POST', keepalive: true});
+let step = 0;
+const show = n => {   // the dialog re-renders the step in place, as the real one does: the previous step's controls are gone, not hidden
+  step = n;
+  document.getElementById('ea-step').replaceChildren(document.querySelector(`template[data-step="${n}"]`).content.cloneNode(true));
+  document.getElementById('ea-progress').textContent = `${n}/4 pages`;
+  document.querySelector('[role=progressbar]').setAttribute('aria-valuenow', String(n * 25));
+  document.getElementById('ea-buttons').replaceChildren(...BUTTONS[n].map(text => Object.assign(document.createElement('button'), {type: 'button', textContent: text, className: text === 'Back' ? 'sJ1k' : 'oM7x'})));
+};
+const missing = () => [...document.querySelectorAll('#ea-step [required]')].filter(box => (box.tagName === 'SELECT' ? box.value === 'Select an option' : !box.value.trim()));
+document.getElementById('ea-buttons').addEventListener('click', event => {
+  const text = event.target.closest('button')?.textContent;
+  if (text === 'Submit application') { fired('click'); return; }
+  if (text === 'Back') { show(step - 1); return; }
+  const empty = missing();
+  for (const box of document.querySelectorAll('#ea-step [required]')) document.getElementById(box.getAttribute('aria-describedby').split(' ')[0]).textContent = empty.includes(box) ? 'Please enter a valid answer' : '';
+  if (!empty.length) show(step + 1);
+});
+document.addEventListener('input', event => { const count = event.target.id && document.getElementById(event.target.getAttribute('aria-describedby')?.split(' ')[1] || ''); if (count) count.textContent = `${event.target.value.length}/20`; });
+document.querySelector('dialog').showModal();
+show(1);
+</script></body></html>
