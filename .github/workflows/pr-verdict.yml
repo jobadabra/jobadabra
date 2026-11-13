@@ -156,7 +156,7 @@ jobs:
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD
       - name: Ask Claude to review the green head
         if: steps.verdict.outputs.green_pr != ''
-        timeout-minutes: 2
+        timeout-minutes: 5   # the repo's floor for a step cap (tests/tooling/ci/test_e2e_step_timeouts.py)
         continue-on-error: true   # a reviewer, not a check: a refused dispatch never reds the verdict
         env:
           GH_TOKEN: ${{ github.token }}
