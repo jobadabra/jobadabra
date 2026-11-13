@@ -345,19 +345,30 @@ def _told_again(data, key, last, working, tries):
                                                                       (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
 
 
-def not_asked(search_config):
-    """Why a search has no board proposal (board_ideas.asked_for is None), for its "no web search" line: no role, no place it can read (the fragment named), or
-    no country known yet for its places. Why (13 Nov 2026, run 43328194035 p10): "names no places or roles" was said for a Lisbon search whose one place
-    was written "lisb(on|oa)", so neither the person nor the run's reader could tell why."""
+def not_asked(search_config, own=None):
+    """Why a search has no board proposal (board_ideas.asked_for is None), for its "no web search" line: no role, no place it can read (named as the Strategy
+    page shows it), or no country known yet for its places. `own`: the person's own words (load_search_config(matching=False), read here when not given):
+    the crawl's config carries the region and place patterns the engine added, which are no entry of theirs (Gitar on #3953).
+    Why (13 Nov 2026, run 43328194035 p10): "names no places or roles" was said for a Lisbon search whose one place was written "lisb(on|oa)", so neither
+    the person nor the run's reader could tell why."""
     from .. import places
     from ..notion.search_settings import terms
     if not terms((search_config or {}).get('role_keywords')):
         return 'this search names no roles'
     words = places.place_words(search_config or {})
     if not words:
-        left = places.unread(search_config or {})
-        return f"this search names no place it can read ({', '.join(left)})" if left else 'this search names no places'
+        left = places.unread(_own_words() if own is None else own)
+        return f"this search names no place it can read ({', '.join(left[:3])})" if left else 'this search names no places'
     return f"the countries of your places are not known yet ({', '.join(words[:3])})"
+
+
+def _own_words():
+    """The search as the person wrote it, {} when it cannot be read (the line then names no entry)."""
+    from ..paths import load_search_config
+    try:
+        return load_search_config(matching=False)
+    except (OSError, ValueError):
+        return {}
 
 
 def search(search_config, known, client=None, now=None, fetch=None, data=None):

@@ -65,7 +65,7 @@ class AnUnreadPlaceIsSaid(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, redirect_stdout(out):
             places.refresh(search(top=['lisb.*', 'porto']), Answers(lambda word: 'Portugal'), Path(tmp) / 'places.json')
         said = out.getvalue()
-        self.assertIn('Places: not read as a place: lisb.*', said)
+        self.assertIn('Places: not read as a place: lisb (written as a pattern', said, 'named as the Strategy page shows it, never the raw pattern')
         self.assertNotIn('porto', said.split('Places: not read')[1].split('\n')[0], 'only the unread place is named')
 
     def test_every_place_spelled_says_nothing_more(self):
@@ -76,12 +76,20 @@ class AnUnreadPlaceIsSaid(unittest.TestCase):
 
     def test_the_web_search_says_why_it_did_not_start(self):
         from src.sources import board_web
-        cases = ((search(top=['lisb.*'], roles=('ux designer',)), 'this search names no place it can read (lisb.*)'),
+        cases = ((search(top=['lisb.*'], roles=('ux designer',)), 'this search names no place it can read (lisb)'),
                  (search(top=['lisbon'], roles=()), 'this search names no roles'),
                  (search(top=['lisbon'], roles=('ux designer',)), 'the countries of your places are not known yet (lisbon)'))
         for find, why in cases:
             with self.subTest(why=why):
-                self.assertEqual(board_web.not_asked(find), why)
+                self.assertEqual(board_web.not_asked(find, own=find), why)
+
+    def test_the_patterns_the_crawl_adds_are_never_named_only_the_persons_own_entries(self):
+        """Gitar on #3953: the crawl's config (load_search_config()) carries region and place patterns the engine added; the line names the person's words only."""
+        from src.sources import board_web
+        own = search(top=['lisb.*'], roles=('ux designer',))
+        from src import regions
+        crawl = search(top=['lisb.*', places.pattern(['Lisbon', 'Lisboa', 'Porto']), *regions.expand(['romandie'])], roles=('ux designer',))   # what load_search_config() adds
+        self.assertEqual(board_web.not_asked(crawl, own=own), 'this search names no place it can read (lisb)')
 
 
 if __name__ == '__main__':

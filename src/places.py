@@ -232,10 +232,13 @@ def words_of(search):
 
 
 def unread(search):
-    """The search's place fragments that stand for no name (spellings() is None) and are not a fixed region: each one is a place no source can search by name."""
+    """The search's place fragments that stand for no name (spellings() is None) and are not a fixed region, each as the Strategy page shows it
+    (src/fragment_words.py: never a raw pattern in a run line, tests/guards/rules/test_run_lines_plain.py): places no source can search by name.
+    Pass the person's own words (load_search_config(matching=False)): the crawl's added region and place patterns are no entry of theirs (Gitar on #3953)."""
+    from .fragment_words import fragment_words
     from .regions import region_of
     groups = (search.get('locations') or {})
-    return list(dict.fromkeys(str(fragment) for key in ('top_tier', 'country_wide', 'abroad') for fragment in groups.get(key) or []
+    return list(dict.fromkeys(fragment_words(fragment) or str(fragment) for key in ('top_tier', 'country_wide', 'abroad') for fragment in groups.get(key) or []
                               if not region_of(fragment) and spellings(fragment) is None))
 
 
@@ -372,7 +375,7 @@ def refresh(search, client=None, file=None):
     cache = load(file)
     left = unread(search)
     if left:   # said, never silent (13 Nov 2026, run 43328194035 p10): a place read as no name gives no country, no board web search and no place for the place AI
-        print(f"Places: not read as a place: {', '.join(left)} (a pattern, not a place name); write {'it' if len(left) == 1 else 'each'} as a town or country name in Strategy", flush=True)
+        print(f"Places: not read as a place: {', '.join(left[:3])} (written as a pattern, not a place name); write {'it' if len(left) == 1 else 'each'} as a town or country name in Strategy", flush=True)
     words = stale_words(search, cache)[:MAX_WORDS]
     if not words:
         return 0
