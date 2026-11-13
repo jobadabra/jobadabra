@@ -1,6 +1,7 @@
 """A job board's read says what each round asked and found (src/sources/board_round_log.py): one line per search word and place, with the
 page's jobs, the new ones and how the page was read, or why it was not read. Benchmark 13 Nov 2026: alo.bg gave 25 jobs in one run and 0 in the
 next on the same code and the log could not say which round gave what. No AI call and no live site here."""
+import io
 import json
 import tempfile
 import unittest
@@ -8,7 +9,7 @@ import urllib.error
 from pathlib import Path
 from unittest import mock
 
-from src.sources import careers, found_boards
+from src.sources import board_round_log, careers, found_boards
 
 _READER = careers.READER
 
@@ -113,3 +114,44 @@ class TheLineSaysWhereTheSecondsWent(unittest.TestCase):
                 mock.patch('builtins.print'):
             found_boards.read_board(BOARD, SEARCH, fetch=lambda url: '<html><body><a href="/x">x</a></body></html>', early=True)
         self.assertTrue(seen and all(callable(part) for part in seen))
+
+
+class EachWayOfTheLadderSaysWhatItListed(unittest.TestCase):
+    """Why (13 Nov 2026, sa): the log named only the way that worked; a board that spent 40 s over ways that gave nothing looked like any other."""
+
+    def run_ladder(self, ai_read, clock, discover=None):
+        ladder, said, board = board_round_log.Ladder, [], {**BOARD, 'search_url': 'https://b1.example/?q={role}&sector=7'}   # an extra filter in the link: the bare read runs
+        patches = [mock.patch.object(found_boards.board_round_log, 'Ladder', lambda one: ladder(one, clock)),
+                   mock.patch('builtins.print', side_effect=lambda *a, **k: said.append(' '.join(map(str, a)))),
+                   mock.patch.object(found_boards, 'read_board', lambda *a, **k: ([], 'empty', [])),
+                   mock.patch.object(found_boards, '_read_by_ai', return_value=ai_read),
+                   mock.patch.object(found_boards.board_forms, 'home', return_value=('', '')),
+                   mock.patch.object(found_boards.board_form_read, 'through_forms', return_value=[]),
+                   mock.patch.object(found_boards, '_section', return_value=([], None, False)),
+                   mock.patch.object(found_boards.board_routes, 'discover', **(discover or {'return_value': ([], None)})),
+                   mock.patch.object(found_boards, '_rendered', return_value=None),
+                   mock.patch.object(found_boards.read_budget, 'past_cut', return_value=False)]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        found_boards._another_way(board, {}, board['search_url'], SEARCH, lambda *a, **k: '', lambda jobs: [], ([{'title': 'x', 'url': 'u'}], 'ok', []))
+        return [line for line in said if "way '" in line]
+
+    def test_every_way_that_ran_says_its_jobs_and_seconds_in_the_order_it_ran(self):
+        ticks = iter(range(0, 200, 7))   # each reading of the clock is 7 s after the last
+        lines = self.run_ladder([{'title': 'a', 'url': 'a'}], lambda: next(ticks))
+        self.assertEqual([line.split("way '")[1].split("'")[0] for line in lines], ['bare link', 'AI page reader', 'search form', 'own section', 'own job list', 'rendered read'])
+        self.assertIn("way 'search form': jobs not counted, 7 s", lines[2])   # never "0 job(s)": the forms hand back only a relevant read
+        self.assertIn("way 'bare link': 0 job(s) listed, 7 s (ladder 7 s)", lines[0])
+        self.assertIn("way 'AI page reader': 1 job(s) listed, 7 s (ladder 14 s)", lines[1])
+
+    def test_a_failing_job_list_still_says_its_seconds(self):
+        ticks = iter(range(0, 200, 7))
+        lines = self.run_ladder([], lambda: next(ticks), {'side_effect': ValueError('x')})
+        self.assertEqual([line.split("way '")[1].split("'")[0] for line in lines][-1], 'own job list', 'the ladder ends there: the failed way is said, never silent')
+
+    def test_a_way_that_did_not_run_says_nothing(self):
+        said = []
+        with mock.patch('builtins.print', side_effect=lambda *a, **k: said.append(a)):
+            board_round_log.Ladder(BOARD).did('bare link', None)
+        self.assertEqual(said, [])

@@ -5,6 +5,7 @@ user's run) one line per job with its link, no title. tools/persona-search/inout
 Stages here: kept, ai_no, never_asked, placed_out, no_link (a job without a link is never listed). The check adds not_read, after_kept and listed.
 Invariant: read = the sum of the stages of one pass; no job leaves kept without one. Tests: tests/unit/sources/test_job_stage.py (G1)."""
 import os
+import re
 
 ORDER = ('kept', 'ai_no', 'never_asked', 'placed_out', 'no_link')
 
@@ -51,9 +52,12 @@ def listing():
 
 
 def say_one(reader, stage, job):
-    """One job's stage, link only, when listing()."""
+    """One job's stage, its link, and for never_asked its place text (` | Berlin, DE`), when listing().
+    Why (13 Nov 2026, sa: "add the location text to the never_asked Stage line"): 317 board jobs were never asked and the log could not say how many
+    named a place plainly outside the person's places, so how much asking the clock's refusal cost; a place is public posting data, in the check only."""
     if listing():
-        print(f"Stage: {reader} {stage} {job.get('url') or '-'}\n", end='', flush=True)   # one write: lines from two reader threads never run together
+        place = re.sub(r'\s+', ' ', job.get('location') or '').strip()[:80] if stage == 'never_asked' else ''
+        print(f"Stage: {reader} {stage} {job.get('url') or '-'}{' | ' + place if place else ''}\n", end='', flush=True)   # one write: lines from two reader threads never run together
 
 
 def say_read(reader, jobs):

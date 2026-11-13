@@ -13,7 +13,7 @@ from pathlib import Path
 from reference import same_job
 
 LOST = ('not_read', 'never_asked', 'ai_no', 'placed_out', 'double', 'after_kept')
-LINE = re.compile(r'Stage: (?P<reader>.+?) (?P<stage>read|kept|ai_no|never_asked|placed_out|no_link) (?P<url>\S+)$')
+LINE = re.compile(r'Stage: (?P<reader>.+?) (?P<stage>read|kept|ai_no|never_asked|placed_out|no_link) (?P<url>\S+)(?: \| .*)?$')
 
 
 def stages(log):
