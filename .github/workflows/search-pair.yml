@@ -37,6 +37,11 @@ on:
         description: "The row's check run id, set by the pair's own second run so one row exists per head; empty for a new pair"
         type: string
         default: ''
+      # Why (13 Nov 2026, sa: #4049's place rounds "refused from ~57 s" need each job's stage to be read by mechanism on both sides, as #4043 did for search-profiles): off by default, one dispatch away.
+      stage_log:
+        description: 'One run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), on both sides, as the night logs'
+        type: boolean
+        default: false
 
 # Why (Gitar on #3957): per PR and its people, since GitHub keeps one pending run per group: another PR, or other people of the same PR, never replace a waiting pair;
 # the same people again (a side not counted, "start the pair again") replace only their own pending run.
@@ -55,6 +60,7 @@ env:
   # app: no override, each search step on the tier it names, as in the app (owner, 13 Nov 2026, "All but the replays (Recommended)"); small: every step on the small
   # model (an empty value is no override: desktop/lib/pipeline-env.js reads it as unset). The judge never reads it.
   JOBADABRA_MODEL_OVERRIDE: ${{ inputs.tiers == 'small' && 'claude-haiku-5-5' || '' }}
+  JOBADABRA_STAGE_LOG: ${{ inputs.stage_log && '1' || '' }}   # job_stage.py reads only '1'; '' (an unset input) is off
 
 jobs:
   setup:
@@ -276,6 +282,10 @@ jobs:
           echo "end=$(date +%s)" >> times.env
           python3 tools/persona-search/pair.py minutes times.env "${{ matrix.person.id }}" out >> "$GITHUB_STEP_SUMMARY"
           if [ -s "out/claim-hold-${{ matrix.person.id }}.log" ]; then { echo "Claim not held all the way (searches may have run without room):"; echo '```'; cat "out/claim-hold-${{ matrix.person.id }}.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: The boards the searches read, as names only, to the Scout (never red)
+        if: always()
+        # Why (13 Nov 2026, owner via sa: "Any install + our CI searches"): the person comes from each folder's name (a night person adds nothing); host names only, a failed post is a warning (tools/persona-search/report_boards.py).
+        run: python3 tools/persona-search/report_boards.py out --run "$GITHUB_RUN_ID" || true
       - uses: actions/upload-artifact@v6
         if: always()
         with:

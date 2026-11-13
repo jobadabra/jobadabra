@@ -227,6 +227,12 @@ jobs:
         env:
           PROFILE: ${{ matrix.profile }}
         run: python3 tools/persona-search/profiles.py row "$PROFILE" out
+      - name: The boards this search read, as names only, to the Scout (never red)
+        if: always()
+        env:
+          PROFILE: ${{ matrix.profile }}
+        # Why (13 Nov 2026, owner via sa: "Any install + our CI searches"): a board our CI read and no install reported never reached the Scout; host names only, a failed post is a warning (tools/persona-search/report_boards.py).
+        run: python3 tools/persona-search/report_boards.py out --person "$PROFILE" --run "$GITHUB_RUN_ID" || true
       - uses: actions/upload-artifact@v6
         if: always()
         with:
