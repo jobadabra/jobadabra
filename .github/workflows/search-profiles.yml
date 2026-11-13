@@ -32,9 +32,9 @@ env:
   CI_AI_PROVIDER: codex
   E2E_AI_PROVIDER: codex
   JOBADABRA_CHECK_CHAIN: codex,claude   # the night's AIs (Codex, Claude as its replacement), so a profile row and a night row use the same chain
-  # Why (13 Nov 2026, Gitar on #3940): the search's own steps on the night's small tier (search-personas.yml pins both), so a profile row and a night row use the same model.
-  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5
-  JOBADABRA_SEARCH_TIER: small
+  # Why (13 Nov 2026, owner: "Ok, let's swithc to Sonnet then"; asked via AskUserQuestion, "All but the replays (Recommended)"): no one-model override, so each
+  # search step runs on the tier it names (small or main), as in the app; forced onto the small tier, the country's job boards came back as home pages with no search link.
+  JOBADABRA_SEARCH_TIER: app
 
 jobs:
   room:
@@ -141,7 +141,7 @@ jobs:
       - name: A row searched without the renderer is marked
         if: steps.free.outputs.ok == 'yes' && (steps.render.outcome != 'success' || steps.render_browser.outcome != 'success')
         run: echo "the engine's renderer did not install" > out/no-renderer.txt
-      - name: The profile's fictional CV, then its first Find jobs search (small tier through the Codex relay)
+      - name: The profile's fictional CV, then its first Find jobs search (the app's tiers through the Codex relay)
         if: steps.free.outputs.ok == 'yes'
         env:
           PROFILE: ${{ matrix.profile }}
