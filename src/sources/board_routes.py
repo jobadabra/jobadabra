@@ -134,7 +134,7 @@ def _sitemap_jobs(url, fetch, board, terms):
     def one(link):
         try:
             page = _get(fetch, link)
-            return [{**job, 'company': job.get('employer')} for job in jsonld_jobs(page, link)]
+            return [{**job, 'company': job.get('employer')} for job in jsonld_jobs(page, link, job_page=True)]
         except Stop:
             refused.append(link)
             return []

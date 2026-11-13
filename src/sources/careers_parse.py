@@ -240,7 +240,7 @@ def _shown_title(markup, url, title):
         return title
     page = ats.plain((re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
     words = lambda text: set(re.findall(r'\w{3,}', plain_name(text)))
-    if words(title) & (words(heading) | words(page)):
+    if not words(title) or words(title) & (words(heading) | words(page)):   # no 3+ letter word (a 2-character title, IT, QA): nothing to doubt, no question (Gitar on #4081)
         return title
     from ..ai import decide
     question = f'title: {title}\nheading: {heading}'   # Why (13 Nov 2026, Gitar on #4062): on a list page the heading is the board's, so the AI sees both lines, never the title alone
@@ -252,10 +252,12 @@ def _shown_title(markup, url, title):
     return heading
 
 
-def jsonld_jobs(markup, url):
-    """The JobPosting entries a page publishes, in the common job shape (ats._job). A page of exactly one posting shows its title (_shown_title)."""
+def jsonld_jobs(markup, url, job_page=False):
+    """The JobPosting entries a page publishes, in the common job shape (ats._job). job_page=True: the caller is reading ONE job page from its own link, so a page of exactly
+    one posting shows its title (_shown_title). Any other call (a structure probe on a careers or listing page, whose heading is the board's) stays a pure parse: no AI, no rewrite.
+    Why (13 Nov 2026, Gitar on #4081): one posting on a page does not make it a job page, and a probe that only tests truthiness must not cost an AI call or swap a title."""
     jobs = _jsonld_jobs(markup, url)
-    if len(jobs) == 1:
+    if job_page and len(jobs) == 1:
         jobs[0]['title'] = ats.posting_text.label(_shown_title(markup, url, jobs[0]['title']))
     return jobs
 
