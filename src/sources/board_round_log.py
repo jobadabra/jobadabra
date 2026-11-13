@@ -6,9 +6,10 @@ Tests: tests/unit/sources/test_board_round_log.py."""
 import time
 
 
-def said(board, term, place, started, jobs_before, found=None, how='', error=None):
-    """Print one round of `board`'s read: its words and place, the page's jobs and how many are new to this read, how the page was read, and
-    its seconds since `started` (time.monotonic()); `error` (an HTTP code or a short reason) when the page was not read."""
+def said(board, term, place, started, jobs_before, found=None, how='', error=None, on_page=None):
+    """Print one round of `board`'s read: its words and place, the first page's jobs (`on_page`; the full read also reads the next pages, counted
+    apart), how many of all are new to this read, how the page was read, and its seconds since `started` (time.monotonic(), the next pages
+    included); `error` (an HTTP code or a short reason) when the page was not read."""
     asked = f"'{term}'" + (f" in {place}" if place else '')
     took = f'{time.monotonic() - started:.0f} s'
     if error is not None:
@@ -16,5 +17,7 @@ def said(board, term, place, started, jobs_before, found=None, how='', error=Non
         return
     seen = {job.get('url') for job in jobs_before}
     new = sum(1 for job in found or [] if job.get('url') not in seen)
-    print(f"Job boards: {board.get('name') or board.get('host')} round {asked}: {len(found or [])} job(s) on the page, {new} new"
+    first = len(found or []) if on_page is None else on_page
+    pages = f" ({len(found or [])} with its next pages)" if len(found or []) > first else ''
+    print(f"Job boards: {board.get('name') or board.get('host')} round {asked}: {first} job(s) on the page{pages}, {new} new"
           f"{', ' + how if how else ''}, {took}", flush=True)

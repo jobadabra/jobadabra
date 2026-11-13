@@ -67,5 +67,20 @@ class EachRoundSaysWhatItFound(unittest.TestCase):
         self.assertRegex(lines[1], r"^Job boards: Board 1 round 'charpentier': 1 job\(s\) on the page, 1 new, \d+ s$")
 
 
+    def test_the_full_reads_next_pages_are_counted_apart_from_the_page(self):
+        """The full read adds the next result pages to the round (board_pages.more): "on the page" stays the first page's count (Gitar, #3952)."""
+        more = [{'id': f'https://b1.example/p2-{k}', 'title': 'Menuisier', 'url': f'https://b1.example/p2-{k}', 'employer': 'Atelier', 'location': 'Brussels'}
+                for k in range(3)]   # the page reader's raw shape, before _shaped
+        with mock.patch.object(found_boards.board_pages, 'more', side_effect=lambda *a, **k: more) as next_pages:
+            _, _, lines = self.lines_full(lambda url: page('https://b1.example/1', 'https://b1.example/2'))
+        self.assertTrue(next_pages.called, 'positive control: the full read asked for the next pages')
+        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': 2 job\(s\) on the page \(5 with its next pages\), 5 new, \d+ s$")
+
+    def lines_full(self, fetch):
+        with mock.patch('builtins.print') as said:
+            jobs, state, _ = found_boards.read_board(BOARD, SEARCH, fetch=fetch, early=False)
+        return jobs, state, [str(c.args[0]) for c in said.call_args_list if c.args and ' round ' in str(c.args[0])]
+
+
 if __name__ == '__main__':
     unittest.main()
