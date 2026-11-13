@@ -148,6 +148,49 @@ class SoFarTest(unittest.TestCase):
         self.assertTrue(re.search(pattern.replace('\\/', '/'), 'Jobs so far: 2 new from employer sites'))
         self.assertFalse(re.search(pattern.replace('\\/', '/'), 'Jobs so far: 0 new from employer sites'))
 
+    def test_a_line_held_back_inside_the_window_is_said_when_the_window_ends_with_no_later_add(self):
+        """13 Nov 2026, c04 pair run 43517140431: board jobs imported at 60 s, 3 s after the employer sites' line, were said at no time before the run's end at 175 s: the
+        employer stage had ended, so no add came to flush them, and the Jobs list reads itself again only on this line."""
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        db = store.connect(Path(folder.name) / 'jobs.sqlite')
+        self.addCleanup(db.close)
+        lines, now, timers = [], [0.0], []
+
+        class Timer:
+            def __init__(self, delay, fn):
+                self.delay, self.fn, self.cancelled = delay, fn, False
+                timers.append(self)
+
+            def cancel(self):
+                self.cancelled = True
+        so_far = jobs_so_far.SoFar(db, say=lines.append, every=5, clock=lambda: now[0], later=Timer)
+        so_far.add([{**job(1), 'company': 'Co1'}], 'employer sites')
+        now[0] = 3.0
+        so_far.add([{**job(2), 'company': 'Co2'}], 'job boards')
+        so_far.add([{**job(3), 'company': 'Co3'}], 'job boards')
+        self.assertEqual(lines, ['Jobs so far: 1 new from employer sites'], 'inside the window: held back')
+        self.assertEqual([timer.delay for timer in timers], [2.0], 'one timer for the window end, not one per add')
+        now[0] = 5.0
+        timers[0].fn()   # the window ends and nothing else adds
+        self.assertEqual(lines[1:], ['Jobs so far: 2 new from job boards'])
+        so_far.statuses({'jobs': []}, [])
+        self.assertEqual(len(lines), 2, 'said once: nothing is left for the end')
+
+    def test_the_end_of_the_run_cancels_the_timer_it_no_longer_needs(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        db = store.connect(Path(folder.name) / 'jobs.sqlite')
+        self.addCleanup(db.close)
+        lines, now, timers = [], [0.0], []
+        timer = type('Timer', (), {'cancel': lambda self: timers.append('cancelled')})()
+        so_far = jobs_so_far.SoFar(db, say=lines.append, every=5, clock=lambda: now[0], later=lambda delay, fn: timer)
+        so_far.add([{**job(1), 'company': 'Co1'}], 'employer sites')
+        now[0] = 1.0
+        so_far.add([{**job(2), 'company': 'Co2'}], 'job boards')
+        so_far.statuses({'jobs': []}, [])
+        self.assertEqual((lines[1:], timers), (['Jobs so far: 1 new from job boards'], ['cancelled']))
+
 
 if __name__ == '__main__':
     unittest.main()
