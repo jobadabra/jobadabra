@@ -35,12 +35,18 @@ def running(started_hm, what='running'):
 
 
 def why_not_counted(rows):
-    """Why people's sides did not count, from their side rows ({person: {'main': [...], 'pr': [...]}}): boards not shared, a broker wait over the limit, or a side that failed."""
+    """Why people's sides did not count, from their side rows ({person: {'main': [...], 'pr': [...]}}): boards not shared, refused AI calls, two AIs, a broker wait over the limit, or a side that failed."""
     reasons = []
     flat = [r for sides in rows.values() for r in sides['main'] + sides['pr']]
     if any(r.get('shared') is False for r in flat):
         reasons.append("boards not shared (the draft's proposal or its web search failed)")
-    if any(r.get('wait_p90_ms') is not None and not r.get('valid') and r.get('shared') is not False for r in flat):
+    counted_in = [r for r in flat if not r.get('valid') and r.get('shared') is not False]
+    if any(r.get('failed') for r in counted_in):
+        reasons.append('a side had AI calls refused by the broker')
+    if any(len(r.get('engines') or []) > 1 for r in counted_in):
+        reasons.append('a side was answered by two AIs')
+    # Why (13 Nov 2026): a side not valid for refused calls or two AIs is not "slow"; the wait is the reason only when neither is.
+    if any(r.get('wait_p90_ms') is not None and not r.get('failed') and len(r.get('engines') or []) <= 1 for r in counted_in):
         reasons.append('a side waited over 20 s at the broker')
     return '; '.join(reasons) or 'a side failed before its search'
 
