@@ -70,6 +70,12 @@ jobs:
           TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "Claude review skipped: CLAUDE_CODE_OAUTH_TOKEN is not set on this repository" | tee -a "$GITHUB_STEP_SUMMARY"; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+      - name: The PR's Claude label says reviewing
+        if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ steps.gate.outputs.pr }}
+        run: node cr-tools/tools/claude-label.mjs "$PR" reviewing
       - name: Review
         id: claude
         if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true'
@@ -106,7 +112,7 @@ jobs:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: node cr-tools/tools/claude-review.mjs failed
       - name: The PR's Claude label
-        if: ${{ !cancelled() && steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true' }}   # after a skipped or failed review too: the label then says "· not re-reviewed" for the head
+        if: ${{ always() && steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true' }}   # always(): also after a failed or cancelled job, so "reviewing" cannot stay on the PR
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR: ${{ steps.gate.outputs.pr }}
