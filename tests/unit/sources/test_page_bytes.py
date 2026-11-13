@@ -44,6 +44,14 @@ class PageBytesTest(unittest.TestCase):
                 self.assertIn(TITLE, page_bytes.text(raw))
         self.assertIn('Lisboa', page_bytes.text(page('<meta charset="hex">'), 'base64'))
 
+    def test_a_stale_meta_in_a_comment_or_script_or_on_a_utf_8_page_does_not_garble_it(self):
+        """Gitar on #3990: a UTF-8 page carrying an old latin-1 <meta> read right before this change and must still."""
+        for stale in ('<!-- <meta charset="iso-8859-1"> -->', '<script>var m = \'<meta charset="iso-8859-1">\';</script>', '<meta charset="iso-8859-1">'):
+            with self.subTest(stale=stale):
+                raw = f'{HEAD}{stale}</head><body><h1>{TITLE}</h1></body></html>'.encode('utf-8')
+                self.assertIn(TITLE, page_bytes.text(raw))
+        self.assertEqual(page_bytes.declared(b'<!-- <meta charset="iso-8859-1"> --><meta charset="windows-1252">'), 'windows-1252', 'the real meta after a stale one')
+
     def test_a_reply_with_no_headers_reads_as_before(self):
         """An opener a caller injects may give a bare body (describe._get's stand-ins in test_feed_details did, #3990's red)."""
         self.assertIn(TITLE, page_bytes.reply(io.BytesIO(page('<meta charset="ISO-8859-1">')), 1_000_000))
