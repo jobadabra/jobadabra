@@ -177,7 +177,7 @@ class Workflows(unittest.TestCase):
         name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / 'e2e-windows.yml').read_text()).group(1).strip('\'"')
         self.assertNotIn(name, listed, 'e2e-windows.yml: no PR starts it')
         checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
-        for name in ('main_e2e_state', 'pr_ai_number', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_greys', 'pr_flaky'):
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_rows', 'pr_verdict_greys', 'pr_flaky'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_verdicts_queue_per_commit_and_skipped_events_have_unique_groups(self):
@@ -373,6 +373,7 @@ elif a[0] == 'api' and '/actions/runs/' in a[1] and a[1].split('/')[-1].isdigit(
     rid = int(a[1].split('/')[-1]); r = next(r for r in json.load(open(os.path.join(d, 'runs.json'))) if r['databaseId'] == rid)
     print(json.dumps({'id': rid, 'head_sha': 'abc1234', 'run_attempt': r.get('attempt'), 'status': r['status'], 'conclusion': r['conclusion'], 'updated_at': r['updatedAt']}))
 elif a[0] == 'api' and '/jobs' in a[1]: out('jobs-' + a[1].split('/runs/')[1].split('/')[0] + '.json')
+elif a[0] == 'api' and 'check-runs' in a[1]: print('[]') if '/commits/' in a[1] else open(os.path.join(d, 'rows'), 'a').write(json.dumps(a[2:]) + chr(10))   # the head's rows so far / a row written
 elif a[0] == 'api' and '/statuses/' in a[1]: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
 else: sys.exit('fake gh: no answer for ' + repr(a))
 """
@@ -398,13 +399,13 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         env.pop('GITHUB_EVENT_PATH', None)
         script = os.path.join(d, 'pr-verdict.py'); Path(script).write_text((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
         Path(d, 'pr_verdict_sweep.py').write_text((ROOT / 'tools/pr_verdict_sweep.py').read_text() if (ROOT / 'tools/pr_verdict_sweep.py').exists() else ''); Path(d, 'github_limit.py').write_text((ROOT / 'tools/github_limit.py').read_text())   # its sibling, as the job's sparse checkout has it
-        Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text())
+        Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text()); Path(d, 'pr_verdict_rows.py').write_text((ROOT / 'tools/pr_verdict_rows.py').read_text())
         mode = ['--sweep-heads'] if sweep_heads is not None else ['--sha', 'abc1234']
         done = subprocess.run([sys.executable, script, '--repo', 'o/r', *mode, *(['--revalidate-head'] if revalidate_head else []), *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
         read = lambda name: Path(d, name).read_text() if Path(d, name).exists() else ''
         if sweep_heads is not None and done.returncode == 0:
             self.assertIn('heads=', read('output'), 'the workflow matrix consumes GITHUB_OUTPUT')
-        return done, read('written'), read('calls').split('\n')[:-1]
+        self.rows = read('rows'); return done, read('written'), read('calls').split('\n')[:-1]
 
     def test_the_last_workflow_end_writes_green_in_three_calls(self):
         done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}])
@@ -448,6 +449,13 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
             pv.gh('run', 'list')
         self.assertEqual(run_.call_args.kwargs.get('encoding'), 'utf-8')
         self.assertNotIn('text', run_.call_args.kwargs, 'text=True uses the locale (cp1252 on Windows)')
+
+    def test_a_by_hand_e2e_run_gets_its_own_row_and_the_status_still_lands(self):   # #4177: the PR's e2e run is workflow_dispatch, so the checks list never showed it
+        e2e = dict(run('CI · End-to-end on Mac + Linux', event='workflow_dispatch', title='E2E for PR · jobs · topic', id=5, status='in_progress'), conclusion='')
+        _, written, _ = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], runs=[run('CI · Pull request', id=1), e2e], jobs={5: [job(50, 'E2E · jobs', status='in_progress', conclusion='')]})
+        self.assertIn('"state=pending"', written)
+        row = json.loads(self.rows.strip())
+        self.assertTrue({'name=run · E2E for PR · jobs · topic', 'status=in_progress', 'details_url=https://github.com/o/r/actions/runs/5'} <= set(row), row)
 
     def test_a_merged_pr_gets_nothing(self):
         done, written, _ = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': '2026-10-26T04:59:23Z'}])

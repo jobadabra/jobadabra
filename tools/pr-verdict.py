@@ -167,7 +167,8 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
         # the failing jobs, not the run's title: #2342's status read "red: e2e focus,settings" with focus green (owner, 28 Oct 2026)
         return 'failure', f'red: {short(label(r, red_jobs.get(r.get("databaseId"), ())) for r in red)}'[:140], live, [], red[0].get('databaseId')
     if settling and not running:
-        return 'settling', f'{short(label(r) for r in settling)} ending', live, [], None
+        first = next((r for r in settling if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)), settling[0])
+        return 'settling', f'{short(label(r) for r in settling)} ending', live, [], first.get('databaseId')   # the link names the run it waits on, as pending does (14 Nov 2026, #4177: it showed this verdict's own green page)
     if running:
         # A clock time, never minutes so far: the status is written only when a job ends, so a counter froze between writes (26 Oct 2026, the owner: "it stays
         # like that: 'waiting 3 min: e2e quality' for more than 5 minutes. this is a bug").
@@ -218,7 +219,7 @@ def quota_line(run=None):
 
 
 PR_META = """query($owner: String!, $name: String!, $oid: GitObjectID!) { repository(owner: $owner, name: $name) { object(oid: $oid) { ... on Commit {
-  associatedPullRequests(first: 5) { nodes { number state mergedAt headRefOid files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
+  associatedPullRequests(first: 5) { nodes { number state mergedAt headRefOid isCrossRepository files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
 
 
 def pr_meta(repo, sha, run=None):
@@ -228,7 +229,7 @@ def pr_meta(repo, sha, run=None):
     owner, name = repo.split('/')
     answer = json.loads((run or gh)('api', 'graphql', '-f', f'query={PR_META}', '-f', f'owner={owner}', '-f', f'name={name}', '-f', f'oid={sha}'))
     nodes = (((answer.get('data') or {}).get('repository') or {}).get('object') or {}).get('associatedPullRequests', {}).get('nodes', [])
-    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt'], 'head_sha': n.get('headRefOid')} for n in nodes]
+    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt'], 'head_sha': n.get('headRefOid'), 'cross_repo': bool(n.get('isCrossRepository'))} for n in nodes]
     number, _ = open_pr(pulls)
     mine = next((n for n in nodes if str(n['number']) == number), None)
     if not mine:
@@ -256,7 +257,10 @@ def list_runs(repo, sha):
                         'databaseId,workflowDatabaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
 
 
-def read(repo, sha):
+SETTLE = (9, 5)   # (looks, seconds between): a run whose jobs all ended is looked at again until it is completed, at most ~45 s (the cap is only a hang guard: the end comes in seconds)
+
+
+def read(repo, sha, sleep=time.sleep):
     """Read the PR's runs and deciding jobs; a matching completed event outranks a lagging list.
     Invariant: completion evidence applies only to the same head, run id and attempt, never a rerun.
     Red E2E job details still decide lane exemptions.
@@ -284,7 +288,15 @@ def read(repo, sha):
                     job.update(status='completed', conclusion='success', completed_at=job.get('completed_at') or r['updatedAt'])
     # Why (30 Oct 2026, quota review): pending alone needs fresh IDs; one live endpoint proves it, and an ended red costs no by-ID read.
     if not any(r.get('status') == 'completed' and r.get('conclusion') in RED for r in counted(runs)) and verdict(runs, jobs=jobs)[0] in ('pending', 'settling'):
-        main_state_module(repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_runs').refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
+        refresh = main_state_module(repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_runs').refresh
+        refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
+        # Why (14 Nov 2026, #4177: every check green, "All checks passed" pending 10 min): the verdict a Guard end started read e2e's jobs ended and the run itself
+        # completed 1 s later; no event followed for that head, so the next look was the 10-min sweep. A "settling" run is looked at again here, by id, until it ends.
+        for _ in range(SETTLE[0]):
+            if verdict(runs, jobs=jobs)[0] != 'settling':
+                break
+            sleep(SETTLE[1])
+            refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
     return runs, jobs
 
 
@@ -402,6 +414,14 @@ def flaky_note(repo, ref, live, why):
         return why
 
 
+def publish_rows(a, pulls, live, state, server, ref):
+    """Rows and the summary table come after the status and never change it (tools/pr_verdict_rows.py: one row per by-hand run, the current open head only)."""
+    try:
+        main_state_module(a.repo, ref, 'pr_verdict_rows').publish(a.repo, a.sha, pulls, live, state, gh, server, datetime.now(timezone.utc), a.dry_run, os.environ.get('GITHUB_STEP_SUMMARY', ''))
+    except Exception as error:   # the companion not loaded (publish() catches its own failures): the status above stands
+        print(f'check rows companion not loaded ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -461,6 +481,7 @@ def main():
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')
+    publish_rows(a, pulls, live, state, server, ref)
     return 0
 
 
