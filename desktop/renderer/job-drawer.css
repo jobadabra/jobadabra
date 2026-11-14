@@ -48,6 +48,9 @@
 .jd-tile-words { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .jd-found { margin: var(--sp-3) 0 0; }
 .jd-icon-row { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-1) 0; }
+.jd-icon-row.has-action { align-items: center; }
+.jd-icon-row.has-action > span:nth-child(2) { flex: 1; min-width: 0; }
+.jd-icon-row.has-action > button { flex: none; }
 .jd-row-icon { flex: none; color: var(--ink-2); display: grid; place-items: center; width: 24px; height: 24px; }
 .jd-row-icon svg { width: 20px; height: 20px; }
 .jd-tech { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line); }

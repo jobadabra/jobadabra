@@ -5,7 +5,7 @@ import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {button, card, factStrip, foldCard, iconRow, skeleton, stateCard} from './parts.js';
-import {accountOf, readinessOf} from '../apply-readiness-view.js';
+import {accountOf, fixAllOf, readinessOf} from '../apply-readiness-view.js';
 import {checkJob, readOf} from '../pages/jobs-triage.js';
 import {stepsOf} from '../readiness-steps.js';
 import {drawerActions} from './drawer-actions.js';
@@ -18,16 +18,26 @@ let running = '';   // the job url whose check runs from the drawer
 /** Forgets the Credentials rows, so the next Account view reads them again (the drawer calls it on open). */
 export const forgetCredentials = () => { saved = null; reading += 1; };
 
-const checkButton = (ctx, redraw, label) => {
+const checkButton = (ctx, redraw, label, secondary = false) => {   // secondary: "Fix all" is the primary press, Check again steps back
   const node = button(label, async () => {
     running = ctx.job.url; redraw();
     try { await checkJob(ctx.job); } finally { running = ''; redraw(); }
-  }, 'primary');
+  }, secondary ? 'secondary' : 'primary');
   node.disabled = running === ctx.job.url;
   return node;
 };
 
-const TODO_ICON = {'sign-in': 'key', account: 'user', check: 'shield', detail: 'edit'};   // what each kind of to-do asks of the person
+const TODO_ICON = {'sign-in': 'key', account: 'user', check: 'shield', detail: 'edit', answer: 'edit'};   // what each kind of to-do asks of the person
+
+/** One "What's missing" row with the one button it gets: the site for a sign-in, an account or a check only the person passes; the queue for a saved detail ("Add it") or a question ("Answer it"). */
+function todoRow(ctx, item) {
+  const row = iconRow(TODO_ICON[item.kind] || 'edit', item.words);
+  const {action} = item;
+  row.classList.add('has-action');
+  if (action.type === 'site') row.append(button(t('pagesReadinessTab.openSite'), () => window.pilot.openExternal(ctx.job.url)));   // the app never types a password or solves a check
+  else row.append(button(t(item.kind === 'answer' ? 'pagesReadinessTab.answerIt' : 'pagesReadinessTab.addIt'), () => drawerActions.openQueue(ctx.job, {queue: action.queue, labels: [action.label]})));
+  return row;
+}
 
 /** The check log, folded: each finished step with its seconds and a bar of its share of the slowest step (stepsOf: this window's last check of the job). */
 function checkLog(url) {
@@ -64,10 +74,12 @@ export function readinessView(ctx, redraw) {
     ...(log ? [{icon: 'clock', label: t('pagesReadinessTab.took'), value: t('helperTail.triageStepSeconds', {count: log.total})}] : []),
   ];
   const actions = el('div', 'jd-actions');
-  actions.append(checkButton(ctx, redraw, view.button));
+  const fixAll = fixAllOf(view.todo);
+  if (fixAll) actions.append(button(t('pagesReadinessTab.fixAll', {count: fixAll.count}), () => drawerActions.openQueue(ctx.job, fixAll.first), 'primary'));
+  actions.append(checkButton(ctx, redraw, view.button, Boolean(fixAll)));
   const summary = el('section', 'jd-card jd-readiness');
   summary.append(head, factStrip(cells), ...(log ? [] : [el('p', 'muted small', t('pagesReadinessTab.noLog'))]), actions);   // a check from the store, or one before a restart, has no step times: say so (Gitar on #4379)
-  const todo = view.todo.length ? card(t('pagesReadinessTab.missing'), ...view.todo.map(item => iconRow(TODO_ICON[item.kind] || 'edit', item.words))) : null;
+  const todo = view.todo.length ? card(t('pagesReadinessTab.missing'), ...view.todo.map(item => todoRow(ctx, item))) : null;
   return [summary, todo, log?.node].filter(Boolean);
 }
 

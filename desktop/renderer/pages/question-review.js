@@ -33,7 +33,7 @@ export const DRAWERS = {
   learned: {title: t('pagesCommon.learned'), lead: t('pagesAuditThird.a148'), skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: t('pagesExtraLabels.saveChange'),
     done: t('pagesExtraLabels.nothingCheck'), doneText: t('pagesAuditThird.a149')},
 };
-const state = {open: false, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
+const state = {open: false, scope: null, onClose: null, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
 const drafts = new Map();
 try { for (const [key, value] of Object.entries(JSON.parse(localStorage.getItem(DRAFTS) || '{}'))) drafts.set(key, String(value)); } catch {}
 const keepDrafts = () => { try { localStorage.setItem(DRAFTS, JSON.stringify(Object.fromEntries(drafts))); } catch {} };
@@ -48,7 +48,9 @@ function header() {
   close.addEventListener('click', closeQuestionReview);
   const title = el('div', 'jd-title');
   const words = DRAWERS[state.kind];
-  title.append(el('h2', '', words.title), el('p', 'muted', words.lead));
+  // Why (15 Nov 2026, owner: "Not sure if the panel title should be \"What we learned\"… we didn't learn yet. we're learning" · chose "Fill out the gaps"): a job's queue (state.scope) is named for what the person does; the global drawer's rename is a follow-up.
+  const named = state.scope ? {title: t('pagesReadinessTab.jobQueueTitle'), lead: t('pagesReadinessTab.jobQueueLead')} : words;
+  title.append(el('h2', '', named.title), el('p', 'muted', named.lead));
   // Why (28 Oct 2026, owner: "Saved answers… It's getting dropped"): the header's way out is "What we learned", the whole Profile tab (was Saved answers, 19 Oct).
   const saved = Object.assign(el('button', 'secondary with-icon qr-saved-btn'), {type: 'button', id: 'review-learned-tab'});
   saved.append(icon('bookmark'), el('span', '', t('pagesCommon.learned')));
@@ -202,8 +204,37 @@ async function answer(q, value) {
   state.saved = value ? t('pagesDynamicProfileReady.m307', {"value1": result.homeName || t('pagesCommon.learned')}) : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
+  if (state.scope && !state.queue.length) await loadQuestions({force: true});   // the finish card counts the other open questions: read them without this answer
   draw();
   loadQuestions({force: true});   // Jobs' card counts again
+}
+
+// A job's scope spans both drawers (Fix all: its details, then its questions): with the open one done, the other drawer's items of this job follow; false when none is left.
+// Why (15 Nov 2026, #4421 Gitar: "Fix all N" counted both drawers, the queue covered the first): the finish card shows only when the whole job is done.
+function otherDrawer() {
+  const other = state.kind === 'details' ? 'learned' : 'details';
+  if (!(questionsNow()[other] || []).some(q => state.scope.has(q.key))) return false;
+  state.kind = other;
+  Object.assign(state, listOf(questionsNow(), other));
+  state.at = 0;
+  state.saved = '';
+  return true;
+}
+
+// The questions asked for are all answered (state.scope, the ONE state of a job's queue; its one owner is this file).
+// Why (14 Nov 2026, #4325, owner: "When it finishes, the user should have 2 options: return back to the job apply readiness, or continue with other (general) questions in the queue" · "if he chooses the 2nd, then we bring the global pool of questions"): Back closes (the opener's onClose reads the check again); Continue drops the scope, so the normal ranked queue shows every open question.
+function finishCard() {
+  const actions = [button(t('pagesReadinessTab.backToJob'), () => closeQuestionReview(), 'primary')];
+  if ((questionsNow()[state.kind] || []).length) {
+    actions.push(button(t('pagesReadinessTab.continueOthers'), () => {
+      state.scope = null;
+      Object.assign(state, listOf(questionsNow(), state.kind));
+      state.at = 0;
+      state.saved = state.error = '';
+      draw();
+    }, 'secondary'));
+  }
+  return el('div', 'jd-body qr-body', stateCard({icon: 'check', tone: 'good', title: t('pagesReadinessTab.jobDone'), text: t('pagesReadinessTab.jobDoneText'), actions}));
 }
 
 export function draw() {
@@ -216,6 +247,8 @@ export function draw() {
     return;
   }
   const q = current();
+  if (!q && state.scope && otherDrawer()) { draw(); return; }
+  if (!q && state.scope) { panel.replaceChildren(header(), finishCard()); return; }
   if (!q) {
     const done = stateCard({icon: 'check', tone: 'good', title: DRAWERS[state.kind].done, text: DRAWERS[state.kind].doneText});
     const body = el('div', 'jd-body qr-body', done);
@@ -236,13 +269,17 @@ export function draw() {
 }
 
 // The drawer's list and its set-aside ones (What we learned only); start: a key that names the drawer it is in.
-const listOf = (now, kind) => ({queue: [...(now[kind] || [])], setAside: [...new Map([...(kind === 'learned' ? now.hidden : []), ...(now.dismissed?.[kind] || [])].map(q => [q.key, q])).values()]});
+const listOf = (now, kind) => ({queue: (now[kind] || []).filter(q => !state.scope || state.scope.has(q.key)), setAside: [...new Map([...(kind === 'learned' ? now.hidden : []), ...(now.dismissed?.[kind] || [])].map(q => [q.key, q])).values()]});
 const drawerOf = (now, key, kind) => (key && (now.learned || []).some(q => q.key === key) ? 'learned' : key && (now.details || []).some(q => q.key === key) ? 'details' : kind);
 
 // Opens a drawer (queue: 'details' | 'learned') on its questions (read once if Jobs has not read them yet). start: a question's key to show first.
-export async function openQuestionReview({force = false, start = '', queue = 'details'} = {}) {
+// jobKeys: the keys of the questions the opener asked for (one row's, or a job's missing items): the drawer shows only them, and a finish card (Back / Continue with the other questions) follows the last; onClose({away}): called once when it closes (away: another screen took over, so the opener does not bring its own drawer back).
+// Why (14 Nov 2026, #4325, owner: "make it easy for him to fix all the issues"): the job drawer opens this at what that job lacks and reads its stored check again when it closes.
+export async function openQuestionReview({force = false, start = '', queue = 'details', jobKeys = null, onClose = null} = {}) {
   claimOverlay('review');
   state.open = true;
+  state.onClose = onClose;
+  state.scope = jobKeys?.length ? new Set(jobKeys) : null;
   $('review-drawer-layer').hidden = false;
   let now = questionsNow();
   // The questions saved last time (Jobs' card shows them from this computer) open the drawer at once; the store's answer replaces them when it arrives.
@@ -285,16 +322,24 @@ function syncQueue() {
   draw();
 }
 
-export function closeQuestionReview() {
+/** Closes the drawer. `{away: true}`: another screen took over (the overlay slot, Profile), so the opener's onClose does not bring its own drawer back. A click or Esc passes no `away`. */
+export function closeQuestionReview(options) {
   if (!state.open) return;
   state.open = false;
   releaseOverlay('review');
   $('review-drawer-layer').hidden = true;
+  const done = state.onClose;
+  // Why (15 Nov 2026, #4421 Gitar): another overlay that takes the slot may give it back (its Back); a job's queue then returns as that job's queue, never the global one.
+  parked = options?.away === true && state.scope ? {jobKeys: [...state.scope], onClose: done} : null;
+  state.onClose = null;
+  state.scope = null;
+  done?.({away: options?.away === true});
 }
+let parked = null;   // a job's queue another overlay displaced: its scope and onClose, restored when the slot gives the drawer back
 
 // Profile → What we learned on its Confirmed view (a question's "covered by"; the drawer header's button opens All), searched for a saved answer's name when one is given.
 export async function manageAnswers(query = '', view = 'confirmed') {
-  closeQuestionReview();
+  closeQuestionReview({away: true});
   const [{openView}, {settingsPage}, {profileTab}, answers] = await Promise.all([import('./nav.js'), import('./settings.js'), import('./profile.js'), import('./application-answers.js')]);
   answers.searchAnswers(query, view);
   openView('settings');
@@ -302,7 +347,7 @@ export async function manageAnswers(query = '', view = 'confirmed') {
   profileTab('answers');
 }
 
-registerOverlay('review', {close: closeQuestionReview, open: () => openQuestionReview({queue: state.kind})});   // back to the drawer it was
+registerOverlay('review', {close: () => closeQuestionReview({away: true}), open: () => openQuestionReview({queue: state.kind, ...(parked || {})})});   // back to the drawer it was
 $('review-drawer-backdrop')?.addEventListener('click', closeQuestionReview);
 $('questions-review')?.addEventListener('click', () => openQuestionReview({queue: 'details'}));
 $('learned-review')?.addEventListener('click', () => openQuestionReview({queue: 'learned'}));

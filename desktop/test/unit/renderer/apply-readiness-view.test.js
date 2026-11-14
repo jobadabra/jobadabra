@@ -3,7 +3,7 @@
 // two new parts read the same check. renderer/apply-readiness-view.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {accountOf, menuItemOf, readinessOf} from '../../../renderer/apply-readiness-view.js';
+import {accountOf, fixAllOf, menuItemOf, readinessOf} from '../../../renderer/apply-readiness-view.js';
 
 const clean = {eligible: true, captcha: false, login: false, accountCreation: false};
 const READS = {
@@ -53,7 +53,7 @@ test("the form's required questions as counts: answered = asked − missing − 
   assert.deepEqual(readinessOf(read).counts, {questions: 19, answered: 15, unjudged: 1});
   assert.deepEqual(readinessOf(READS.login).counts, {questions: null, answered: null, unjudged: null}, 'a sign-in page: its questions were not read');
   assert.deepEqual(readinessOf({...clean, simple: true, questions: ['Phone']}).counts, {questions: 1, answered: null, unjudged: null}, 'read but not matched yet: answered is not known');
-  assert.deepEqual(readinessOf(READS.login).todo, [{kind: 'sign-in', words: "Sign in on the employer's site"}]);
+  assert.deepEqual(readinessOf(READS.login).todo, [{kind: 'sign-in', words: "Sign in on the employer's site", action: {type: 'site'}}]);
   assert.equal(readinessOf(READS.login).blocked, true);
   assert.equal(readinessOf(READS.details).blocked, false, "saved details are the person's to add, not a site that blocks");
 });
@@ -65,4 +65,17 @@ test('"it can be filled" only when every question was read, matched and found go
     assert.equal(view.ready, false, JSON.stringify(read));
     assert.ok(view.found, 'the drawer has words of its own to say instead');
   }
+});
+
+test('every to-do gets its one button: the site for a sign-in, an account or a check; the queue for a saved detail or a question; "Fix all" points at the first queue one', () => {
+  // Why (14 Nov 2026, #4325, owner: "The apply readiness should give some call to actions, to make it ready").
+  const todo = readinessOf({...READS.details, login: true, captcha: true}).todo;
+  assert.deepEqual(todo.map(item => [item.kind, item.action]), [
+    ['sign-in', {type: 'site'}], ['check', {type: 'site'}],
+    ['detail', {type: 'queue', queue: 'details', label: 'Salary expectation'}],
+    ['answer', {type: 'queue', queue: 'learned', label: 'How did you perform in mathematics at high school?'}]]);
+  assert.deepEqual(fixAllOf(todo), {count: 2, first: {queue: 'details', label: 'Salary expectation', labels: ['Salary expectation'], others: ['How did you perform in mathematics at high school?']}}, 'the first queue item, Your details before the questions; the other drawer\'s items follow in the same scope, so the count covers both (#4421 Gitar)');
+  assert.deepEqual(fixAllOf(todo.filter(item => item.kind === 'answer')), {count: 1, first: {queue: 'learned', label: 'How did you perform in mathematics at high school?', labels: ['How did you perform in mathematics at high school?'], others: []}});
+  assert.equal(fixAllOf(readinessOf(READS.login).todo), null, 'a sign-in alone has no queue to fix');
+  assert.equal(readinessOf(READS.details).blocked, false, 'a question in the queue is not the posting that blocks');
 });
