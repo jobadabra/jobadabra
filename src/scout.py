@@ -235,7 +235,7 @@ def board_pass(db_path, lanes=0, merge=None):
 
 def discover(db, run=None, out=print, today=None):
     """Board discovery's turn (src/scout_board_cells.py): the weakest cells' country, their families, and the facts due to be read again; the
-    cells' rest is kept after. Its database is its own (the lab passes --db), started once from the Scout's facts (SCOUT_BOARD_SEED_DB), so the two
+    cells' rest is kept after. Its database is its own (the lab passes --db), takes the Scout's new or newer facts in at every pass (SCOUT_BOARD_SEED_DB, cells.seed), so the two
     jobs never save over each other's memory; the Scout publishes both (SCOUT_BOARD_DB). SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
     equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
     by employers never gave a turn to the countries with no measured board."""
