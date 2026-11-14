@@ -166,12 +166,19 @@ class SmallQuestions(SharedCalls):
 
 
 class Lanes(Model):
-    """Model that also counts the calls in flight at once (`most`)."""
-    def __init__(self):
+    """Model that also counts the calls in flight at once (`most`). hold=page: the first call carrying that page's wordings is recorded only after
+    `hold_until` other calls were (CI's load, forced: the thread that built it is paused after the gate let go of its lock)."""
+    def __init__(self, hold=None, hold_until=0):
         super().__init__()
-        self.flying, self.most, self.lock = 0, 0, threading.Lock()
+        self.flying, self.most, self.lock, self.hold, self.hold_until = 0, 0, threading.Lock(), hold, hold_until
 
     def create(self, **kw):
+        if self.hold and f'{self.hold} link' in kw['messages'][0]['content']:
+            self.hold = None
+            for _ in range(500):   # a hang guard only: the other lane makes the other calls meanwhile
+                if len(self.calls) >= self.hold_until:
+                    break
+                threading.Event().wait(0.01)
         with self.lock:
             self.flying += 1
             self.most = max(self.most, self.flying)
@@ -180,6 +187,32 @@ class Lanes(Model):
         finally:
             with self.lock:
                 self.flying -= 1
+
+
+class _Asking(set):
+    """A gate's set of texts being asked that logs each batch the moment the gate takes a lane for it (`|=`, under the gate's lock)."""
+    def __init__(self, log):
+        super().__init__()
+        self.log = log
+
+    def __ior__(self, texts):
+        self.log.append(sorted(texts))
+        return super().__ior__(texts)
+
+
+class BuildOrder(dict):
+    """decide.GATES.open whose gates log their batches in the order the gate built them (`batches`).
+    Why (xc, 14 Nov 2026, #4248's run 43612944028, "13 not less than or equal to 4"): the model records a call after the gate lets go of its lock,
+    so under CI load the thread holding Infojobs's batch, built first, was paused while the other lane ran ten calls, and it was recorded 13th.
+    The order the gate decided is the one asserted; the model's own list stays the positive control (the same calls)."""
+    def __init__(self):
+        super().__init__()
+        self.batches = []
+
+    def setdefault(self, key, gate):
+        if key not in self:
+            gate['asking'] = _Asking(self.batches)
+        return super().setdefault(key, gate)
 
 
 class BoardsTogether(SharedCalls):
@@ -191,11 +224,24 @@ class BoardsTogether(SharedCalls):
     def board(self, model, page, n, out):
         out[page] = decide.decide('link-kind', {f'{page} link {i}': f'{page} link {i}' for i in range(n)}, ANSWERS, 'what a link is', client=model, floor=False)
 
-    def last_call(self, model, page):
-        return max(i for i, call in enumerate(model.calls, 1) if any(w.startswith(f'{page} link') for w in call))
+    def last_call(self, batches, page):
+        return max(i for i, batch in enumerate(batches, 1) if any(w.startswith(f'{page} link') for w in batch))
 
     def test_boards_that_ask_together_each_get_their_links_after_their_own_calls_not_everyones(self):
-        model, out, threads = Lanes(), {}, []
+        self.play(Lanes())
+
+    def test_the_order_holds_when_the_first_batch_is_recorded_last(self):
+        """#4248's run 43612944028: Infojobs's first batch was built first and recorded 13th; the old measure (the model's list) read 13 > 4."""
+        model = Lanes(hold='infojobs', hold_until=12)
+        self.play(model)
+        self.assertIn('infojobs link 0', model.calls[-1], 'positive control: the forced case happened (the first batch was recorded last)')
+
+    def play(self, model):
+        out, threads = {}, []
+        order = BuildOrder()
+        patch = mock.patch.object(decide.GATES, 'open', order)   # this test's gates only: the shared dict comes back after it (Gitar on #4252)
+        patch.start()
+        self.addCleanup(patch.stop)
         for page in ('h1', 'h2'):   # two earlier pages hold both lanes
             threads.append(threading.Thread(target=self.ask, args=(model, page, out), daemon=True))
             threads[-1].start()
@@ -210,8 +256,9 @@ class BoardsTogether(SharedCalls):
         self.assertFalse(any(thread.is_alive() for thread in threads))
         self.assertEqual(len(model.calls), 2 + 11, 'positive control: the same calls as before (502 wordings, 50 a call), no more')
         self.assertEqual({p: len(out[p]) for p in ('trabajos', 'infoempleo', 'infojobs')}, {'trabajos': 300, 'infoempleo': 145, 'infojobs': 57}, 'every board got all its answers')
-        self.assertLessEqual(self.last_call(model, 'infojobs'), 4, 'Infojobs (57 wordings) is answered by the first two calls after the lanes free, not the last of 11')
-        self.assertLessEqual(self.last_call(model, 'infoempleo'), 7, 'Infoempleo (145) next: it never waits for Trabajos.com\'s 300')
+        self.assertEqual(sorted(order.batches), sorted(sorted(call) for call in model.calls), 'positive control: the gate logged every call the model got')
+        self.assertLessEqual(self.last_call(order.batches, 'infojobs'), 4, 'Infojobs (57 wordings) is answered by the first two calls after the lanes free, not the last of 11')
+        self.assertLessEqual(self.last_call(order.batches, 'infoempleo'), 7, 'Infoempleo (145) next: it never waits for Trabajos.com\'s 300')
         self.assertTrue(all(len(call) <= decide.BATCH for call in model.calls))
         self.assertLessEqual(model.most, 2, 'never more than LANES calls of one question at once')
 
