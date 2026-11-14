@@ -171,6 +171,15 @@ class FactRule(unittest.TestCase):
         cells.record(self.db, 'es', [self.FAMILY], [], TODAY, again=cells.stale(self.db, TODAY)['es'][:1])
         self.assertEqual(self.due(), ['a.example', 'c.example'], 'the one read again waits REREAD_DAYS, the next oldest is next')
 
+    def test_the_fact_serving_the_most_right_jobs_is_read_again_first_whatever_its_age(self):
+        """14 Nov 2026, es discovery 43538432033 (reserve 12): 167 of 183 facts were at an older rule, a pass re-reads 6, oldest read first, and airlinejobs.com's es 53 (read later than 6 others) was not among them.
+        Two older-rule facts, 53 and 4, the 4 read earlier: the 53 goes first. Fails on b501b0cb (oldest first: the 4)."""
+        fact(self.db, 'small.example', 'es', [self.FAMILY], TODAY - timedelta(days=9), right=4, rule=None)
+        fact(self.db, 'airline.example', 'es', [self.FAMILY], TODAY - timedelta(days=1), right=53, rule=None)
+        fact(self.db, 'older.example', 'es', [self.FAMILY], TODAY - timedelta(days=12), right=4, rule=None)
+        self.assertEqual(self.due(), ['airline.example', 'older.example', 'small.example'], 'the 53 first, equal counts by oldest read')
+        self.assertEqual([board['host'] for board in cells.share(cells.stale(self.db, TODAY)['es'], [{'host': 'reported.example'}] * 2, 2)[0]], ['airline.example'], 'one place of two goes to re-reads: the 53')
+
     def test_facts_at_an_older_rule_are_counted_in_one_line(self):
         fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
         fact(self.db, 'new.example', 'es', [self.FAMILY])

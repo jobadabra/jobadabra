@@ -118,8 +118,8 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
         out(f"Board pass: reported boards: not read ({type(error).__name__}{f' HTTP {code}' if code else ''}{f': {said}' if said else ''})")
         return []
     reports = [report for report in map(valid, boards[:MAX_BOARDS]) if report]
-    other = sum(1 for report in reports if any(read_host(url, report['host']) != report['host'] for url in (report.get('ci_urls') or {}).values()))
-    out(f'Board pass: reported boards: {len(reports)} of {len(boards)} read' + (f'; {other} with an address on another host than the reported one' if other else ''))
+    other = sorted(report['host'] for report in reports if any(read_host(url, report['host']) != report['host'] for url in (report.get('ci_urls') or {}).values()))
+    out(f'Board pass: reported boards: {len(reports)} of {len(boards)} read' + (f"; {len(other)} with an address on another host than the reported one: {', '.join(other)}" if other else ''))   # hosts only: a board name, never a person or a job
     return reports
 
 
