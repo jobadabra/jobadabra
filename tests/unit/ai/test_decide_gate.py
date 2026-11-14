@@ -238,7 +238,10 @@ class BoardsTogether(SharedCalls):
 
     def play(self, model):
         out, threads = {}, []
-        decide.GATES.open = order = BuildOrder()
+        order = BuildOrder()
+        patch = mock.patch.object(decide.GATES, 'open', order)   # this test's gates only: the shared dict comes back after it (Gitar on #4252)
+        patch.start()
+        self.addCleanup(patch.stop)
         for page in ('h1', 'h2'):   # two earlier pages hold both lanes
             threads.append(threading.Thread(target=self.ask, args=(model, page, out), daemon=True))
             threads[-1].start()
