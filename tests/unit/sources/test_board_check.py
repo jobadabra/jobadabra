@@ -101,6 +101,24 @@ class KindTests(unittest.TestCase):
         self.assertIn('Müller Spedition', self.asked[0][2])
         self.assertNotIn('Its list for', self.asked[0][2], 'a list page that is not there: the home page alone')
 
+    def test_a_dead_site_behind_a_short_list_page_is_still_gone(self):
+        # Why (#4205, Gitar): the frame check came before the home page, so a parked or dead site stayed in rotation
+        def fetch(url):
+            if url == 'https://haulier.example/':
+                raise urllib.error.URLError(socket.gaierror(8, 'nodename'))
+            return '<html><body><div id="root"></div></body></html>'
+        self.assertEqual(self.kind(fetch, term='Fahrer'), 'gone')
+        self.assertEqual(self.asked, [])
+
+    def test_a_refused_home_page_gives_no_verdict_from_the_list_page_alone(self):
+        # Why (#4205, Gitar): a list-only 'other' would be kept for 30 days on one passing error
+        def fetch(url):
+            if url == 'https://haulier.example/':
+                raise http(403)
+            return '<title>Fahrer: 12 Anzeigen</title><a>Berufskraftfahrer CE</a>' + TEXT
+        self.assertIsNone(self.kind(fetch, answer='other', term='Fahrer'))
+        self.assertEqual(self.asked, [])
+
     def test_no_ai_or_an_answer_outside_the_list_is_unknown(self):
         self.assertIsNone(self.kind(lambda url: HAULIER, answer=None))
         self.assertIsNone(self.kind(lambda url: HAULIER, answer='a bakery'))
