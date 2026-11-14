@@ -100,11 +100,16 @@ class TheWorkflowsWireItUp(unittest.TestCase):
         self.assertIn('tools/persona-search/pair_row.py', status.split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0], 'the end step runs pair_row.py: the job needs it checked out (run 43608451071 failed without)')
         self.assertIsNotNone(re.search(r'(?m)^  workflow_dispatch:', verdict), 'the verdict takes a dispatch: it is the sweep that reads pending heads')
 
-    def test_pr_verdict_calls_the_gate_after_the_state_is_known_and_before_it_is_written(self):
+    def test_pr_verdict_starts_the_pair_then_reads_its_row_after_the_state_is_known_and_before_the_status_is_written(self):
         text = (ROOT / 'tools' / 'pr-verdict.py').read_text()
-        call = text.index("'pr_verdict_pair_gate').apply(")
-        self.assertLess(text.index("state = 'pending' if state == 'settling' else state"), call)
-        self.assertLess(call, text.index("gh('api', f'repos/{a.repo}/statuses/{a.sha}'"))
+        settling = text.index("state = 'pending' if state == 'settling' else state")
+        start, row, status = (text.index(f"'{name}', lambda m: m.") for name in ('pr_verdict_pair', 'pr_verdict_pair_gate', 'pr_verdict_rows'))
+        written = text.index("gh('api', f'repos/{a.repo}/statuses/{a.sha}'")
+        self.assertLess(settling, start, 'the pair starts after the state is known')
+        self.assertLess(start, row, 'an instant row (nothing, carried, needed) written by the start is read by the same verdict')
+        self.assertLess(row, written)
+        self.assertLess(written, status, 'the display rows still come after the status')
+        self.assertLessEqual(len(text.splitlines()), 500)
 
 
 if __name__ == '__main__':
