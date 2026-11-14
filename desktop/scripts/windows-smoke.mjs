@@ -5,7 +5,7 @@
 // only when e2e follows (the slow checks the e2e cannot see because it runs from source), the weekly run (windows-smoke.yml) runs `full`.
 // owner, 10 Oct 2026: a build is "compiles, unit tests pass, and a very small, fast smoke"; the rest is a gate.
 //   smoke:     silent per-user install; the bundled Python imports what the pipeline and the Credential Manager need; a secret round-trips
-//              through the Credential Manager; the pipeline lists (no) jobs from an empty folder; the installed app opens the Jobs list (smoke-screens.mjs).
+//              through the Credential Manager, also by the app's own door (lib/keychain.js); the pipeline lists (no) jobs from an empty folder; the installed app opens the Jobs list (smoke-screens.mjs).
 //   packaging: the transcription add-on (not in the installer) installs with pip and loads, PyAV decodes a real file; the installer updates the
 //              installed app over itself; the in-app terminal (node-pty) runs a command.
 // The wizard and Settings pages are driven by the e2e wizard and settings suites, not here (welcome, wizard extras and Settings → Connections were cut).
@@ -40,6 +40,15 @@ say(py(['-c', 'import anthropic, keyring, pip, sqlite3, ssl, sys; from importlib
 say(py(['-c', "from src import secret_store as s; s.put('jobadabra.smoke.test', 'ok', 'ci'); " +
   "v = s.get('jobadabra.smoke.test', 'ci'); s.delete('jobadabra.smoke.test', 'ci'); " +
   "assert v == 'ok', v; assert s.get('jobadabra.smoke.test', 'ci') is None; print('Credential Manager round-trip ok')"]));
+// The app's own door to it (lib/keychain.js on Windows, 14 Nov 2026): a secret the size of a LinkedIn sign-in goes in on stdin, comes back on stdout, then is gone.
+const door = (verb, input = '') => spawnSync(python, ['-m', 'src.secret_store', verb, 'jobadabra.smoke.door', '--account', 'ci'], {cwd: pilot, encoding: 'utf8', input, timeout: 120000,
+  windowsHide: true, env: {...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8'}});
+const sized = JSON.stringify({li_at: 'A'.repeat(900), JSESSIONID: 'ajax:0000000000000000000'});
+const kept = door('put', sized), back = door('get'), gone = door('delete'), after = door('get');
+if (kept.status !== 0 || back.stdout !== sized || gone.status !== 0 || after.status !== 1) {
+  throw new Error(`the app's Credential Manager door failed: put ${kept.status}, get ${back.status} (${back.stdout.length} of ${sized.length} chars), delete ${gone.status}, get after ${after.status}: ${kept.stderr || back.stderr}`.slice(0, 600));
+}
+say(`the app's Credential Manager door round-trips a ${sized.length}-character secret`);
 if (want('packaging')) {
 // The transcription add-on is downloaded on the first recording (src/ai/transcribe.py install_addon): do exactly that here,
 // into a throwaway folder, so a Windows wheel that goes missing fails the release instead of a user's first interview.

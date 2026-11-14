@@ -5,7 +5,7 @@ import * as keychain from './keychain.js';   // a test run or a twin: never the 
 
 export const SERVICE = 'jobadabra.sites.password';
 
-// → the password, or null (none yet, or not a Mac: the Credential Manager is read by the engine only).
+// → the password, or null (none yet, or a computer with no store: lib/keychain.js reads the Mac's Keychain or Windows' Credential Manager).
 export function read(platform = process.platform, exec = execFileSync) {
   return keychain.read(SERVICE, {account: 'jobadabra', exec, platform});
 }
@@ -19,8 +19,8 @@ export function read(platform = process.platform, exec = execFileSync) {
 export const runArgs = action => ['src.ai.passwords', 'shared', ...(action === 'show' ? ['--no-copy'] : [])];
 
 /**
- * Runs the engine for Show or Copy and returns its exit code. Why (7 Nov 2026, #3532): Show makes the password without the clipboard; only a host the app cannot read the store on
- * (Windows: `read()` is null) falls back to the copying run, so "Copied: paste it to read it." stays true there.
+ * Runs the engine for Show or Copy and returns its exit code. Why (7 Nov 2026, #3532; 14 Nov 2026, Windows reads its Credential Manager): Show makes the password without the clipboard;
+ * only a host the app cannot read the store on (`read()` is null: no store, as on Linux) falls back to the copying run, so "Copied: paste it to read it." stays true there.
  * @param {'show'|'copy'} action
  * @param {(args: string[]) => Promise<number>} runEngine  the engine call, → its exit code
  * @param {() => (string|null)} [readNow]  the store read after the run

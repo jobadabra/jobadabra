@@ -39,10 +39,9 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
   // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain and the switch turns on. One line per press, never a value.
   ipcMain.handle('linkedinJobsSignIn', async () => {
     if (DEMO) return {ok: true};
-    // Why (Gitar on #3080, 3 Nov 2026): the Keychain is macOS-only (lib/keychain.js; an isolated run keeps its own file), so elsewhere the person would sign in and the session could not be kept.
-    // Refuse before the window opens.
-    // TODO(AI): a Windows credential store (safeStorage/DPAPI behind keychain.js) turns this on for Windows, see JOB-254 (3 Nov 2026).
-    if ((deps.platform || process.platform) !== 'darwin' && !(deps.isolated ?? realKeychain.isolated())) {
+    // Why (Gitar on #3080, 3 Nov 2026; 14 Nov 2026, owner: "Let's store them in Keychain/Credentials Manager (windows)"): the session is kept only in the Mac's Keychain or
+    // Windows' Credential Manager (lib/keychain.js hasStore; an isolated run keeps its own file), never a file on disk, so a computer with neither (Linux) refuses before the window opens.
+    if (!realKeychain.hasStore(deps.platform || process.platform) && !(deps.isolated ?? realKeychain.isolated())) {
       log('linkedin-jobs', 'press', {path: 'window', outcome: 'no-keychain'});
       return {ok: false, reason: 'no-keychain'};
     }

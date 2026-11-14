@@ -161,3 +161,44 @@ def delete(service, user=None):
                 store.delete_password(name, who)
             except Exception:  # keyring.errors.PasswordDeleteError: nothing stored
                 pass
+
+
+def get_any(service):
+    """The item under `service` whatever account holds it, as `security` without -a finds one on the Mac (desktop/lib/keychain.js reads some items so).
+    Windows: keyring's get_credential with no user; elsewhere, or isolated, or a test with the real store: get() under this login's account."""
+    store = _keyring()
+    if not store or isolated() or ((under_test() or os.getenv('NODE_TEST_CONTEXT')) and _reaches_real_store()):
+        return get(service)
+    found = store.get_credential(service, None)
+    return (found.password or None) if found else get(service)
+
+
+def main(argv=None, stdin=None, stdout=None):
+    """The desktop app's door to this computer's store on Windows (desktop/lib/keychain.js: Electron has no Credential Manager binding).
+    `get <service> [--account A]` writes the secret to stdout; `put <service> [--account A]` takes it from stdin, never the command line, which other programs
+    can read; `delete <service> [--account A]`. -> 0 done, 1 nothing found or nothing to keep. A store that refuses the write raises (a non-zero exit)."""
+    import argparse
+    parser = argparse.ArgumentParser(prog='python -m src.secret_store')
+    parser.add_argument('verb', choices=('get', 'put', 'delete'))
+    parser.add_argument('service')
+    parser.add_argument('--account')
+    args = parser.parse_args(argv)
+    stdin, stdout = stdin or sys.stdin, stdout or sys.stdout
+    if args.verb == 'put':
+        value = stdin.read()
+        if not value:
+            return 1
+        put(args.service, value, args.account)
+        return 0
+    found = get_any(args.service) if args.verb == 'get' and not args.account else get(args.service, args.account)   # a delete takes only the account it names
+    if args.verb == 'get':
+        if not found:
+            return 1
+        stdout.write(found)
+        return 0
+    delete(args.service, args.account)
+    return 0 if found else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
