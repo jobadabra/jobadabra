@@ -35,24 +35,9 @@ class EmployerCopy(unittest.TestCase):
         self.assertEqual(job['location'], 'Zurich, Zurich, Switzerland')   # the place LinkedIn listed it for still decides "in your places"
         self.assertIn('also on LinkedIn', job['notes'])
 
-    def test_no_feed_known_or_guessed_keeps_linkedin_and_hands_it_to_the_scout(self):
-        noted = []
-        [job] = employer_copy.prefer_employer([{**LINKEDIN, 'company': 'Somebody Else'}], INDEX, fetch=self.fetch(FEED), log=lambda line: None, guess=self.guess,
-                                              note=lambda jobs, resolved: noted.append(([each['company'] for each in jobs], resolved)))
+    def test_no_feed_known_or_guessed_keeps_linkedin(self):
+        [job] = employer_copy.prefer_employer([{**LINKEDIN, 'company': 'Somebody Else'}], INDEX, fetch=self.fetch(FEED), log=lambda line: None, guess=self.guess)
         self.assertEqual((job['url'], self.reads, self.guesses), (LINKEDIN['url'], [], ['Somebody Else']))
-        self.assertEqual(noted, [(['Somebody Else'], [])])
-
-    def test_an_employer_with_a_known_feed_that_lacks_the_job_is_resolved_never_handed_to_the_scout(self):
-        noted = []
-        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([FEED[1]]), log=lambda line: None, guess=self.guess,
-                                              note=lambda jobs, resolved: noted.append(([each['company'] for each in jobs], resolved)))
-        self.assertEqual((job['url'], noted), (LINKEDIN['url'], [([], ['Canonical'])]))
-
-    def test_an_employer_whose_guessed_feed_lacks_the_job_is_resolved_too(self):
-        noted, self.guessed = [], [('greenhouse', 'canonical', [FEED[1]])]
-        employer_copy.prefer_employer([LINKEDIN], [], fetch=self.fetch([]), log=lambda line: None, guess=self.guess,
-                                      note=lambda jobs, resolved: noted.append(([each['company'] for each in jobs], resolved)))
-        self.assertEqual(noted, [([], ['Canonical'])])
 
     def test_no_guess_try_starts_after_the_read_cut(self):
         tried, cut = [], [False]
@@ -160,8 +145,8 @@ class EmployerCopy(unittest.TestCase):
 
 
 class LinkedInRow(unittest.TestCase):
-    def read(self, disable='', note=None, locked=False):
-        """LinkedIn's reader row on a temporary jobs file: {job, reads, loads, feeds: [(ats, slug, company, added_at)], notes}."""
+    def read(self, disable='', locked=False):
+        """LinkedIn's reader row on a temporary jobs file: {job, reads, loads, feeds: [(ats, slug, company, added_at)]}."""
         import tempfile
         from contextlib import closing
         from pathlib import Path
@@ -171,7 +156,6 @@ class LinkedInRow(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, mock.patch('src.paths.DATA', Path(folder)), \
                 mock.patch('src.sources.linkedin_guest.read', return_value=[LINKEDIN]), mock.patch('src.employer_index.load', return_value=INDEX) as load, \
                 mock.patch('src.sources.ats.probe', side_effect=lambda system, slug: FEED if system == 'greenhouse' else None) as probe, \
-                mock.patch('src.sources.board_employers.note', side_effect=note) as noted, \
                 mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': disable, 'JOBADABRA_FIXTURE_DIR': ''}):
             with mock.patch('src.store.connect', side_effect=sqlite3.OperationalError('database is locked')) if locked else contextlib.nullcontext():
                 [job] = reader_rows._linkedin_read(None, {})
@@ -179,11 +163,11 @@ class LinkedInRow(unittest.TestCase):
                 from src import scout_core
                 scout_core.ensure_tables(db)
                 feeds = [tuple(row) for row in db.execute('SELECT ats, slug, company, added_at FROM feed_sources')]
-        return {'job': job, 'reads': probe.call_count, 'loads': load.call_count, 'feeds': feeds, 'notes': noted.call_count}
+        return {'job': job, 'reads': probe.call_count, 'loads': load.call_count, 'feeds': feeds}
 
     def test_linkedins_reader_row_hands_out_the_employers_address(self):
         got = self.read()
-        self.assertEqual((got['job']['url'], got['reads'], got['feeds'], got['notes']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1, [], 1))   # one call: Canonical resolved (its flag cleared)
+        self.assertEqual((got['job']['url'], got['reads'], got['feeds']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1, []))
 
     def test_with_the_index_off_the_row_finds_the_feed_by_name_and_keeps_it(self):
         got = self.read(disable='index')
@@ -197,11 +181,6 @@ class LinkedInRow(unittest.TestCase):
     def test_a_locked_jobs_file_never_costs_the_jobs_read(self):
         got = self.read(locked=True)
         self.assertEqual((got['job']['url'], got['feeds']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', []))
-
-    def test_a_scout_file_that_cannot_be_written_never_costs_the_jobs_read(self):
-        got = self.read(disable='index', note=OSError('read-only'))
-        self.assertEqual(got['job']['url'], 'https://job-boards.greenhouse.io/canonical/jobs/5517891')
-
 
 if __name__ == '__main__':
     unittest.main()

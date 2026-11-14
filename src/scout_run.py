@@ -3,6 +3,7 @@
 The scout argument is the public module's dependency seam, retaining its exported names
 and the existing offline fakes. Worker-only notes are collected until probing ends.
 """
+import functools
 import json
 import os
 import re
@@ -47,7 +48,7 @@ def harvest_names(scout, db, seeds, stores, harvest_sources, skip, budget, deadl
     # order of each source's yield, and a source with no feed in many checks stops waiting (src/scout_queue.py).
     added = 0 if have else scout.harvest(db, seeds, harvest_sources, skip, until=None if scout_core.CENTRAL or not budget else deadline - budget / 2)   # Why (27 Oct 2026, in scout.run until qf 5/8): a list's 504 ran 93 s
     added += scout.harvest_met(db, seeds, stores, skip) if harvest_sources is None else 0   # the employers the person met: even on a day with no new names
-    added += scout.harvest(db, seeds, [scout_candidates.linkedin_employer_candidates], skip) if harvest_sources is None and have else 0   # and those their LinkedIn search listed (a day with new names harvests them with the board employers)
+    added += scout.harvest(db, seeds, [functools.partial(scout_candidates.linkedin_employer_candidates, db)], skip) if harvest_sources is None else 0   # and the employers of their saved jobs still on LinkedIn: every run, covered or not
     if not have:
         print(f'Scout: {added} new candidate(s) from the lists; asking the AI for ideas…')
     ideas = scout.ai_ideas(db, harvest_sources) if may_add() else None

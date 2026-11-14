@@ -67,7 +67,7 @@ class RunTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, contextlib_quiet(), \
                 mock.patch.object(scout_core, 'CENTRAL', False), mock.patch.object(scout_need, 'covered', lambda *a, **k: covered), \
                 mock.patch.object(scout, 'harvest', mock.Mock(side_effect=lambda db, seeds, sources=None, *a, **k: steps.append(
-                    'LinkedIn employers' if sources == [scout_candidates.linkedin_employer_candidates] else 'harvest') or 0)), \
+                    'LinkedIn employers' if [getattr(each, 'func', None) for each in sources or ()] == [scout_candidates.linkedin_employer_candidates] else 'harvest') or 0)), \
                 mock.patch.object(scout, 'ai_ideas', lambda *a: steps.append('ideas')), \
                 mock.patch.object(scout.scout_role_search, 'guarded', lambda *a: steps.append('role search')), \
                 mock.patch.object(scout, 'load_search_config', lambda: DRIVER):
@@ -88,7 +88,8 @@ class RunTest(unittest.TestCase):
 
     def test_a_thin_search_scouts_as_before(self):
         steps, checked, summary = self.run_scout(covered=None)
-        self.assertEqual(steps, ['harvest', 'ideas', 'role search'])
+        # Why (owner, 14 Nov 2026, "Scout reads the store (Recommended)"): the employers of saved jobs still on LinkedIn are harvested every run, thin or covered.
+        self.assertEqual(steps, ['harvest', 'LinkedIn employers', 'ideas', 'role search'])
         self.assertEqual(checked, ['My Own Co', 'Waiting Co'])
         self.assertNotIn('covered', summary)
 

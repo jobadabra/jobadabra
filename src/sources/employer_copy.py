@@ -6,10 +6,9 @@ at most MAX_EMPLOYERS; then, for at most MAX_GUESSES employers with no known fee
 owner, 14 Nov 2026, asked via AskUserQuestion: "Both": look up in the press and teach the Scout). A job matches only when exactly one feed job has its identity
 (src/store.py identity) and the places agree, so a guessed feed of another company of that name never takes it; a guessed feed that held the job is registered for every
 later press. Anything else keeps LinkedIn's copy.
-Design (lg, 14 Nov 2026, after 5 Gitar rounds on this file): an employer of a LinkedIn job is in one of three states, decided here and nowhere else:
-moved (a feed listed the job), has a feed (a known or guessed feed is live but lacked the job or was not read: the feed exists, nothing to find), or no feed
-(none known and no guess found one, or the guess was not run). Only "no feed" employers go to the Scout (board_employers.note, flag `linkedin`), and every press that
-sees a feed for an employer clears its flag (`resolved`), so the flag always says the last press's verdict.
+Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Scout reads the store (Recommended)", after ~10 Gitar rounds on a flag file this module wrote): this module only
+moves jobs; it hands the Scout nothing. The Scout lists the employers of saved jobs still on LinkedIn's address itself (src/scout_candidates.py
+linkedin_employer_candidates), so the saved jobs are the one owner of "which employers still need a feed".
 Tests: tests/unit/sources/test_employer_copy.py."""
 import re
 import sqlite3
@@ -85,14 +84,12 @@ def _moved(job, hit):
             'date_posted': hit.get('date_posted') or job.get('date_posted', ''), 'notes': 'also on LinkedIn'}
 
 
-def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, past_cut=_past_cut, guess=guess_feed, register=lambda company, system, slug: None,
-                    note=lambda jobs, resolved: None, guesses=MAX_GUESSES):
+def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, past_cut=_past_cut, guess=guess_feed, register=lambda company, system, slug: None, guesses=MAX_GUESSES):
     """`jobs` (LinkedIn's, as read) with each one its employer's feed lists under the employer's address (_moved). `fetch(ats, slug)` -> jobs or None (src/sources/ats.py
-    probe); `guess(company, past_cut)` -> [(ats, slug, jobs)] (guess_feed); `register(company, ats, slug)` keeps a guessed feed that held a job; `note(jobs, resolved)`
-    hands the Scout the jobs whose employer has no feed and the names that have one (the module's Design). No feed starts after the read cut or past `limit` known
-    feeds and `guesses` employers. -> a new list."""
+    probe); `guess(company, past_cut)` -> [(ats, slug, jobs)] (guess_feed); `register(company, ats, slug)` keeps a guessed feed that held a job. No feed starts after the
+    read cut or past `limit` known feeds and `guesses` employers. -> a new list."""
     fetch = fetch or ats.probe   # looked up at call time, so a test's stand-in is the one read; None for a feed that is down, empty or changed shape
-    feeds, out, moved, guessed, unfed, resolved = {}, [], 0, {}, [], set()
+    feeds, out, moved, guessed = {}, [], 0, {}
     for job in jobs:
         known, hit = feeds_of(job.get('company'), index), None
         for where in known:
@@ -112,16 +109,10 @@ def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, pas
             if hit:
                 register(job.get('company'), system, slug)
                 break
-        if known or guessed.get(name):
-            resolved.add(job.get('company'))
-        elif not hit:
-            unfed.append(job)
         if hit:
             moved += 1
             job = _moved(job, hit)
         out.append(job)
-    if unfed or resolved:
-        note(unfed, sorted(resolved))
     if moved:
         log(f"LinkedIn: {moved} job(s) open on the employer's own site")
     return out
@@ -139,12 +130,11 @@ def _local_feeds(db):
 
 def from_row(jobs):
     """LinkedIn's reader row's pass (src/sources/reader_rows.py): prefer_employer over the downloaded index (unless JOBADABRA_DISABLE=index) and this Mac's feeds; a
-    guessed feed that held a job joins feed_sources, so every later press reads it; the jobs still on LinkedIn go to the Scout (LinkedIn employers). One connection a
+    guessed feed that held a job joins feed_sources, so every later press reads it. One connection a
     call, and no schema script on the read (Gitar on #4270: the app may hold the write lock).
-    Why (Gitar on #4264): the bookkeeping writes (feed_sources, board_employers.json) never cost the jobs already read: a locked or read-only file is logged and skipped."""
+    Why (Gitar on #4264): the bookkeeping write (feed_sources) never costs the jobs already read: a locked or read-only file is logged and skipped."""
     from .. import employer_index, paths, scout_core
     from ..features import disabled
-    from . import board_employers
     index = [] if disabled('index') else employer_index.load()
     try:
         db = store.connect(paths.jobs_db())
@@ -169,13 +159,7 @@ def from_row(jobs):
                 print(f'LinkedIn: {company}\'s feed not kept ({type(problem).__name__}): looked up again next press', flush=True)
                 return
             print(f'LinkedIn: {company} runs on {system} ({slug}): read by every search from now on', flush=True)
-
-        def note(unfed, resolved):
-            try:
-                board_employers.note(unfed, 'LinkedIn', resolved=resolved)
-            except OSError as problem:
-                print(f'LinkedIn: employers not handed to the Scout ({type(problem).__name__})', flush=True)
-        return prefer_employer(jobs, index, register=register, note=note)
+        return prefer_employer(jobs, index, register=register)
 
 
 def linkedin_jobs(search):
