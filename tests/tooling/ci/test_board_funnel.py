@@ -70,6 +70,11 @@ class BoardFunnel(unittest.TestCase):
         for need in ('#4180', "xb's 1/2"):
             self.assertIn(f'(needs {need})', text)
 
+    def test_an_unreadable_judge_file_is_not_zero_right_jobs(self):
+        root = folder(['[6s] Stage: Job boards found kept https://www.a.example/p#job:acme--welder--graz'])
+        (root / 'judged.json').unlink()
+        self.assertIn('shown / right: n/a, judged.json is missing or unreadable', board_funnel.table(root))
+
     def test_a_folder_with_no_log_says_so(self):
         self.assertEqual('No search log in this folder.\n', board_funnel.table(Path(tempfile.mkdtemp())))
 

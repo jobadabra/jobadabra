@@ -185,7 +185,9 @@ def table(folder):
     out.append('AI calls per stage: ' + (' · '.join(f'{kind} {n}' for kind, n in used.most_common()) if used else 'n/a (no run.log)'))
     if not clock.get('stage_lines'):
         out.append('Per-board kept / never judged / judged no / place out: n/a, this search logged no per-job stage (dispatch the pair with stage_log=true).')
-    if unknown:
+    if unknown is None:
+        out.append('shown / right: n/a, judged.json is missing or unreadable (the blind judge did not finish).')
+    elif unknown:
         out.append(f'{unknown} judged job(s) had no host (a board job with its employer named): in no row above.')
     out.append('Not shown yet: ' + '; '.join(f'{name} (needs {pr})' for name, pr in NEEDS))
     return '\n'.join(out) + '\n'
