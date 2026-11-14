@@ -71,7 +71,7 @@ test('the Chrome way with an older sign-in kept waits for its own copy: none cam
     const handlers = new Map();
     registerLinkedinHandlers({DEMO: false, storage, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}, extensionSeen: () => true},
       deps: {keychain, isolated: true}, log: () => {}, openPage: async () => ({opened: true})});
-    keychain.write('older', 'kept');   // an older sign-in, kept with the switch off (the press that made it never turned it on)
+    keychain.write((await import('../../../lib/linkedin-session.js')).SERVICE, JSON.stringify({li_at: 'older-fake-session'}));   // an older sign-in, kept with the switch off (the press that made it never turned it on)
     settings.linkedinJobs = {on: false, signedIn: true};
     let reads = 0, live = true;
     globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(), linkedinJobsOn: async () => handlers.get('linkedinJobsOn')(),
