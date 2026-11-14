@@ -175,7 +175,7 @@ class GoogleBoards(unittest.TestCase):
     def test_the_scout_s_board_check_asks_with_that_allowance(self):
         asked = []
         with mock.patch('src.ai.decide.one', lambda *question, **options: asked.append(options) or 'field board'), \
-                mock.patch('src.sources.careers.get_text', lambda url: '<title>Pilot Jobs</title>'), \
+                mock.patch('src.sources.careers.get_text', lambda url: '<title>Pilot Jobs</title><p>' + 'Pilot jobs across Austria. ' * 40 + '</p>'), \
                 mock.patch.object(google, 'boards', lambda db, country, kinds, judge, out: [judge(board, ['pilots']) for board in RESULTS_AS_BOARDS]):
             self.assertEqual(scout_boards._google(self.db, 'at', ['aviation_transport'], self.out.append), ['field board'])
         self.assertEqual(asked, [{'allowance': google.MAX_JUDGED}])

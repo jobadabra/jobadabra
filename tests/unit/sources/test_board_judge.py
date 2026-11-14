@@ -36,10 +36,14 @@ ANSWER = [found('Crew Careers', 'https://crew-careers.example/site/en/job/list/c
           found('An Airline', 'https://an-airline.example/careers'),
           found('Aviation News', 'https://aviation-news.example/search?q={role}'),
           found('Quiet Board', 'https://quiet.example/pilot-jobs')]          # the AI gives no answer for it
-PAGES = {'https://crew-careers.example/site/en/job/list/category/1-flight-crew': '<title>Crew Careers</title><a>First Officer A320</a>',
-         'https://every-job.example/jobs/all': '<title>Every Job</title><a>Nurse</a><a>Driver</a>',
-         'https://any-search.example/': '<title>Any Search</title>', 'https://an-airline.example/careers': '<title>An Airline careers</title>',
-         'https://aviation-news.example/': '<title>Aviation News</title>', 'https://quiet.example/pilot-jobs': '<title>Quiet</title>'}
+TEXT = '<p>' + 'Offers and news of the week. ' * 40 + '</p>'   # a page with text, not a frame scripts fill (careers._shell)
+PAGES = {url: page + TEXT for url, page in {
+    'https://crew-careers.example/site/en/job/list/category/1-flight-crew': '<title>Crew Careers</title><a>First Officer A320</a>',
+    'https://every-job.example/jobs/all': '<title>Every Job</title><a>Nurse</a><a>Driver</a>',
+    'https://any-search.example/': '<title>Any Search</title><a>Used cars</a>',
+    'https://any-search.example/?q=first+officer': '<title>first officer - Any Search</title><nav><a>Used cars</a></nav><a>First Officer B737, Berlin</a>',
+    'https://an-airline.example/careers': '<title>An Airline careers</title>',
+    'https://aviation-news.example/search?q=first+officer': '<title>Aviation News</title>', 'https://quiet.example/pilot-jobs': '<title>Quiet</title>'}.items()}
 KINDS = {'crew-careers.example': 'field board', 'every-job.example': 'job board', 'any-search.example': 'job board',
          'an-airline.example': 'one employer', 'aviation-news.example': 'other'}
 
@@ -90,9 +94,20 @@ class PageJudge(unittest.TestCase):
         self.search()
         sent = {key: text for _, key, text, _ in self.asked}
         self.assertIn('First Officer A320', sent['crew-careers.example'], 'the category page itself, not the home page')
-        self.assertIn('Any Search', sent['any-search.example'], "a search template: its home page")
+        front, listing = sent['any-search.example'].split("Its list for 'first officer':")
+        self.assertIn('Any Search', front, 'a search template: what the site is, its home page')
+        self.assertIn('First Officer B737, Berlin', listing, "and what it lists: the page it gives for the search's first role")
+        self.assertLess(listing.index('First Officer B737'), listing.index('Used cars'), "the site's menu comes after the page's own links")
         self.assertTrue(all(text.startswith('Looking for work as: first officer, pilot') for text in sent.values()))
         self.assertEqual({answers for *_, answers in self.asked}, {board_check.FIELD_KINDS})
+
+    def test_a_search_page_built_by_scripts_is_not_judged_and_the_board_stands(self):
+        # Why (14 Nov 2026, owner via sa, run 43531603203): a public service's list built by scripts was judged from its home page as 'other'
+        frame = '<html><head><title>All jobs</title></head><body><div id="root"></div></body></html>'
+        fetch = {'https://scripted.example/jobs?query=pilot': frame, 'https://scripted.example/': frame + TEXT}.get
+        with mock.patch.object(careers, 'READER', 'auto'):
+            self.assertIsNone(board_check.field_kind(found('Scripted', 'https://scripted.example/jobs?query={role}'), fetch, ['pilot'], ask=self.ask))
+        self.assertEqual(self.asked, [], 'no AI asked about an empty frame')
 
     def test_nothing_is_judged_while_the_page_reader_is_off(self):
         self.assertIsNone(board_check.field_kind(board_ideas.valid(ANSWER[0]), lambda url: PAGES[url], ['pilot'], ask=self.ask))

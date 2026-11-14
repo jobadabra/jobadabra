@@ -371,15 +371,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             or read_board(board, search, via, entry.get('route'), early=early, show=show)   # a general board's link with no word: its own search first
         if board.get('charset'):   # learned on this read (board_paths.read): its next searches ask in it at once
             entry['charset'] = board['charset']
-        if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
-            site, page = board_check.kind(board, fetch)
-            if site:
-                entry['site_kind'], entry['site_page'] = site, board_check.name_of(page, board['host']) if site == 'one employer' else ''
-                day = (now or datetime.now(timezone.utc)).date().isoformat()   # gone on two days: a Mac offline for one search keeps its boards
-                entry['gone_days'] = sorted({*entry.get('gone_days', []), day})[-2:] if site == 'gone' else []
-            if site in board_check.NOT_A_BOARD:
-                return [], site, None
-        return result
+        return board_check.checked(board, entry, result, fetch, lambda: (_terms(search, 1, early=True) or [''])[0], now)   # a board at all? (nothing read, or a verdict's retry)
 
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
         first = result = one(read_item)

@@ -88,7 +88,10 @@ class SpareTests(unittest.TestCase):
         """12 Nov 2026 (vb): the replacements were kept after every board, when the AI time was gone. Board 1 refuses, takes Board 7 (refuses
         too), then Board 8: each follows Board 1 and Board 2, still open then, comes after them."""
         jobs, kept_order, said = self.read(refusing={'b1.example', 'b7.example'}, slow='b2.example')
-        self.assertEqual(kept_order, [f'Board {n}' for n in (1, 7, 8, 2, 3, 4, 5, 6)], 'a board, then the boards read in its place')
+        # Why (14 Nov 2026, xa): boards are kept as they end (#3892), so Boards 3-6 may end in any order; only these places are promised
+        self.assertEqual(kept_order[:3], ['Board 1', 'Board 7', 'Board 8'], 'a board, then the boards read in its place')
+        self.assertLess(kept_order.index('Board 8'), kept_order.index('Board 2'), 'the slow board ends after the replacements')
+        self.assertEqual(sorted(kept_order), sorted(f'Board {n}' for n in (1, 7, 8, 2, 3, 4, 5, 6)))
         self.assertEqual(sorted(job['url'] for job in jobs), sorted(f'https://b{n}.example/1' for n in (2, 3, 4, 5, 6, 8)))
         self.assertTrue(any('Board 1 refuses automated reading; reading Board 7 in its place' in line for line in said), said)
 

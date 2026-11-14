@@ -1,6 +1,22 @@
 {
   "_": "Each AI prompt and the fixed case set that protects it (tools/prompt-cases.mjs; owner, 27 Oct 2026: a prompt change adds the case it fixed, and the set replays on any prompt change). live: manual workflow_dispatch only; compares the selected ref with main on Haiku 5.5 through the API key (.github/workflows/prompt-cases.yml), not a PR check. A prompt in no set: its change says 'Prompt-case: none <why>' until it gets one.",
   "sets": {
+    "board-kind": {
+      "live": false,
+      "about": "Whether a page is a job board, one employer's site or something else (src/sources/board_check.py kind and field_kind; owner via sa, 14 Nov 2026: \"let's fix what we learn\"): a classifieds site's job section, a national board and a public service's list were left out as 'not a job board' from their home page. 14 recorded pages, main's page and words against the branch's, replayed on the plan engines by tools/board-kind-cases.py; offline stub-client checks of what is sent.",
+      "cases": [
+        "tests/fixtures/board-kind-cases.json",
+        "tools/board-kind-cases.py",
+        "tests/unit/sources/test_board_check.py",
+        "tests/unit/sources/test_board_judge.py"
+      ],
+      "prompts": {
+        "src/sources/board_check.py": [
+          "INSTRUCTIONS",
+          "FIELD_INSTRUCTIONS"
+        ]
+      }
+    },
     "board-words": {
       "live": false,
       "about": "The Central Scout's board search words in each country's language (owner, 12 Nov 2026, asked via AskUserQuestion: \"Scout asks once per country (Recommended)\"): a local board gave 0 jobs for the English word and 5 for its own; offline stub-client checks of what is sent and what the code keeps.",

@@ -38,7 +38,6 @@ ALLOWED = {
     ('src/sources/boards.py', 'sorted(found, key=lambda u: (bool(urlsplit(u).fragment), len(urlsplit(u).path)))'): 'debt: which URL of a board is its jobs page (a choice of one, not the run order)',
     ('src/sources/boards.py', "report['companies'].sort(key=lambda c:(not bool(c['career_pages']),-(c['min_employees'] or 0),c['company']))"): 'display: the companies report',
     ('src/sources/boards.py', 'sorted(roles)'): 'a cache key',
-    ('src/sources/found_boards.py', "sorted({*entry.get('gone_days', []), day})"): 'a dated list kept sorted',
     ('src/sources/visits.py', "sorted(kept, key=lambda item: (item['kind'] != 'employer', item['last_read'] or ''))"): "debt: the visit list's order (employers first, the least recently read first); move it into rank.py",
     ('src/sources/visits.py', 'sorted(numbers)'): "the AI's numbers read in list order",
     ('src/sources/visits.py', "sorted(i['url'] for i in items)"): 'a cache key',
