@@ -113,7 +113,7 @@ async function matchChecked(jobs, match, rows) {
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null, startedAt: Date.now()});
   paint();
-  const found = await match(asked).catch(error => { window.pilot?.uiLog?.('triage: the question match failed, the forms stay "answers not checked"', {forms: asked.length, error: String(error?.message || error).slice(0, 200)}); return null; });   // a failed match leaves every form as it was read, never a guess; the log says why (Gitar on #4373)
+  const found = await match(asked).catch(error => { Promise.resolve(window.pilot?.uiLog?.('triage: the question match failed, the forms stay "answers not checked"', {forms: asked.length, error: String(error?.message || error).slice(0, 200)})).catch(() => {}); return null; });   // the log's own failure never replaces the fallback (Gitar on #4384)   // a failed match leaves every form as it was read, never a guess; the log says why (Gitar on #4373)
   // Why (14 Nov 2026, Gitar on #4342, #4353, #4373): a "Matching" step is a measured time only when the one call served ONE form; a batch's call has no per-form seconds, so a batch adds no such step, never an invented share.
   if (asked.length === 1 && found?.[asked[0].url]) addStep(asked[0].url, 'matching', Date.now() - state.startedAt);
   for (const {url} of asked) {
