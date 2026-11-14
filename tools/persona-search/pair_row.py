@@ -1,7 +1,9 @@
 """The "Search before/after" row of a search PR's checks list: one verdict per pair, from the same numbers the PR comment shows (tools/persona-search/pair.py).
 Why (13 Nov 2026, owner via sa: "Can we add the before/after as a CI check on the PR ?" · "instead of having \"DONT MERGE\"... we'll just have red check"): a pair's result lived only
 in a comment and the search-hold label. A check run, not a commit status, because only a check run can be grey (neutral) and red; a status can only be green or hold the PR open.
-The row never turns green or red for a pair that did not count: it stays pending with the next step. Step 1/3 shows the verdict; 3/3 makes "All checks passed" read it (tools/pr-verdict.py).
+The row's meaning (4/5, 14 Nov 2026, owner: "The PR CI check (search pair) should tell us"): GREEN = a valid pair, nobody lost beyond their usual difference (floor 7), and the gain the PR's Moves lines claim is beyond it
+(one named person is enough; the others guard); RED = a loss, no proven gain for the people the Moves lines name, or not valid in the one re-run ("not valid twice: <reason>"); PENDING = not counted yet, with the next step.
+A pair for people no Moves line names claims nothing: only a loss turns it red. 5/5 makes "All checks passed" read the row (tools/pr-verdict.py).
 Tests: tests/tooling/ci/test_pair_row.py."""
 import json
 import re
@@ -63,12 +65,24 @@ def short(line):
     return f"{hit['head']} ({'gain beyond' if hit['kind'] == 'gain beyond' else 'within'} ±{hit['band']}{'' if hit['kind'] == 'gain beyond' else ', not a proven gain'})"
 
 
+def no_proven_gain(done, spreads, claims):
+    """The people a PR's Moves lines name (`claims`) when none of them gained beyond their usual difference, else []. A named person who only guards (the change could hurt them) may stay
+    level: the PR claims a gain once, by at least one of the people it names. Why (owner, 14 Nov 2026: "The PR CI check (search pair) should tell us" · a PR is "decided by its search pair"): a pair
+    that shows no loss but no gain beyond the band proved nothing for the PR's claim, so the row says so instead of reading green. People measured but not named in a Moves line (a pair started by hand) claim nothing."""
+    named = [person for person in sorted(done) if person in claims]
+    if not named or any(done[person]['after'] - done[person]['before'] > band(spreads.get(person)) for person in named):
+        return []
+    return named
+
+
 RERUN_NOT_STARTED = 'If the second run does not start, run the pair by hand (gh workflow run search-pair.yml -f pr=<n> -f people=<them>): it takes this row.'
 
 
-def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()):
+def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=(), claims=(), second_ran=True):
     """{conclusion, title, summary, rerun} of a pair. done: pair.measured() ({person: {before, after, d, line}}); ran: the people dispatched; seen: those with any side;
-    spreads: {person: spread or None}; rows: pair.sides() (for the reason); earlier: the first run's counted lines (its row's text), kept in front when the re-run takes the row over (Gitar on #4059). conclusion: success, failure (a loss beyond the band), neutral (superseded), pending (not counted: the row stays running)."""
+    spreads: {person: spread or None}; rows: pair.sides() (for the reason); earlier: the first run's counted lines (its row's text), kept in front when the re-run takes the row over (Gitar on #4059).
+    claims: the people the PR's Moves lines name; second_ran: False when the second run was asked but never started (the row then stays pending, it is not "not valid twice").
+    conclusion: success (no loss, and the PR's gain proven when it claims one), failure (a loss beyond the band, no proven gain, or not valid in both runs), neutral (superseded), pending (not counted: the row stays running)."""
     if newer_head:
         return {'conclusion': 'neutral', 'title': 'superseded: the PR has a newer head, its pair runs on that', 'summary': '', 'rerun': []}
     lines, fell = list(earlier), []
@@ -94,12 +108,26 @@ def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()
         #   then the row stays PENDING (running, so the PR is not mergeable on an unproven pair) with the next step in its text. Red stays the loss beyond the band.
         # Why (Gitar on #4065, and on #3967: "the turn found no room, the workflow must not queue a second long wait"): only a person who HAD a side is run again; one whose search never started goes straight to "run it again".
         again = [person for person in missing if person in seen]
+        if attempt >= 2 and second_ran and again:
+            # Design (14 Nov 2026, owner: "not valid or a swing → one re-run, then decide"): a pair not valid in the one re-run is red, never green and no longer open forever; the reason is in the title.
+            red = f"not valid twice: {', '.join(str(p) for p in again)} ({why})"
+            return {'conclusion': 'failure', 'title': red[:140], 'summary': '\n'.join(lines + [red, 'Run the pair again by hand when the cause is gone (gh workflow run search-pair.yml -f pr=<n> -f people=<them>), or close the PR. ' + OVERRIDE]), 'rerun': []}
         if attempt < 2 and again:
             # Why (#4103, Gitar): the row has no owner until the second run claims it, so a second run that never starts (cancelled in its queue, refused) leaves it open; the row says so and
             #   how to close it (a pair by hand takes an unowned rerunning row), instead of promising "running once more".
             return {'conclusion': 'pending', 'title': (title + '; a second run is asked')[:140], 'summary': '\n'.join(lines + [RERUN_NOT_STARTED]), 'rerun': again}
         return {'conclusion': 'pending', 'title': (title + '; run it again')[:140], 'summary': '\n'.join(lines + [title, 'Next step: run the pair again by hand (gh workflow run search-pair.yml -f pr=<n> -f people=<them>); a stalled call is not a loss.']), 'rerun': []}
-    return {'conclusion': 'success', 'title': ' · '.join(short(line) for line in lines)[:140], 'summary': '\n'.join(lines), 'rerun': []}
+    named = set(map(str, claims))
+    flat = no_proven_gain(done, spreads, named)
+    if any(line.split(' ', 1)[0] in named and 'gain beyond' in line for line in earlier):   # the first run (its row's text) already proved the claimed gain; this run only repeated others
+        flat = []
+    if flat:
+        # Design (14 Nov 2026): the row's meaning is "valid, nobody worse, and the claimed gain beyond the usual difference"; a valid pair with no loss and no such gain is red, not green.
+        red = 'no proven gain: ' + ' · '.join(short(line) for line in lines if line.split(' ', 1)[0] in flat)
+        return {'conclusion': 'failure', 'title': red[:140], 'summary': '\n'.join(lines + ['The PR names ' + ', '.join(flat) + ' in its Moves lines but none moved beyond the usual difference: close the PR, or name the gain by hand and merge with the ruleset override. ' + OVERRIDE]), 'rerun': []}
+    carried = [person for person in sorted(done) if person in named and done[person]['after'] - done[person]['before'] > band(spreads.get(person))] or [line.split(' ', 1)[0] for line in earlier if line.split(' ', 1)[0] in named and 'gain beyond' in line]
+    said = f"gain proven by {', '.join(carried)}: " if carried else ''   # sa, 14 Nov 2026: the row says which person carried the yes
+    return {'conclusion': 'success', 'title': (said + ' · '.join(short(line) for line in lines))[:140], 'summary': '\n'.join(([f'The yes is carried by {", ".join(carried)}.'] if carried else []) + lines), 'rerun': []}
 
 
 def safe(text):
@@ -171,7 +199,7 @@ def _place(old_state, old_people, state, people, status, conclusion, title, summ
 def _next_row(old, event):
     """The row after `event`, given its `old` value ({external_id, summary} of the head's row, or {} for none): {noop, state, api, rerun, new}. Events (kind):
     opened {verdict: waiting|nothing|unnamed, people, title, summary} · carried {people, conclusion, title, summary} · started {run_id, run_url, started, now, people, claim} · searching {run_id, started}
-    · ended {run_id, run_url, comment_url, done, ran, seen, spreads, rows, newer, rerun_failed} · died {run_id, run_url, ended, newer}. The table above says which moves exist; any other is a noop."""
+    · ended {run_id, run_url, comment_url, done, ran, seen, spreads, rows, newer, rerun_failed, claims} · died {run_id, run_url, ended, newer}. The table above says which moves exist; any other is a noop."""
     old = old or {}
     state, people_was, owner = parse_external_id(old.get('external_id'))
     kind, run = event['kind'], str(event.get('run_id') or '')
@@ -205,7 +233,8 @@ def _next_row(old, event):
         return _out('unproven', people_was, 'in_progress', title, (summary_was + '\n\n' if summary_was else '') + title + where)
     earlier = [line for line in summary_was.splitlines() if ' right jobs ' in line] if state == 'rerunning' else []
     attempt = 2 if state == 'rerunning' or event.get('rerun_failed') else 1
-    d = decide(event['done'], event['ran'], event['seen'], event['spreads'], attempt, event['rows'], newer_head=event['newer'], earlier=earlier)
+    d = decide(event['done'], event['ran'], event['seen'], event['spreads'], attempt, event['rows'], newer_head=event['newer'], earlier=earlier,
+               claims=event.get('claims') or (), second_ran=not (event.get('rerun_failed') and state != 'rerunning'))
     text = (d['summary'] or 'No numbers.') + f"\n\nThe table: the pair comment on {event['comment_url']}" + where
     title = d['title'] + (' (the second run did not start)' if event.get('rerun_failed') and d['conclusion'] == 'pending' else '')
     if d['conclusion'] == 'pending':

@@ -212,11 +212,34 @@ def pending(body):
     return out[:MAX_PEOPLE]
 
 
+NAMED_LINE = re.compile(r'^[ \t]*[-*]?[ \t]*\**Moves:\**[ \t]*(p\d{1,2}|[a-z]\d{2})\s+\S.*\d\S*\s*(?:→|->)\s*(?:\S*\d\S*|pending)\s*\(', re.M)   # the shape tools/pr-body-check.py MOVES reads, pending or numbered
+
+
+def claims(body):
+    """The people the body's Moves lines name, pending or already numbered, as the ids the sides' folders use ('p3', 'b08'); empty for `Moves: nothing`. The PR claims a gain by naming them (pair_row.no_proven_gain)."""
+    return {m.group(1) for m in NAMED_LINE.finditer(body or '')}
+
+
+COUNTED_LINE = re.compile(r'^[ \t]*[-*]?[ \t]*\**Moves:\**[ \t]*(p\d{1,2}|[a-z]\d{2}) right jobs (\S+) (?:→|->) (\S+) \(.*?usual difference (not measured yet|[\d.]+)\)', re.M)
+
+
+def counted(body):
+    """{person: {before, after, d}} of the body's already numbered Moves lines (a first run wrote them): a second run that repeats only the people not valid then still sees a gain the first one proved."""
+    out = {}
+    for m in COUNTED_LINE.finditer(body or ''):
+        try:
+            out[m.group(1)] = {'before': float(m.group(2)), 'after': float(m.group(3)), 'd': None if m.group(4).startswith('not') else float(m.group(4))}
+        except ValueError:
+            continue
+    return out
+
+
 def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
     """What the pair does to its PR: {body, title, lift, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
     seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again;
     rerun: the people the row really dispatched again (pair_row.decide's rerun, empty when the dispatch failed): the one source of "runs once more" (Gitar on #4077)."""
     body, verdict, fell = body or '', [], []
+    named, earlier = claims(body), counted(body)   # read before the numbers replace the pending lines
     seen = set(ran if seen is None else seen)
     for person, m in done.items():
         body = re.sub(PENDING_LINE.format(person=re.escape(person)), lambda hit, line=m['line']: hit.group('lead') + line, body, flags=re.M)   # the bullet stays
@@ -231,14 +254,19 @@ def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
     # Why (Gitar on #4044): the run again is decided once, by pair_row.decide (every PR, once; owner via sa, 13 Nov 2026); this only words the verdict, and 3/3 deletes the hold path.
     again = bool(ours and invalid and rerun and not fell)
     still = pending(body)
-    # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
-    lift = ours and not fell and not still and not invalid and not never
+    every = {**earlier, **done}
+    flat = pair_row.no_proven_gain(every, {person: m['d'] for person, m in every.items()}, named) if not invalid and not never else []   # the row is red for it (pair_row.decide)
+    # Why (Gitar on #3967; 14 Nov 2026, owner: the pair's row is the verdict): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
+    #   It also stays while the row is red for no proven gain, so the hold and the row never disagree until the hold goes (5/5).
+    lift = ours and not fell and not flat and not still and not invalid and not never
     head = 'Hold kept' if ours else 'Not held by ship (no "search-hold" label)'
     if lift:
         title = re.sub(r'\s*DONT MERGE\s*', ' ', title, count=1).strip()
         verdict.append('Hold lifted: every pending number is in and none fell beyond its usual difference; the PR is marked ready at READY.')
     elif fell:
         verdict.append(f'{head}: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
+    elif flat:
+        verdict.append(f"{head}: no proven gain for {', '.join(flat)} (none moved beyond the usual difference): close the PR, or name the gain by hand and merge with the ruleset override.")
     elif never:
         verdict.append(f"{head}: {', '.join(never)} never searched (the turn found no room at the broker, or the run failed first): start the pair again later.")
     elif again:
@@ -301,13 +329,16 @@ def main(argv):
         if found:
             print(json.dumps(found))
         return 0
+    body_file = next((a[len('--body='):] for a in argv if a.startswith('--body=')), '')   # the PR's view.json: its body names the people whose gain the PR claims
+    argv = [a for a in argv if not a.startswith('--body=')]
     if command == 'row' and len(argv) in (10, 11):   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
         rows = sides(argv[2])
         ran = sorted(set(json.loads(argv[3])), key=str)
         done = measured(rows)
         old = json.loads(Path(argv[6]).read_text(encoding='utf-8') or '{}')
         event = {'kind': 'ended', 'run_id': argv[7], 'run_url': argv[8], 'comment_url': argv[9], 'done': done, 'ran': ran, 'seen': set(rows), 'spreads': {person: usual(person) for person in done},
-                 'rows': rows, 'newer': argv[4] == '1', 'rerun_failed': argv[5] == '1'}
+                 'rows': rows, 'newer': argv[4] == '1', 'rerun_failed': argv[5] == '1',
+                 'claims': sorted(claims(json.loads(Path(body_file).read_text(encoding='utf-8') or '{}').get('body') if body_file and Path(body_file).exists() else ''))}
         out = pair_row.next_row(old, event)
         # Why (14 Nov 2026, owner on #4187: "I don't see the actual run"): the row's own page is where "Details" lands, so the before/after table is in its summary too (the optional 11th argument: the comment's markdown).
         if len(argv) == 11 and not out['noop'] and Path(argv[10]).exists() and 'output' in out['api']:
