@@ -474,6 +474,10 @@ def main():
         if greys:
             state, why, live, _, target = judge(greys)
     state = 'pending' if state == 'settling' else state
+    try:   # a search PR's row (tools/pr_verdict_pair_gate.py): it only reads, and only a green verdict can change
+        state, why = main_state_module(a.repo, ref, 'pr_verdict_pair_gate').apply(a.repo, a.sha, pulls, files, state, why, gh)
+    except Exception as error:   # the companion not loaded: the verdict stands
+        print(f'search pair row companion not loaded ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
     print(quota_line() or 'quota: not readable')
     for r in live:
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
