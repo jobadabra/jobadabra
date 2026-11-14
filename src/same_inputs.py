@@ -30,8 +30,8 @@ folder = ''
 
 
 def captures_text():
-    """True inside a same-inputs run (its throwaway folder is set): failed calls then log their error text too (src/ai/providers/contract.py detail)."""
-    return bool(os.environ.get('JOBADABRA_TAPE_SHARED'))
+    """True inside a same-inputs run, shared or not (same-inputs.mjs sets JOBADABRA_SAME_INPUTS_TEXT): failed calls then log their error text too (src/ai/providers/contract.py detail)."""
+    return os.environ.get('JOBADABRA_SAME_INPUTS_TEXT') == '1'
 
 
 def _count(name, amount=1):

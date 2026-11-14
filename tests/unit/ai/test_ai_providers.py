@@ -312,11 +312,11 @@ class TechnicalLineText(unittest.TestCase):
     def line(self, shared):
         import contextlib
         import io
-        env = {'JOBADABRA_TAPE_SHARED': '/tmp/x'} if shared else {}
+        env = {'JOBADABRA_SAME_INPUTS_TEXT': '1'} if shared else {}
         out = io.StringIO()
         with unittest.mock.patch.dict(os.environ, env, clear=False), contextlib.redirect_stdout(out):
             if not shared:
-                os.environ.pop('JOBADABRA_TAPE_SHARED', None)
+                os.environ.pop('JOBADABRA_SAME_INPUTS_TEXT', None)
             contract.detail('decide link-kind', RuntimeError('no free slot in time'))
         return out.getvalue()
 
@@ -324,7 +324,7 @@ class TechnicalLineText(unittest.TestCase):
         import contextlib
         import io
         out = io.StringIO()
-        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_TAPE_SHARED': '/tmp/x'}), contextlib.redirect_stdout(out):
+        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_SAME_INPUTS_TEXT': '1'}), contextlib.redirect_stdout(out):
             contract.detail('page read', RuntimeError('refused: Bearer abc123secret and sk-live-0123456789 and ' + 'x' * 40))
         self.assertNotIn('abc123secret', out.getvalue())
         self.assertNotIn('sk-live-0123456789', out.getvalue())
@@ -345,10 +345,10 @@ class PairValidity(unittest.TestCase):
         import contextlib
         import io
         out = io.StringIO()
-        env = {'JOBADABRA_TAPE_SHARED': '/tmp/x'} if shared else {}
+        env = {'JOBADABRA_SAME_INPUTS_TEXT': '1'} if shared else {}
         with unittest.mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out):
             if not shared:
-                os.environ.pop('JOBADABRA_TAPE_SHARED', None)
+                os.environ.pop('JOBADABRA_SAME_INPUTS_TEXT', None)
             contract.detail(what, error)
         return out.getvalue().splitlines()
 
