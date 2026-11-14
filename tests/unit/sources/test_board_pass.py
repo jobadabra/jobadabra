@@ -96,3 +96,17 @@ class BoardPassAccounting(unittest.TestCase):
         feeds._triaged()['late role 0'] = False
         self.assertEqual(board_pass.settled(done, listed), [self.jobs[0]['url'], self.jobs[1]['url']])
         self.assertEqual(board_pass.settled(done, listed), done.report(listed)[0], 'late refusals also agree')
+
+    def test_place_counts_use_the_answer_stores_normalized_key(self):
+        jobs = [{**self.jobs[0], 'location': where, 'url': f'https://board.example.test/variant/{n}'}
+                for n, where in enumerate(('Known Town', 'known town', '  KNOWN   TOWN  ', '   '))]
+        feeds.placed()[place_triage.norm('Known Town')] = 'in'
+        measured = board_pass.counts(jobs, jobs)
+        self.assertEqual((measured['places'], measured['got'][0]), (1, 1), 'one stored place answer, not three spellings or an empty key')
+
+    def test_title_totals_use_the_same_key_as_the_title_answer_store(self):
+        jobs = [{**self.jobs[0], 'title': title, 'url': f'https://board.example.test/title/{n}'}
+                for n, title in enumerate(('Known Role', 'known role', '  KNOWN   ROLE  '))]
+        feeds._triaged()[feeds.title_key('Known Role')] = True
+        measured = board_pass.counts(jobs)
+        self.assertEqual((measured['titles'], measured['got'][1]), (1, 1), 'one title answer covers all three spellings')
