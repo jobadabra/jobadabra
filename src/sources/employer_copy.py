@@ -8,9 +8,9 @@ owner, 14 Nov 2026, asked via AskUserQuestion: "Both": look up in the press and 
 later press, and every employer left unresolved is handed to the Scout (src/sources/board_employers.py note). Anything else keeps LinkedIn's copy.
 Tests: tests/unit/sources/test_employer_copy.py."""
 import re
-
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, nullcontext as _nothing
 
 from .. import store
 from ..ai import slots
@@ -95,11 +95,13 @@ def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, pas
             hit = match(job, feeds.get(where) or ())
             if hit:
                 break
-        where = known[0] if known else None
         name = _company(job.get('company'))
-        if not where and name and name not in guessed and len(guessed) < guesses and not past_cut():
+        # Why (Gitar on #4270): a known feed that lacked the job (a stale index entry) or was not read (past the limit or the cut) is no answer: the name is tried too.
+        if not hit and name and name not in guessed and len(guessed) < guesses and not past_cut():
             guessed[name] = guess(job.get('company'))
-        for system, slug, feed in [] if where or hit else guessed.get(name) or ():
+        for system, slug, feed in [] if hit else guessed.get(name) or ():
+            if (system, slug) in known:
+                continue   # already read above
             hit = match(job, feed)
             if hit:
                 register(job.get('company'), system, slug)
@@ -117,42 +119,54 @@ def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, pas
 
 
 def _local_feeds(db):
-    """This Mac's own feeds (feed_sources, src/scout_core.py), as index entries."""
-    return [{'company': row['company'], 'ats': row['ats'], 'slug': row['slug']} for row in db.execute('SELECT ats, slug, company FROM feed_sources WHERE active = 1')]
+    """This Mac's own feeds (feed_sources, src/scout_core.py), as index entries; none before the Scout made its table."""
+    try:
+        return [{'company': row['company'], 'ats': row['ats'], 'slug': row['slug']} for row in db.execute('SELECT ats, slug, company FROM feed_sources WHERE active = 1')]
+    except sqlite3.OperationalError as problem:
+        if 'no such table' in str(problem):
+            return []
+        raise
 
 
 def from_row(jobs):
     """LinkedIn's reader row's pass (src/sources/reader_rows.py): prefer_employer over the downloaded index (unless JOBADABRA_DISABLE=index) and this Mac's feeds; a
-    guessed feed that held a job joins feed_sources, so every later press reads it; the jobs still on LinkedIn go to the Scout (LinkedIn employers).
+    guessed feed that held a job joins feed_sources, so every later press reads it; the jobs still on LinkedIn go to the Scout (LinkedIn employers). One connection a
+    call, and no schema script on the read (Gitar on #4270: the app may hold the write lock).
     Why (Gitar on #4264): the bookkeeping writes (feed_sources, board_employers.json) never cost the jobs already read: a locked or read-only file is logged and skipped."""
     from .. import employer_index, paths, scout_core
     from ..features import disabled
     from . import board_employers
     index = [] if disabled('index') else employer_index.load()
     try:
-        with closing(store.connect(paths.jobs_db())) as db:
-            scout_core.ensure_tables(db)
-            index = [*index, *_local_feeds(db)]
+        db = store.connect(paths.jobs_db())
     except (OSError, sqlite3.Error) as problem:
         print(f'LinkedIn: this Mac\'s own feeds not read ({type(problem).__name__}): the index only', flush=True)
-
-    def register(company, system, slug):
+        db = None
+    with closing(db) if db is not None else _nothing():
         try:
-            with closing(store.connect(paths.jobs_db())) as db:
+            index = [*index, *(_local_feeds(db) if db is not None else [])]
+        except sqlite3.Error as problem:
+            print(f'LinkedIn: this Mac\'s own feeds not read ({type(problem).__name__}): the index only', flush=True)
+
+        def register(company, system, slug):
+            try:
+                if db is None:
+                    raise sqlite3.OperationalError('no jobs file')
+                scout_core.ensure_tables(db)
                 db.execute("INSERT OR IGNORE INTO feed_sources (ats, slug, company, tier, quality, added_at) VALUES (?, ?, ?, 'Standard', NULL, ?)",
                            (system, slug, (company or '')[:120], scout_core.now().isoformat(timespec='seconds')))
                 db.commit()
-        except (OSError, sqlite3.Error) as problem:
-            print(f'LinkedIn: {company}\'s feed not kept ({type(problem).__name__}): looked up again next press', flush=True)
-            return
-        print(f'LinkedIn: {company} runs on {system} ({slug}): read by every search from now on', flush=True)
+            except (OSError, sqlite3.Error) as problem:
+                print(f'LinkedIn: {company}\'s feed not kept ({type(problem).__name__}): looked up again next press', flush=True)
+                return
+            print(f'LinkedIn: {company} runs on {system} ({slug}): read by every search from now on', flush=True)
 
-    def note(left):
-        try:
-            board_employers.note(left, 'LinkedIn')
-        except OSError as problem:
-            print(f'LinkedIn: employers not handed to the Scout ({type(problem).__name__})', flush=True)
-    return prefer_employer(jobs, index, register=register, note=note)
+        def note(left):
+            try:
+                board_employers.note(left, 'LinkedIn')
+            except OSError as problem:
+                print(f'LinkedIn: employers not handed to the Scout ({type(problem).__name__})', flush=True)
+        return prefer_employer(jobs, index, register=register, note=note)
 
 
 def linkedin_jobs(search):
