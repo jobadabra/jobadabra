@@ -11,7 +11,7 @@
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   const displayStep = text => window.__jobadabraPanelI18n.step(text);
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) gives way to the new one.
-  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips', 'TopLayer'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
+  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'RequiredCount', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips', 'TopLayer'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
   window.__jobadabraReviewAlive = () => !!chrome.runtime?.id;
   let askedPassword = 0;
   const send = message => (chrome.runtime?.id ? chrome.runtime.sendMessage(message) : Promise.reject(new Error('reloaded')));
@@ -167,15 +167,18 @@
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
     const letterMissing = renderLetter(list, account);
+    // Why (14 Nov 2026): one count (required-count.js) owns the pill's total and left, so the pill, ring and bar agree with Ready: `ready` waits for exactly the entries it counts, an empty required upload slot included.
+    const tally = window.__jobadabraRequiredCount(list.map(f => ({required: f.required, filled: f.filled, type: f.el?.type, blocks: !!(f.ai || f.changed || f.draft)})));
     const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
-    counts = {total, left};   // the stopped note says what the page holds
-    const done = total ? Math.round(100 * (total - left) / total) : 0;
-    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total, left, done, account, job, session, letterMissing});
+    counts = {total: tally.total, left: tally.left};   // Why: the stopped note reads total − left as the answers held, which the filled required ones still are
+    const done = tally.total ? Math.round(100 * (tally.total - tally.left) / tally.total) : 0;
+    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total: tally.total, left: tally.left, done, account, job, session, letterMissing});
     // A fill running (this panel's, Claude's, the popup's) or over: a field filled after it is yours.
     const busy = filling || (session?.live && session.status === 'running') || $('.fill').classList.contains('is-busy');
     jp.classList.toggle('busy', busy);   // the Stop beside the minimised pill shows while a fill runs
     const over = filledOnce || ['done', 'input'].includes(session?.status);
-    return {state: {list, left, total, busy, over, account}, pageMark, ready, needsYou, done, readyWords};
+    return {state: {list, left, total, busy, over, account}, total: tally.total, left: tally.left, pageMark,   // `state` is the app's report (review-payload.js), unchanged; total/left beside it are what the panel draws
+       ready, needsYou, done, readyWords};
   }
 
   // Keep the original preferred tip and request it only when tips are enabled.

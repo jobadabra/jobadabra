@@ -258,6 +258,18 @@ test('every render state keeps the complete serialized DOM, returned facts and e
   assert.deepEqual(actual, EXPECTED);
 });
 
+// Why (14 Nov 2026): an empty answer Claude wrote still blocks Ready, so the pill counts it ("1 left" of 3), the bar stays under 100, the list shows it, and the report to the app keeps its old left/total.
+test('every required question filled but an optional answer Claude wrote is empty: pill, bar, list and the app report agree', {skip: !JSDOM}, async () => {
+  const p = await panel({state: {session: {status: 'done'}}, fields: d => baseFields(d, [{filled: true}, {required: false, ai: true, filled: false}, {filled: true}])});
+  try {
+    const result = p.api.render();
+    assert.deepEqual([result.left, result.total], [1, 3], "the app's report keeps what it read before (state.left/total)");
+    assert.equal(p.root.querySelector('.ring span').textContent, '1', 'the pill shows one left, as Ready does');
+    assert.notEqual(p.root.querySelector('.bar i').style.width, '100%');
+    assert.equal(p.root.querySelector('.left').hidden, false, 'the Remaining list shows the answer that blocks Ready');
+  } finally { p.close(); }
+});
+
 test('rendered controls keep their targets, propagation, busy labels and messages', {skip: !JSDOM}, async () => {
   const p = await panel({state: {filledOnce: true, session: {id: 's1'}, movedTab: 8, build: {behind: 1}},
     fields: d => baseFields(d, [{draft: 'outline'}])});
