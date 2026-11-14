@@ -106,10 +106,9 @@ def collect(path, person=None):
     the search read fine, else the first found); a folder with no known person or no readable country adds nothing."""
     found = {}
     for folder in folders_of(path):
-        who = person or person_of(folder)
-        country = country_of(who) if who else None
-        if country:
-            read = boards_read(folder)
+        counts = usable(folder, person)
+        if counts:
+            country, read = counts
             where = addresses(folder, set(read))
             for host, local in read.items():
                 known = found.get((host, country)) or {'local': 0, 'url': None, 'fine': False}
@@ -117,6 +116,15 @@ def collect(path, person=None):
                 better = address and (not known['url'] or (fine and not known['fine']))   # an address the search read fine replaces one that gave nothing, whichever folder came first
                 found[(host, country)] = {'local': max(known['local'], local), 'url': address if better else known['url'], 'fine': fine if better else known['fine']}
     return found
+
+
+def usable(folder, person=None):
+    """(country id, {host: local}) when the run folder counts for the share (a known person, a country on the fixed list, at least one job board read), else None: the one rule `collect` and `searches` share
+    (Gitar on #4176: a second copy of it let the summary's "from N searches" drift from what was sent)."""
+    who = person or person_of(folder)
+    country = country_of(who) if who else None
+    read = boards_read(folder) if country else {}
+    return (country, read) if country and read else None
 
 
 def folders_of(path):
@@ -127,7 +135,7 @@ def folders_of(path):
 
 def searches(path, person=None):
     """How many run folders under `path` read at least one job board in a known country: the searches the one share speaks for."""
-    return sum(1 for folder in folders_of(path) if (person or person_of(folder)) and country_of(person or person_of(folder)) and boards_read(folder))
+    return sum(1 for folder in folders_of(path) if usable(folder, person))
 
 
 def body(found, run):
