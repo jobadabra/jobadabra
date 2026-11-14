@@ -314,7 +314,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
         with stage.guard('free job APIs: read') as caught:   # Why (lanes 3/5, 11 Nov 2026): any error of one reader is that source failing, never the run (a RuntimeError ended it)
             try:
                 found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately)
-            except _Cut:   # still reading at the read cut: not marked read, the next search takes it
+            except (_Cut, NotAsked):   # still reading at the read cut, or nothing asked: not marked read, the next search takes it
                 late.append(name)
                 continue
             except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
@@ -352,7 +352,10 @@ def keep_late(db, search, lane, on_jobs, until, now=None):
     now, jobs = now or time_budget.wall(), []
     for name in [name for name in lane.reads if name not in lane.taken]:
         with stage.guard('free job APIs: late read') as caught:
-            taken = lane.take(name, until)
+            try:
+                taken = lane.take(name, until)
+            except NotAsked:   # it sent nothing: not marked read, the next search asks again
+                continue
             if taken is None:   # still reading: the run ends first, the next search asks again
                 continue
             found, views = taken
@@ -369,6 +372,12 @@ def keep_late(db, search, lane, on_jobs, until, now=None):
 
 class _Cut(Exception):
     """A read started from the press's start is still reading at the read cut."""
+
+
+class NotAsked(Exception):
+    """Raised by a reader that sent its site nothing this search (its own gate said "not now" before the first request): not marked read, so the next search asks again.
+    Why (14 Nov 2026, Always on run_4b38d7e4e614a395 then run_1d768eb072bbfaf0): LinkedIn's read refused by the site's turn returned no jobs and was marked read,
+    so the next run rested it 6 h and never asked; a reader that did send a request returns what it read and rests as any other (a 429 is never asked again)."""
 
 
 def _one(db, search, name, read, now, shown, ahead, lane, lately):

@@ -279,9 +279,9 @@ def _page(role, place, page, seen, jobs):
 def read(search):
     """The jobs of the strategy's LinkedIn searches, as listed (titles and places are judged by the run like any source's): page 1 of each search, then page 2,
     at most SEARCH_PAGES pages. What was read before a stop, the read cut or a full window is kept. A search that fails on the network is that search only;
-    all failing raises the last error (the lane failing)."""
+    all failing raises the last error (the lane failing). Held before any request was sent: raises aggregators.NotAsked (not counted as read)."""
     jobs, seen, failed, error, held = [], set(), set(), None, ''
-    wanted, asked = searches(search), 0
+    wanted, asked, before = searches(search), 0, PACE.last
     going = list(wanted)
     for page in range(PAGES):
         for pair in list(going):
@@ -303,6 +303,9 @@ def read(search):
         raise error
     if not PACE.stopped:
         print(f'LinkedIn: {len(jobs)} job(s) from the public search' + (f' ({held})' if held else ''), flush=True)
+    if held and not jobs and PACE.last == before:   # held before the first request (the site's "no", a full window, the cut): not a read, the next search asks again
+        from .aggregators import NotAsked
+        raise NotAsked(held)
     return jobs
 
 

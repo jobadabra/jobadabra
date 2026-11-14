@@ -3,6 +3,7 @@ site ends LinkedIn for the run, a cached page is used with no GET, and every GET
 import http.client
 import io
 import json
+import sqlite3
 import tempfile
 import unittest
 import urllib.error
@@ -11,7 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import hosted_run, time_budget
-from src.sources import host_pace, linkedin_guest, linkedin_turn, page_bytes, read_budget
+from src.sources import aggregators, api_lane, host_pace, linkedin_guest, linkedin_turn, page_bytes, read_budget
 from tests.unit.sources.test_linkedin_guest import CARDS, Site
 
 URL = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=sre&location=Geneva&start=0'
@@ -156,6 +157,34 @@ class TurnTest(unittest.TestCase):
             got, _, _ = self.run_with([{'answer': 'go', 'lease': 'lt_1'}], linkedin=lambda url: 429)
         self.assertIsInstance(got, linkedin_guest.Later)
         self.assertEqual(linkedin_guest.PACE.stopped, 'limited')
+
+    def test_a_refused_turn_is_not_a_read_so_the_next_cloud_run_asks_again_and_a_429_still_rests(self):
+        """Always on, 14 Nov 2026: run_4b38d7e4e614a395 (13:08Z) got the site's "no" and sent LinkedIn nothing, yet LinkedIn was marked read; run_1d768eb072bbfaf0
+        (13:18Z), on the first run's data, rested it 6 h and asked the site nothing. A read that sent LinkedIn nothing waits for the next search; one that sent a
+        request rests as before (a 429 is never asked again)."""
+        db = sqlite3.connect(':memory:', check_same_thread=False)
+        search = {'role_keywords': ['SRE'], 'locations': {'top_tier': ['Geneva']}}
+        readers = [(linkedin_guest.NAME, linkedin_guest.read)]
+
+        def press(answers, linkedin=lambda url: CARDS):
+            """One run's free-API lane and scan, as daily_search starts them; -> whether LinkedIn was due, and LinkedIn's requests."""
+            linkedin_guest.reset()
+            site, linkedin_site = FakeSite(answers), Site(linkedin, self.clock)
+            with mock.patch.object(linkedin_turn, '_open', site.open), mock.patch.object(linkedin_guest, '_opener', linkedin_site), \
+                    mock.patch.object(aggregators, 'kept', lambda db, name, found, now=None, shown=None: found):
+                lane = api_lane.start(db, search, readers=readers)
+                if lane is None:
+                    return False, linkedin_site.requests
+                self.addCleanup(lane.close)
+                aggregators.scan(db, search, readers=readers, lane=lane)
+            return True, linkedin_site.requests
+
+        self.assertEqual(press([{'answer': 'no', 'why': 'LinkedIn in Always on is a trial on one install for now'}]), (True, []))
+        self.assertIsNone(aggregators.read_lately(db, linkedin_guest.NAME, search=search), 'nothing was sent: not a read')
+        due, sent = press([{'answer': 'go', 'lease': 'lt_1'}], linkedin=lambda url: 429)
+        self.assertEqual((due, len(sent)), (True, 1), 'the next run asks the site again and reads')
+        self.assertIsNotNone(aggregators.read_lately(db, linkedin_guest.NAME, search=search), 'a sent request is a read: it rests')
+        self.assertEqual(press([{'answer': 'go', 'lease': 'lt_2'}]), (False, []), 'after the 429 nothing is asked in the rest')
 
     def test_a_github_run_asks_with_its_repo_key(self):
         env = {linkedin_turn.TURN: 'https://site.example', 'JOBADABRA_TRIAL_KEY': 'JPT1.handle.mac'}
