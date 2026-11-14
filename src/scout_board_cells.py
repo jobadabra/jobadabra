@@ -57,7 +57,7 @@ def stale(db, today):
     13 Nov 2026 (no count per family), or measured under an older rule than scout_board_counts.LISTED_RULE (a fact with no rule included), at once.
     A fact read again within REREAD_DAYS that did not pass waits: one board under the floor now must not take every run until it is dropped.
     Design (14 Nov 2026, sa for the owner: "the due re-reads go highest served right count first"): a fact at an older rule misleads the order in proportion to the count the site still serves for it, so the largest served
-    count (its best family) is read again first, the oldest read breaks a tie; a pass re-reads only half its places, so the oldest-first order left airlinejobs.com's es 53 behind 167 facts of every size.
+    count (its best family) is read again first, the oldest read breaks a tie; the pass's country (pick) is the one holding the largest such count, so the worst stale count anywhere goes first and a small old one waits only while a bigger one is due (each read waits REREAD_DAYS, so the bigger ones leave the queue); a pass re-reads only half its places, so the oldest-first order left airlinejobs.com's es 53 behind 167 facts of every size.
     Why (14 Nov 2026, sa for the owner): a fact does not say under which rule it was measured, so airlinejobs.com's es 53 (read from a list before the listed rule) lived on as a searched count until its 20-day refresh."""
     from . import scout_boards
     old, gone = (today - timedelta(days=REFRESH_DAYS)).isoformat(), (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()

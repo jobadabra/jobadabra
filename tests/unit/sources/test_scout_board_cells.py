@@ -180,6 +180,14 @@ class FactRule(unittest.TestCase):
         self.assertEqual(self.due(), ['airline.example', 'older.example', 'small.example'], 'the 53 first, equal counts by oldest read')
         self.assertEqual([board['host'] for board in cells.share(cells.stale(self.db, TODAY)['es'], [{'host': 'reported.example'}] * 2, 2)[0]], ['airline.example'], 'one place of two goes to re-reads: the 53')
 
+    def test_the_pass_takes_the_country_holding_the_largest_stale_count_and_the_small_one_follows(self):
+        """Gitar on #4158: pick() takes the first country of stale(), so the order of facts also orders countries. Intended (sa, 14 Nov 2026: worst served count first): an old small `nl` fact waits behind a recent large `es` one, and goes next once the `es` one is read (REREAD_DAYS)."""
+        fact(self.db, 'small.example', 'nl', [self.FAMILY], TODAY - timedelta(days=12), right=4, rule=None)
+        fact(self.db, 'big.example', 'es', [self.FAMILY], TODAY - timedelta(days=1), right=53, rule=None)
+        self.assertEqual(cells.pick(self.db, TODAY)[0], 'es')
+        cells.record(self.db, 'es', [self.FAMILY], [], TODAY, again=cells.stale(self.db, TODAY)['es'][:1])
+        self.assertEqual(cells.pick(self.db, TODAY)[0], 'nl', 'the big one waits its REREAD_DAYS: the small old one is next')
+
     def test_facts_at_an_older_rule_are_counted_in_one_line(self):
         fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
         fact(self.db, 'new.example', 'es', [self.FAMILY])
