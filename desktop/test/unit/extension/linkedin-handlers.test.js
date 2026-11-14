@@ -221,3 +221,13 @@ test('lost sign-in with LinkedIn jobs on: grants kept, a new Chrome copy is take
   const off = store();
   assert.equal(linkedinRoutes(off, {keychain: kc}).pending().revoke, true, 'nothing on, nothing kept, nothing waiting: the grants go');
 });
+
+// Gitar on #4365: opening the Chrome way over an older kept sign-in takes that sign-in out at once, so a wait that ends with no copy leaves no credential behind.
+test('Chrome way over an older kept sign-in: it goes now; no copy, the wait ends, nothing is left', () => {
+  const t0 = Date.parse('2026-11-14T08:00:00Z'), settings = store({linkedinJobs: {on: false, login: {state: 'kept', at: t0 - 600000}}}), kc = keychain();
+  kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+  openSignin(settings, {keychain: kc, now: () => t0});
+  assert.equal(kc.items.has(SERVICE), false, 'the older item is out as the Chrome way opens');
+  assert.equal(settings.settings().linkedinJobs.login.state, 'waiting');
+  assert.equal(linkedinView(settings, {keychain: kc, now: () => t0 + WANTED_MS + 1000}).login, 'none');
+});

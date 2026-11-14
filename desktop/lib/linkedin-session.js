@@ -58,7 +58,7 @@ export const signedIn = storage => linkedinSignedIn(storage.settings());
 export function saveSession(storage, cookies, {keychain = realKeychain, now = Date.now} = {}) {
   const clean = cleanCookies(cookies);
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
-  const before = signedIn(storage) ? readSession({keychain})?.li_at : undefined;   // in memory only: the same sign-in saved again keeps its clock (Gitar on #4247)
+  const before = readSession({keychain})?.li_at;   // in memory only: the same sign-in saved again keeps its clock, whatever the state it was in (Gitar on #4247, #4365)
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; owner 14 Nov 2026, "Simplify, then reopen (Recommended)" after Gitar on #4297, then "One sign-in state (Recommended)"): a sign-in
   // turns no switch on by itself; it moves `login` to kept. A saved copy is no verdict, so a `signin` a read wrote stays and only its keep time is stamped: the next read that works after Needs you says "renewed"
@@ -89,7 +89,12 @@ export const takesCopy = (storage, deps = {}) => ['waiting', 'kept', 'lost'].inc
 /** True while the extension keeps its LinkedIn grants: LinkedIn jobs is on (even with its sign-in lost), or a Chrome way waits, or a sign-in is kept. */
 export const keepsGrants = (storage, deps = {}) => state(storage).on || takesCopy(storage, deps);
 /** The Chrome way was opened: while off, the sign-in waits for its copy (an older kept sign-in is no answer to this press: Gitar on #4350). While on, a copy is already taken. */
-export const openSignin = (storage, deps = {}) => { if (!state(storage).on) moveLogin(storage, 'waiting', deps); };
+export const openSignin = (storage, deps = {}) => {
+  if (state(storage).on) return;
+  // Why (Gitar on #4365): an older kept sign-in is no answer to this press and must not outlive the wait as an orphan: the Chrome way takes over, so its item goes now and an expired wait leaves nothing.
+  if (loginOf(storage, deps).state === 'kept') (deps.keychain || realKeychain).remove(SERVICE, {account: ACCOUNT});
+  moveLogin(storage, 'waiting', deps);
+};
 
 /**
  * At start, with LinkedIn jobs off: a sign-in no press can still turn on is deleted, so no unused credential stays (Gitar on #4350): a wait that ran out, or a copy kept more than

@@ -262,3 +262,13 @@ test('LinkedIn jobs turns on with a kept sign-in only when the Keychain item is 
   saveSession(settings, good(), {keychain: kc});
   assert.deepEqual(turnOnJobs(settings, {keychain: kc}), {ok: true});
 });
+
+// Gitar on #4365: the keep time stays when the same sign-in comes back after a loss (the item is read whatever the state).
+test('the same sign-in saved again keeps its keep time, also after a lost state', () => {
+  const settings = store({linkedinJobs: {on: true}}), kc = keychain();
+  saveSession(settings, good(), {keychain: kc, now: () => 1000});
+  const keptAt = settings.settings().linkedinJobs.keptAt;
+  settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, login: {state: 'lost', at: 2000}}});   // lost with the item still there (a copy that changed nothing)
+  saveSession(settings, good(), {keychain: kc, now: () => 90000000});
+  assert.equal(settings.settings().linkedinJobs.keptAt, keptAt);
+});
