@@ -50,15 +50,15 @@ class GhRestLogTest(unittest.TestCase):
         self.gh('api', '-i', 'repos/o/r/pulls/8', out='HTTP/2.0 200 OK\r\n\r\n{}')
         env = {**os.environ, 'GH_REST_LOG': str(self.log)}
         report = subprocess.run(['bash', str(ROOT / 'tools' / 'gh-rest-report.sh'), '1'], env=env, capture_output=True, text=True, timeout=60).stdout
-        self.assertRegex(report, r'1 REST calls spent since .* = 1/h \(\+ 1 free 304 reads\)')
+        self.assertRegex(report, r'1 REST calls spent since .* = 1/h \(\+ 1 free 304 reads, 0 still running\)')
         env['GH_REST_LOG'] = 'off'
         self.log.unlink()
         env2 = {**os.environ, 'PATH': f'{ROOT / "tools" / "bin"}{os.pathsep}{self.tmp / "real"}{os.pathsep}{os.environ["PATH"]}', 'GH_REST_LOG': 'off', 'GH_GRAPHQL_LOG': 'off', 'FAKE_OUT': 'x'}
         subprocess.run(['gh', 'api', 'repos/o/r'], env=env2, capture_output=True, timeout=60)
         self.assertFalse(self.log.exists())
 
-    def report(self, *args):
-        return subprocess.run(['bash', str(ROOT / 'tools' / 'gh-rest-report.sh'), *args], env={**os.environ, 'GH_REST_LOG': str(self.log)}, capture_output=True, text=True, timeout=60)
+    def report(self, *args, pending_s=0):
+        return subprocess.run(['bash', str(ROOT / 'tools' / 'gh-rest-report.sh'), *args], env={**os.environ, 'GH_REST_LOG': str(self.log), 'PENDING_S': str(pending_s)}, capture_output=True, text=True, timeout=60)
 
     def test_a_held_call_killed_before_gh_returns_is_still_counted_and_a_call_without_a_status_line_logs_a_dash(self):
         """Gitar on #4151: the line was written only after gh returned, so a timed-out call (the slow ones) was missing; an empty status broke the format."""
@@ -80,6 +80,17 @@ class GhRestLogTest(unittest.TestCase):
             done = self.report(bad)
             self.assertEqual(done.returncode, 2, bad)
             self.assertIn('whole number', done.stderr)
+
+    def test_a_call_still_running_is_shown_apart_and_not_charged_until_it_is_old(self):
+        """Gitar on #4155: a "?" line of a call in flight right now is not spent yet; one that never returned is."""
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.gh('api', '-i', 'repos/o/r/pulls/7', out='x', sleep=5, timeout=1)
+        self.assertRegex(self.report('1', pending_s=3600).stdout, r'0 REST calls spent .*\(\+ 0 free 304 reads, 1 still running\)')
+        self.assertRegex(self.report('1', pending_s=0).stdout, r'1 REST calls spent .*\(\+ 0 free 304 reads, 0 still running\)')
+
+    def test_a_paginated_read_is_not_held_so_it_still_streams(self):
+        self.gh('api', '-i', '--paginate', 'repos/o/r/pulls', out='HTTP/2.0 200 OK\r\n')
+        self.assertEqual([(r[4], r[5], len(r)) for r in self.rows()], [('api repos/o/r/pulls', '-', 6)])
 
 
 if __name__ == '__main__':
