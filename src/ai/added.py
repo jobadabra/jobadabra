@@ -46,7 +46,7 @@ def process(db, url, job, *, stores, row=None, client=None, stats=None, now=None
     date_posted). row: its Applications page, whose fit columns are filled. With no row yet (/add scores the job before
     its row exists), the columns are left in job['application_columns'] for ledger.add_application to write (and as store
     fields in job['application_fields']). With a row, the job is filled through the active store (stores).
-    Returns a short line ("fit 82/100, tier A"), or None when skipped (AI off, no text, already scored)."""
+    Returns a short line ("fit 82/100"), or None when skipped (AI off, no text, already scored)."""
     if not (features.enabled('enrich') and features.enabled('score')):
         return None
     description = (job.get('description') or '').strip()
@@ -80,7 +80,7 @@ def process(db, url, job, *, stores, row=None, client=None, stats=None, now=None
     else:
         job['application_columns'] = application_columns(props)
         job['application_fields'] = application_fields(props)
-    return f"fit {fit['score']}/100, tier {fit['tier']}"
+    return f"fit {fit['score']}/100"   # Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Drop \"tier C\""): no tier letter, the score says it
 
 
 def application_columns(props, have=None):
