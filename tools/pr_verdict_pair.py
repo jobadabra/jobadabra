@@ -77,6 +77,7 @@ def decide(*, reach, row, last, delta, nothing, people, starts, head, busy=False
 
 def pairs_of(gh, repo, number, now):
     """(starts in the last CAP[1] hours, runs queued, running or started within 3 min) for PR `number`: the workflow's run list, whose run names start `Search pair · #<n> `.
+    The list is the workflow's newest 100 runs of every PR: a PR whose pairs are older than those counts fewer, which only lets one more start through.
     A start is a run that is not the pair's own second run (its name ends ` · again`, search-pair.yml run-name): the cap counts heads started, not reruns."""
     runs = json.loads(gh('run', 'list', '-R', repo, '--workflow', 'search-pair.yml', '-L', '100', '--json', 'createdAt,displayTitle,status') or '[]')
     mine = [r for r in runs if str(r.get('displayTitle', '')).startswith(f'Search pair · #{number} ')]
