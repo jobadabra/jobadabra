@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from engine_calls import HUNG_SHORT_MS  # beside this file; the one 30 s line of a hung short call
+
 BAND_FLOOR = 7   # right jobs a person may lose before a pair is red, whatever their own spread is (the same-minute noise floor, see band)
 # Why (13 Nov 2026, sa): run 43498213279 (c04 + c10, the same code both sides, the same boards) gave 8 vs 15 right jobs for c04; a 1-job band would red honest PRs and the red would mean
 # nothing. The band is the spread of the person's last 3 searches on main (the Trello middle-of-3 data) once that is stored; until then 7, or the night person's own kept spread.
@@ -35,12 +37,20 @@ def running(started_hm, what='running'):
 
 
 def why_not_counted(rows):
-    """Why people's sides did not count, from their side rows ({person: {'main': [...], 'pr': [...]}}): boards not shared, a broker wait over the limit, or a side that failed."""
+    """Why people's sides did not count, from their side rows ({person: {'main': [...], 'pr': [...]}}): boards not shared, refused AI calls, two AIs, a broker wait over the limit, or a side that failed."""
     reasons = []
     flat = [r for sides in rows.values() for r in sides['main'] + sides['pr']]
     if any(r.get('shared') is False for r in flat):
         reasons.append("boards not shared (the draft's proposal or its web search failed)")
-    if any(r.get('wait_p90_ms') is not None and not r.get('valid') and r.get('shared') is not False for r in flat):
+    counted_in = [r for r in flat if not r.get('valid') and r.get('shared') is not False]
+    if any(r.get('failed') for r in counted_in):
+        reasons.append('a side had AI calls refused by the broker')
+    if any(len(r.get('engines') or []) > 1 for r in counted_in):
+        reasons.append('a side was answered by two AIs')
+    if any((r.get('short_call_max_ms') or 0) > HUNG_SHORT_MS for r in counted_in):
+        reasons.append('a side had a short AI call over 30 s')
+    # Why (13 Nov 2026): a side not valid for refused calls or two AIs is not "slow"; the wait is the reason only when neither is.
+    if any(r.get('wait_p90_ms') is not None and not r.get('failed') and len(r.get('engines') or []) <= 1 and (r.get('short_call_max_ms') or 0) <= HUNG_SHORT_MS for r in counted_in):
         reasons.append('a side waited over 20 s at the broker')
     return '; '.join(reasons) or 'a side failed before its search'
 

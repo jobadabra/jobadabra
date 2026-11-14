@@ -21,13 +21,14 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import engine_calls  # noqa: E402 — beside this file
 import pair_row  # noqa: E402 — beside this file, run as a script by search-pair.yml
 NIGHT = 18   # the night's people p1..p18 (gate-personas.json)
 MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatch is right")
 # The files that write a person's search words before any search (the strategy draft): a PR touching one drafts per side and runs 2 searches a side for each person,
 # since one draft a side cannot tell the change from the draft's own luck (13 Nov 2026: Sofia's board words were English in one draft and Bulgarian in the next, same code).
 DRAFT_PRODUCERS = re.compile(r'^(desktop/lib/strategy(-draft[^/]*)?\.js|src/ai/board_ideas\.py|src/sources/(boards|board_terms)\.py)$')   # the proposal's files too: a PR that changes what boards are proposed is measured with a proposal per side
-VALID_P90_MS = 20000   # sa's rule (13 Nov 2026): a side whose broker wait p90 is over ~20 s is not valid, shown but not counted
+VALID_P90_MS = 20000   # sa's rules (13 Nov 2026): a side whose broker wait p90 is over ~20 s, with one refused AI call (the day cap, 503: its `waited na` hides from p90), a short AI call over 30 s or two AIs is not valid, shown but not counted
 
 
 def _profiles():
@@ -84,13 +85,14 @@ def side(out, name):
     read = lambda p: (out / p).read_text(encoding='utf-8', errors='replace') if (out / p).exists() else ''   # noqa: E731
     relay, press = read('run.log'), read('draw/run-1.log')
     calls, failed, p50, p90 = waits(relay)
+    engines, short_ms = engine_calls.engines_in(relay), engine_calls.longest_short_ms(relay)
     judged = json.loads(read('judged.json') or '{}')
     right = sum(1 for r in judged.get('rows') or [] if r.get('role') == 'yes' and r.get('place') == 'yes') if judged else None
     first = re.search(r'1st/10th relevant at (\S+?)/', relay)
     row = {'side': name, 'right': right, 'found': len(json.loads(read('jobs.json') or '[]')), 'first_s': first.group(1) if first else None,
-           'words': board_words(press), 'calls': calls, 'failed': failed, 'wait_p50_ms': p50, 'wait_p90_ms': p90,
+           'words': board_words(press), 'calls': calls, 'failed': failed, 'engines': engines, 'short_call_max_ms': short_ms, 'wait_p50_ms': p50, 'wait_p90_ms': p90,
            'shared': not (out / 'boards-not-shared').exists(),   # the workflow marks a side whose draft install had no board proposal (run.mjs --propose failed): it asked for itself
-           'valid': bool(calls) and p90 is not None and p90 <= VALID_P90_MS and right is not None and not (out / 'boards-not-shared').exists()}
+           'valid': bool(calls) and p90 is not None and p90 <= VALID_P90_MS and not failed and len(engines) <= 1 and short_ms <= engine_calls.HUNG_SHORT_MS and right is not None and not (out / 'boards-not-shared').exists()}
     (out / 'side.json').write_text(json.dumps(row) + '\n', encoding='utf-8')
     print(json.dumps(row))
 
@@ -130,7 +132,7 @@ def _cell(rows, key, fmt=str):
 def _wait(row):
     """A run's broker wait as 'p50/p90' in seconds."""
     secs = lambda ms: '—' if ms is None else f'{ms / 1000:.0f}'   # noqa: E731
-    return f"{secs(row.get('wait_p50_ms'))}/{secs(row.get('wait_p90_ms'))}"
+    return f"{secs(row.get('wait_p50_ms'))}/{secs(row.get('wait_p90_ms'))} · {row.get('failed', 0)} refused · short call max {(row.get('short_call_max_ms') or 0) / 1000:.0f} s"
 
 
 def sides(results):
@@ -162,7 +164,7 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
     results, lines = Path(results), []
     people_rows = sides(results)
     lines += ['<!-- search-pair -->', f'### Before/after: main `{main_sha[:8]}` (the commit the PR sits on) vs #{pr} `{pr_sha[:8]}`, same minute', '',
-              '| Person | Right jobs main → PR | Found | First relevant (s) | First 2 board words (main · PR) | Broker wait p50/p90 (s) | Valid |',
+              '| Person | Right jobs main → PR | Found | First relevant (s) | First 2 board words (main · PR) | Broker wait p50/p90 (s) · AI calls refused | Valid |',
               '|---|---|---|---|---|---|---|']
     done = measured(people_rows, spread)
     for person, sides_ in sorted(people_rows.items()):
@@ -177,7 +179,7 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
     drafts = {r.get('own_draft') for r in (json.loads(p.read_text()) for p in results.glob('*/person.json'))}
     lines.append('Each side drafted its own search plan and searched twice: this PR changes the plan\'s producer.' if True in drafts
                  else 'Same draft both sides: one search plan per person, made once, searched by main and the PR at the same minute.')
-    lines.append(f'A side whose broker wait p90 is over {VALID_P90_MS // 1000} s is not valid: shown, not counted (start the pair again).')
+    lines.append(f'A side whose broker wait p90 is over {VALID_P90_MS // 1000} s, with one refused AI call, a short AI call over {engine_calls.HUNG_SHORT_MS // 1000} s, or answered by two AIs is not valid: shown, not counted (start the pair again).')
     if any(r.get('shared') is False for rows in people_rows.values() for r in rows['main'] + rows['pr']):
         lines.append("The draft's board proposal failed, so each side asked for its own boards: not counted (start the pair again).")
     timed = [p.read_text(encoding='utf-8').strip() for p in sorted(results.glob('*.minutes.txt'))]

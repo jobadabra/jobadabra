@@ -155,9 +155,23 @@ def row(pid, out):
     ran_out = sorted({(a or b).strip() for a, b in RAN_OUT.findall(log)})
     engines = sorted({' / '.join(x for x in m if x) for m in ENGINE.findall(read('run.log'))})
     p90 = waits_p90_s(read('run.log'))
+    sys.path.insert(0, str(HERE))
+    import engine_calls  # noqa: PLC0415
+    refused_calls, short_ms = engine_calls.unanswered_calls(read('run.log')), engine_calls.longest_short_ms(read('run.log'))
+    ais = sorted({e.split(' / ')[0] for e in engines})
+    # Why (13-14 Nov 2026, sa; owner: "Drop the build, fix the measure"): refused calls, a hung short call and a second AI each change what the search found, so none is a number; the model names of one engine do not.
+    # Order: refusals first (the root cause of a slow answered call too, Gitar on #4130), then the broker's queue (waits p90, which also makes short calls long), then one hung call, then two AIs.
+    damage = {'refused_calls': refused_calls, 'short_call_max_s': round(short_ms / 1000, 1), 'waits_p90_s': p90}
+    held = {'relevant_while_damaged': len(right), 'shown_while_damaged': len(rows)}
+    if refused_calls:
+        return {**result, 'not_measured': f'not measured ({refused_calls} AI call{"" if refused_calls == 1 else "s"} refused)', 'damaged': True, **damage, **held}
     if p90 is not None and p90 > WAIT_P90_LIMIT_S:
-        return {**result, 'not_measured': f'not measured (waits p90 {p90} s)', 'starved': True, 'waits_p90_s': p90, 'relevant_while_starved': len(right), 'shown_while_starved': len(rows)}
-    return {**result, 'waits_p90_s': p90, 'relevant': len(right), 'shown': len(rows), 'seconds': press.get('seconds'),
+        return {**result, 'not_measured': f'not measured (waits p90 {p90} s)', 'starved': True, **damage, 'relevant_while_starved': len(right), 'shown_while_starved': len(rows)}
+    if short_ms > engine_calls.HUNG_SHORT_MS:
+        return {**result, 'not_measured': f'not measured (a short AI call took {short_ms / 1000:.1f} s)', 'damaged': True, **damage, **held}
+    if len(ais) > 1:
+        return {**result, 'not_measured': f'not measured (two AIs answered: {", ".join(ais)})', 'damaged': True, **damage, **held}
+    return {**result, **damage, 'relevant': len(right), 'shown': len(rows), 'seconds': press.get('seconds'),
             'first_relevant_s': round((min(seen) - started).total_seconds()) if seen and started else None,
             'boards_read': len(boards), 'boards_gave_jobs': sum(int(j) > 0 for _, j, _ in boards), 'boards_with_relevant': sum(int(n) > 0 for _, _, n in boards),
             'boards_refused': len(refused), 'boards_cut': sum(int(n) for n in CUT_BOARDS.findall(log)), 'time_ran_out_for': ran_out,
@@ -176,16 +190,16 @@ def table(folder, out):
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
              f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
-             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read | boards that gave jobs | boards with relevant | boards refused | boards cut at the end | time ran out for | broker waits p90 | engine | judge |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read | boards that gave jobs | boards with relevant | boards refused | boards cut at the end | time ran out for | broker waits p90 | AI calls refused | longest short AI call | engine | judge |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
         if 'relevant' not in r:
             waits = f"{r['waits_p90_s']} s" if r.get('waits_p90_s') is not None else ''
-            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | | | | | {waits} | | |")
+            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | | | | | {waits} | {r.get('refused_calls', '')} | {str(r['short_call_max_s']) + ' s' if r.get('short_call_max_s') is not None else ''} | | |")
             continue
         first = f"{r['first_relevant_s']} s" if r['first_relevant_s'] is not None else '—'
         lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r['relevant']} | {r.get('eures') or '—'} | {r.get('target', '—')} | {r['shown']} | {first} | {r['boards_read']} | {r.get('boards_gave_jobs', '—')} | {r['boards_with_relevant']} | {r.get('boards_refused', '—')} | {r.get('boards_cut', '—')} | "
-                     f"{', '.join(r['time_ran_out_for']) or '—'} | {str(r['waits_p90_s']) + ' s' if r.get('waits_p90_s') is not None else '—'} | {r['engine']} | {r['judge']} ({r['judge_tier']}) |")
+                     f"{', '.join(r['time_ran_out_for']) or '—'} | {str(r['waits_p90_s']) + ' s' if r.get('waits_p90_s') is not None else '—'} | {r.get('refused_calls', '—')} | {str(r['short_call_max_s']) + ' s' if r.get('short_call_max_s') is not None else '—'} | {r['engine']} | {r['judge']} ({r['judge_tier']}) |")
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     (Path(out).parent / 'rows.json').write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
 
