@@ -371,7 +371,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             or read_board(board, search, via, entry.get('route'), early=early, show=show)   # a general board's link with no word: its own search first
         if board.get('charset'):   # learned on this read (board_paths.read): its next searches ask in it at once
             entry['charset'] = board['charset']
-        return board_check.checked(board, entry, result, fetch, lambda: (_terms(search, 1, early=True) or [''])[0], now)   # a board at all? (nothing read, or a verdict's retry)
+        # a board at all? (nothing read, or a verdict's retry); Why (#4222, Gitar): its pages come from the slice's, not fetched twice
+        return board_check.checked(board, entry, result, through, lambda: (_terms(search, 1, early=True) or [''])[0], now)
 
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
         first = result = one(read_item)
