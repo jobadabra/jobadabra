@@ -1,4 +1,4 @@
-"""The search's last judging pass over the job boards' jobs: what the AI still owes an answer is placed, then title-judged, before the run's end.
+"""The search's last judging pass over the job boards' jobs: what the AI still owes an answer is placed and title-judged side by side, before the run's end.
 Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; L05: "Yes, stop new reads then (Recommended)"):
 - Every board job read before the pass's time (read_budget.pass_at, its one owner) is placed and title-judged in the search; one read after it waits
   for the queue after the search (src/sources/waiting_jobs.py), as before.
@@ -77,10 +77,12 @@ def judge(jobs, track=None):
         sorting.start()
         feed_places.place_jobs(unplaced, chosen=True, land=True)
         said('places')
-        # Why (Gitar on #4300): a title call that never returned kept the pass out past the run's end with no per-board line; the join ends
-        # with the search's clock, and the lines below say what the stores hold then
+        # Why (Gitar on #4300; 14 Nov 2026): a title call that never returns cannot hold the pass past the search's clock;
+        # a worker still out when the join ends is a cut pass, so its summary reports partial answers, never completion
         sorting.join(timeout=max(0.0, end - time_budget.now()))
     _say(unplaced, [job for job in waiting if job.get('title')])
+    if sorting.is_alive():
+        return cut(track)
     return Done([job for job, place, title in _answers(waiting) if place or title is not None], at, places, titles, None, owed=waiting)
 
 

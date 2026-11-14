@@ -212,8 +212,16 @@ class Beside:
                 found, views = self.groups.get_nowait()
             except queue.Empty:
                 return
+            # Why (#4302, 14 Nov 2026): groups can land during the pass wait or after its hand-over; only this cache owner deduplicates,
+            # before recording or adding waiting rows, so neither a stale group nor the pass can list an already listed URL again
+            seen, fresh = {item.get('url') for item in self.matched}, []
+            for job in found:
+                if job.get('url') and job['url'] in seen:
+                    continue
+                fresh.append(job)
+                seen.add(job.get('url'))
             with batch_scope.using(views):
-                matched = aggregators.kept(feed_db, boards_ahead.NAME, found)
+                matched = aggregators.kept(feed_db, boards_ahead.NAME, fresh)
             if matched:
                 on_jobs(matched)
                 self.matched += matched
@@ -233,7 +241,7 @@ class Beside:
 
     def _pass(self):
         """The lane's last judging pass, in a thread of its own at the pass's time (read_budget.pass_at), whatever the main thread is doing: the jobs the
-        lane read that the AI still owes an answer are placed, then title-judged (src/sources/board_pass.py), into the shared answer stores only.
+        lane read that the AI still owes an answer are placed and title-judged side by side (src/sources/board_pass.py), into the shared answer stores only.
         Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; sa, try 2 of #4187)."""
         from . import board_pass, read_budget
         try:
@@ -283,17 +291,14 @@ class Beside:
         # Why (#4199 try 3, pair 43604153744, d05): a pass still out at the deadline listed nothing; what its answers cover by then is listed
         done = self.done_pass if self.passed.is_set() else board_pass.cut(self.track) if self.track is not None else None
         listed = 0
-        if done is not None and board_pass.listable(done):
-            # Why (Gitar on #4302): a job a group listed before this hand-over was kept again: recorded, shown and counted twice (board_pass.owed
-            # holds each url once, so the pass's own list repeats none); its waiting row leaves with the listed ones below
-            already = {item.get('url') for item in self.matched}
-            again = [job for job in board_pass.listable(done) if job.get('url') not in already]
+        if done is not None:
             before = len(self.matched)
+            again = board_pass.listable(done)
             if again:
                 self._queue(again)
                 self.deliver(feed_db, on_jobs)
-            listed = len(self.matched) - before
-            # Why (Gitar on #4187): a job the pass refused (title no, place outside) kept its waiting row and the queue asked about it again
+            listed = len({job.get('url') for job in done.owed} & {item.get('url') for item in self.matched[before:]})
+            # Why (Gitar on #4187; 14 Nov 2026): every refused job leaves waiting, even when all places are vague and none can be listed
             waiting_jobs.listed(feed_db, board_pass.settled(done, {item.get('url') for item in self.matched}))
         if done is not None and not done.why:
             print(done.accounted({item.get('url') for item in self.matched}), flush=True)
