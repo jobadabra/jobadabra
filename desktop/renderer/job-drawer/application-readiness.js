@@ -3,8 +3,8 @@
 // Why: renderer/apply-readiness-view.js (the owner's request, once). Invariant: no password ever reaches this view; the model (apply-readiness-view.js accountOf) passes host, e-mail and state only.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-import {el} from '../components.js';
-import {button, card, group, iconRow, skeleton, stateCard} from './parts.js';
+import {el, pill} from '../components.js';
+import {button, card, factStrip, foldCard, iconRow, skeleton, stateCard} from './parts.js';
 import {accountOf, readinessOf} from '../apply-readiness-view.js';
 import {checkJob, readOf} from '../pages/jobs-triage.js';
 import {stepsOf} from '../readiness-steps.js';
@@ -27,15 +27,48 @@ const checkButton = (ctx, redraw, label) => {
   return node;
 };
 
-/** The Apply readiness part: "Not checked yet" with Check apply readiness, or what the check found, what is missing, and Check again. */
+const TODO_ICON = {'sign-in': 'key', account: 'user', check: 'shield', detail: 'edit'};   // what each kind of to-do asks of the person
+
+/** The check log, folded: each finished step with its seconds and a bar of its share of the slowest step (stepsOf: this window's last check of the job, else the steps stored with it). */
+function checkLog(url, stored) {
+  const steps = stepsOf(url, stored);
+  if (!steps.length) return null;
+  const total = steps.reduce((sum, step) => sum + step.seconds, 0), longest = Math.max(1, ...steps.map(step => step.seconds));
+  const rows = steps.map(({words, seconds}) => {
+    const row = el('div', 'jd-readiness-step');
+    const bar = el('span', 'jd-readiness-bar');
+    bar.style.setProperty('--share', `${Math.round((seconds / longest) * 100)}%`);
+    row.append(el('span', '', words), bar, el('span', 'muted small', t('helperTail.triageStepSeconds', {count: seconds})));
+    return row;
+  });
+  return {total, node: foldCard({iconName: 'clock', title: t('pagesReadinessTab.checkLog'), when: t('helperTail.triageStepSeconds', {count: total})}, ...rows)};
+}
+
+/**
+ * The Apply readiness part: "Not checked yet" with Check apply readiness; else one summary card (the outcome, the form's required questions as counts, how long the check took, Check again;
+ * the drawer's footer already opens the posting), what needs the person (one row each), and the check log folded.
+ * Why (14 Nov 2026, #4325, owner: "it's too basic. too broken" · "this should be a collapsed log" · "On the main content, we should show more details. How many fields... how much it took").
+ */
 export function readinessView(ctx, redraw) {
   const view = readinessOf(readOf(ctx.job.url));
   if (!view.checked) return [stateCard({icon: 'search', title: t('pagesReadinessTab.notCheckedTitle'), text: t('pagesReadinessTab.notCheckedText'), actions: [checkButton(ctx, redraw, view.button)]})];
-  const head = stateCard({icon: view.missing.length ? 'alert' : 'check-circle', tone: TONE[view.chip.tone] || 'info', title: view.chip.label, text: view.found, actions: [checkButton(ctx, redraw, view.button)]});
-  const missing = view.missing.length ? view.missing : [t('pagesReadinessTab.nothingMissing')];
-  // Why (14 Nov 2026, #4325, owner: "Each of them with seconds of how much it took. and then I should see the end result, the outcome"): the outcome first, then this window's steps of the check.
-  const steps = stepsOf(ctx.job.url).map(({words, seconds}) => `✓ ${words} · ${t('helperTail.triageStepSeconds', {count: seconds})}`);
-  return [head, group(t('pagesReadinessTab.missing'), missing), ...(steps.length ? [group(t('pagesReadinessTab.howItWent'), steps)] : [])];
+  const log = checkLog(ctx.job.url, readOf(ctx.job.url)?.steps);
+  const head = el('div', 'jd-readiness-head');
+  head.append(pill(view.chip.label, TONE[view.chip.tone] || 'info', {dot: true}), el('b', '', view.todo.length ? t('pagesReadinessTab.toDoLine', {count: view.todo.length}) : t('pagesReadinessTab.readyLine')));
+  const {questions, answered} = view.counts;
+  const unread = t('pagesReadinessTab.notRead');
+  const cells = [
+    {icon: 'file-text', label: t('pagesReadinessTab.questions'), value: questions === null ? unread : String(questions)},
+    {icon: 'check-circle', label: t('pagesReadinessTab.answered'), value: answered === null ? unread : String(answered)},
+    {icon: 'alert', label: t('pagesReadinessTab.toDo'), value: String(view.todo.length)},
+    ...(log ? [{icon: 'clock', label: t('pagesReadinessTab.took'), value: t('helperTail.triageStepSeconds', {count: log.total})}] : []),
+  ];
+  const actions = el('div', 'jd-actions');
+  actions.append(checkButton(ctx, redraw, view.button));
+  const summary = el('section', 'jd-card jd-readiness');
+  summary.append(head, factStrip(cells), actions);
+  const todo = view.todo.length ? card(t('pagesReadinessTab.missing'), ...view.todo.map(item => iconRow(TODO_ICON[item.kind] || 'edit', item.words))) : null;
+  return [summary, todo, log?.node].filter(Boolean);
 }
 
 const NEED = {'sign-in': ['shield', 'pagesReadinessTab.needSignIn'], create: ['user', 'pagesReadinessTab.needCreate'], none: ['check-circle', 'pagesReadinessTab.needNone'], unknown: ['info', 'pagesReadinessTab.needUnknown']};
