@@ -275,7 +275,8 @@ def outcome(url, status, html, title='', final='', now=None, step='download', ca
     state = 'read' if result['jobs'] else 'empty'
     from .. import role_kinds
     titles = [job.get('title') for job in result['jobs'] if isinstance(job, dict)]
-    _keep(host, url, state, '', now, jobs=len(result['jobs']), kinds=role_kinds.mix(titles) if titles else None, step=step, route=route_of(final, html) if result['jobs'] else None)
+    if not cards:   # Why (Gitar on #4320): a reuse is another CI search's read; this install's memory keeps only reads of its own browser
+        _keep(host, url, state, '', now, jobs=len(result['jobs']), kinds=role_kinds.mix(titles) if titles else None, step=step, route=route_of(final, html) if result['jobs'] else None)
     if cards:   # Why (Gitar on #4306): reused jobs were read by another CI search: nothing was opened here, so no browser read is claimed or counted
         print(f"Refused sites: {host}: reused {len(result['jobs'])} job(s) another CI search read today, {result.get('fits', 0)} matching your search; nothing opened")
     else:

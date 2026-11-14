@@ -179,9 +179,10 @@ class SharedMarkReuseTest(StoreFixture, unittest.TestCase):
 
     def test_a_reuse_claims_no_browser_read_and_counts_no_read_method(self):
         cards = [{'title': 'Truck driver C+E', 'url': 'https://www.trans.bg/job/1', 'place': 'Sofia'}]
-        with mock.patch('src.read_methods.note_extension') as note, mock.patch('builtins.print') as said:
+        with mock.patch('src.read_methods.note_extension') as note, mock.patch('builtins.print') as said, mock.patch.object(refused_reads, '_keep') as keep:
             refused_reads.outcome('https://www.trans.bg/search?q=driver', 200, '', final='https://www.trans.bg/search?q=driver', now=NOW, step='headless', cards=cards)
         note.assert_not_called()
+        keep.assert_not_called()   # Gitar on #4320: this install's memory gets no read of its own browser
         line = ' '.join(str(call.args[0]) for call in said.call_args_list)
         self.assertIn('another CI search read today', line); self.assertNotIn('in your browser', line)
 
