@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra conserve la connexion LinkedIn dans le trousseau système. Cet ordinateur n’a pas encore de stockage adapté. Rien n’a été ouvert.",
   "linkedinStayedOff": "Recherche LinkedIn restée désactivée",
   "linkedinNotKept": "Vous êtes connecté, mais Jobadabra n’a pas pu conserver la connexion.",
+  "linkedinChromeNoCopy": "Chrome n’a pas envoyé la connexion LinkedIn à temps. Ouvrez à nouveau la connexion LinkedIn pour réessayer.",
   "linkedinPopupEnded": "Google ou Apple peuvent refuser la connexion dans cette fenêtre.",
   "linkedinChromeWay": "Connectez-vous plutôt via Chrome : rouvrez la connexion LinkedIn et choisissez Utiliser ma connexion LinkedIn de Chrome.",
   "linkedinChromeMissing": "Connectez-vous plutôt via Chrome : connectez l’extension dans Paramètres → Connexions → Extension Chrome, puis choisissez Utiliser ma connexion LinkedIn de Chrome.",

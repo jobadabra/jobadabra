@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra хранит вход LinkedIn в системной связке ключей. На этом компьютере ещё нет подходящего хранилища. Ничего не открывалось.",
   "linkedinStayedOff": "Поиск LinkedIn остался выключенным",
   "linkedinNotKept": "Вы вошли, но Jobadabra не удалось сохранить вход.",
+  "linkedinChromeNoCopy": "Chrome не прислал вход в LinkedIn вовремя. Откройте вход в LinkedIn снова, чтобы попробовать ещё раз.",
   "linkedinPopupEnded": "Google или Apple могут запрещать вход в этом окне.",
   "linkedinChromeWay": "Войдите через Chrome: снова откройте вход в LinkedIn и выберите Использовать мой вход в LinkedIn из Chrome.",
   "linkedinChromeMissing": "Войдите через Chrome: подключите расширение в Настройки → Подключения → Расширение Chrome, затем выберите Использовать мой вход в LinkedIn из Chrome.",

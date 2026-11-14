@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra păstrează autentificarea LinkedIn în portcheiul sistemului. Acest computer nu are încă un depozit potrivit. Nu s-a deschis nimic.",
   "linkedinStayedOff": "Căutarea LinkedIn a rămas dezactivată",
   "linkedinNotKept": "Te-ai autentificat, dar Jobadabra nu a putut păstra autentificarea.",
+  "linkedinChromeNoCopy": "Chrome nu a trimis la timp autentificarea LinkedIn. Deschide din nou autentificarea LinkedIn ca să încerci iar.",
   "linkedinPopupEnded": "Google sau Apple pot să nu permită autentificarea în această fereastră.",
   "linkedinChromeWay": "Autentifică-te prin Chrome: deschide din nou autentificarea LinkedIn și alege Folosește autentificarea mea LinkedIn din Chrome.",
   "linkedinChromeMissing": "Autentifică-te prin Chrome: conectează extensia în Setări → Conexiuni → Extensie Chrome, apoi alege Folosește autentificarea mea LinkedIn din Chrome.",

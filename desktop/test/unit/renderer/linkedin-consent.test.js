@@ -81,11 +81,14 @@ test('the Chrome way with an older sign-in kept waits for its own copy: none cam
         setImmediate(() => { if (live) t.mock.timers.tick(step); });
         return view;
       }};
+    const toasts = [];
+    consent.bindToast((title, body) => toasts.push(body));
     await consent.refreshLinkedin();
     assert.equal(consent.view.extension, true, 'the Chrome way can be picked');
     assert.equal(await consent.openLinkedinConsent({mode: 'turn-on'}), false);
     live = false;
     assert.equal(settings.linkedinJobs.on, false, 'the older sign-in did not turn LinkedIn jobs on');
+    assert.match(toasts.at(-1) || '', /Chrome sent no LinkedIn sign-in in time/, 'Gitar on #4354: the Chrome way says how it ended');
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });
 

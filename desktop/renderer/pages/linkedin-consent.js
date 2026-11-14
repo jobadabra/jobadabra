@@ -23,7 +23,7 @@ export async function refreshLinkedin() {
   if (before !== `${view.on}:${view.signedIn}:${view.signin?.state}`) window.dispatchEvent(new Event('linkedin-changed'));
   return view;
 }
-const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;
+const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;   // the main side takes the Chrome copy exactly this long (lib/linkedin-session.js WANTED_MS)
 let watching = false;
 // The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until this press's Chrome way ends. Then, only if its copy was kept,
 // the press that asked turns its own switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the asking switch is on.
@@ -39,7 +39,9 @@ async function watchUntilSignedIn() {
       await refreshLinkedin().catch(() => {});
     }
   } finally { watching = false; }
-  return view.chromeWay === 'closed' && view.signedIn ? turnOnKept() : false;
+  if (view.chromeWay === 'closed' && view.signedIn) return turnOnKept();
+  if (view.chromeWay === 'expired') toast(...signInEnded({reason: 'no-copy'}, view));   // Gitar on #4354: the person who went to Chrome hears how it ended
+  return false;
 }
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.
@@ -71,6 +73,7 @@ async function turnOnKept() {
   const answer = await window.pilot.linkedinJobsOn().catch(() => null);
   await refreshLinkedin().catch(() => {});
   if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+  else toast(...signInEnded(answer || {reason: 'needs-signin'}, view));   // Gitar on #4354: a refused turn-on says so, as the window way does
   return !!answer?.ok;
 }
 

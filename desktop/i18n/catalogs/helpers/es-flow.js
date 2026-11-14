@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra guarda la sesión LinkedIn en el llavero del sistema. Este equipo aún no tiene un almacén compatible. No se abrió nada.",
   "linkedinStayedOff": "Búsqueda LinkedIn quedó desactivada",
   "linkedinNotKept": "Iniciaste sesión, pero Jobadabra no pudo conservarla.",
+  "linkedinChromeNoCopy": "Chrome no envió a tiempo la sesión de LinkedIn. Abre de nuevo el inicio de sesión de LinkedIn para volver a intentarlo.",
   "linkedinPopupEnded": "Google o Apple pueden no permitir el acceso en esta ventana.",
   "linkedinChromeWay": "Inicia sesión con Chrome: vuelve a abrir el inicio de sesión de LinkedIn y elige Usar mi sesión de LinkedIn de Chrome.",
   "linkedinChromeMissing": "Inicia sesión con Chrome: conecta la extensión en Ajustes → Conexiones → Extensión de Chrome y luego elige Usar mi sesión de LinkedIn de Chrome.",

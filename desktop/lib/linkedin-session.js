@@ -49,9 +49,9 @@ export function saveSession(storage, cookies, {keychain = realKeychain, now = Da
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   const before = signedIn(storage) ? readSession({keychain})?.li_at : undefined;   // in memory only: the same sign-in saved again keeps its clock (Gitar on #4247)
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {signedIn: true, ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});
-  // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; owner 14 Nov 2026, "Simplify, then reopen (Recommended)" after Gitar on #4297): a sign-in turns no switch on by itself; a saved
+  // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; copiedAt for the start-time sweep, Gitar on #4354; owner 14 Nov 2026, "Simplify, then reopen (Recommended)" after Gitar on #4297): a sign-in turns no switch on by itself; a saved
   // copy is no verdict, so a `signin` a read wrote stays and only its keep time is stamped: the next read that works after Needs you is what says "renewed"
+  save(storage, {signedIn: true, copiedAt: now(), ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});
   return {ok: true};
 }
 
@@ -83,11 +83,15 @@ export const closeSignin = storage => save(storage, {signinOpenAt: undefined});
 /** The Chrome way's state for the window's watch: 'open' (waiting), 'closed' (its copy was kept, or it was never opened) or 'expired' (WANTED_MS passed with no copy). */
 export const chromeWay = (storage, deps = {}) => (storage.settings().linkedinJobs?.signinOpenAt == null ? 'closed' : signinOpen(storage, deps) ? 'open' : 'expired');
 
-/** At start: a sign-in kept while LinkedIn jobs is off (its press never turned the switch on: the window closed meanwhile) is deleted, so no unused credential stays (Gitar on #4350). */
-export function forgetUnused(storage, {keychain = realKeychain} = {}) {
-  if (!signedIn(storage) || state(storage).on) return;
+/**
+ * At start: a sign-in kept while LinkedIn jobs is off (its press never turned the switch on: the window closed meanwhile) is deleted, so no unused credential stays (Gitar on #4350).
+ * Not while a press may still turn it on (Gitar on #4354): a Chrome way still open, or a copy kept in the last WANTED_MS. Easy Apply needs LinkedIn jobs on here, so it uses none.
+ */
+export function forgetUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
+  if (!signedIn(storage) || state(storage).on || signinOpen(storage, {now})) return;
+  if (now() - (Number(storage.settings().linkedinJobs?.copiedAt) || 0) <= WANTED_MS) return;
   keychain.remove(SERVICE, {account: ACCOUNT});
-  save(storage, {signedIn: false, keptAt: undefined});
+  save(storage, {signedIn: false, keptAt: undefined, copiedAt: undefined});
 }
 
 /** LinkedIn jobs on with the sign-in already kept (a Chrome copy that came after its window closed): nothing is asked. -> {ok: true} | {ok: false, reason: 'needs-signin'}. */
@@ -100,9 +104,9 @@ export function turnOn(storage, {keychain = realKeychain} = {}) {
 /** Switch off: the Keychain item and its mark go, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; keptAt, the signedIn mark and an open Chrome way cleared too, 14 Nov 2026; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
+  // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; keptAt, copiedAt, the signedIn mark and an open Chrome way cleared too, 14 Nov 2026; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
   // since the guest read runs while it is off (lib/linkedin-guest-on.js); a new yes starts with no old result, but LinkedIn's wait still holds.
-  save(storage, {on: false, signedIn: false, last: undefined, signin: undefined, noticedAt: undefined, keptAt: undefined, signinOpenAt: undefined});   // an open Chrome way ends too (Gitar on #4340)
+  save(storage, {on: false, signedIn: false, last: undefined, signin: undefined, noticedAt: undefined, keptAt: undefined, copiedAt: undefined, signinOpenAt: undefined});   // an open Chrome way ends too (Gitar on #4340)
   // Why (Gitar on #4008, 13 Nov 2026): LinkedIn Easy Apply (lib/easy-apply-switch.js) uses this sign-in; its saved yes goes with it, so LinkedIn jobs back on never revives it (warnedAt stays: warned once).
   const easy = storage.settings().easyApply;
   if (easy?.on) storage.saveSettings({easyApply: {...easy, on: false}});

@@ -195,3 +195,16 @@ test('at start a sign-in no switch uses is deleted; one LinkedIn jobs uses stays
     assert.equal(settings.settings().linkedinJobs.signedIn, on);
   }
 });
+
+// Gitar on #4354: a restart while a press still waits keeps its sign-in: a Chrome way still open, or a copy kept in the last 150 s.
+test('at start a sign-in a press may still turn on stays: Chrome way open, or a copy just kept', () => {
+  const now = () => Date.parse('2026-11-14T08:00:00Z');
+  for (const [name, mark] of [['Chrome way open', {signinOpenAt: now() - 30000}], ['copy kept 30 s ago', {copiedAt: now() - 30000}], ['copy kept 10 min ago', {copiedAt: now() - 600000}]]) {
+    const settings = store({linkedinJobs: {on: false, signedIn: true, ...mark}}), kc = keychain();
+    kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+    registerLinkedinHandlers({DEMO: false, ipcMain: {handle: () => {}}, server: {setVisitRoute: () => {}}, storage: settings, deps: {keychain: kc, now}});
+    const kept = name !== 'copy kept 10 min ago';
+    assert.equal(kc.items.has(SERVICE), kept, name);
+    assert.equal(settings.settings().linkedinJobs.signedIn, kept, name);
+  }
+});
