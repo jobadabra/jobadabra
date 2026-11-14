@@ -62,7 +62,12 @@ class EmployerCopy(unittest.TestCase):
     def test_an_employer_named_by_its_first_words_finds_its_feed(self):
         [job] = employer_copy.prefer_employer([{**LINKEDIN, 'company': 'Canonical Group Ltd'}], [{'company': 'Canonical Group Limited UK', 'ats': 'greenhouse', 'slug': 'canonical'}],
                                               fetch=self.fetch(FEED), log=lambda line: None)
-        self.assertEqual(self.reads, [('greenhouse', 'canonical')])
+        self.assertEqual((self.reads, job['url']), ([('greenhouse', 'canonical')], FEED[0]['url']))
+
+    def test_a_two_letter_state_is_not_read_as_a_country(self):
+        listed = {**LINKEDIN, 'location': 'New York, NY'}
+        [job] = employer_copy.prefer_employer([listed], INDEX, fetch=self.fetch([{**FEED[0], 'location': 'Remote - NY'}]), log=lambda line: None)
+        self.assertEqual(job['url'], LINKEDIN['url'])
 
     def test_no_feed_starts_after_the_read_cut(self):
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(FEED), log=lambda line: None, past_cut=lambda: True)

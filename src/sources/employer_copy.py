@@ -37,7 +37,8 @@ def _places_agree(listed, feed_place):
     another posting, so any other remote place keeps LinkedIn's copy."""
     if store.cities_agree(listed, feed_place):
         return True
-    feed, country = store.folded(feed_place), store.folded((listed or '').rsplit(',', 1)[-1]).strip() if ',' in (listed or '') else ''
+    feed, last = store.folded(feed_place), store.folded((listed or '').rsplit(',', 1)[-1]).strip() if ',' in (listed or '') else ''
+    country = last if len(last) > 2 else ''   # Why (Gitar on #4259): 'New York, NY' ends in a state code, not a country
     return bool(re.search(WORLDWIDE, feed) or (country and re.search(rf'\b{re.escape(country)}\b', feed)))
 
 
