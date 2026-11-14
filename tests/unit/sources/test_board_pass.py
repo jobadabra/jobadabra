@@ -245,6 +245,7 @@ class TheLastPass(unittest.TestCase):
         self.assertEqual(sorted(job['title'] for job in shown), ['Known role 0', 'Late role 0', 'Late role 1'], 'what both answers cover is listed')
         self.assertEqual([job['title'] for _, job in waiting_jobs.held(self.db, SEARCH)], ['Slow role'], 'the rest waits for the queue')
         self.assertIn(f'Board pass: answered 1 of 2 place(s), 4 of 4 title(s) by the deadline, listed 3, at {PASS} s', self.said)
+        self.assertIn('Board pass: owed 4 · listed 3 · refused 0 · waiting 1 (posting not read 0 · no answer by the deadline 1)', self.said)
         self.model.slow.set()
         self.assertTrue(lane.passed.wait(timeout=30), 'the pass ends once its last call answers (no thread left for the next test)')
 
@@ -281,6 +282,8 @@ class TheLastPass(unittest.TestCase):
         self.assertTrue(feeds.judged_title('Known role 7'), 'positive control: its title was judged yes in the pass')
         self.assertEqual([job['title'] for job in shown], ['Known role 0'], 'never listed on a place nobody answered')
         self.assertEqual([job['title'] for _, job in waiting_jobs.held(self.db, SEARCH)], ['Known role 7'], 'it waits for the queue')
+        self.assertIn('Board pass: owed 2 · listed 1 · refused 0 · waiting 1 (posting not read 1 · no answer by the deadline 0)', self.said,
+                      'every job the pass owed is listed, refused or waiting with its reason (design (b))')
 
     def test_a_board_read_after_the_pass_waits_and_the_queue_lists_its_jobs(self):
         at(100)
