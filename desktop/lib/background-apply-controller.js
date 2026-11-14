@@ -16,7 +16,7 @@ import {createCloudSide} from './background-apply-cloud.js';
 import {cloudAutoOf} from './cloud-auto.js';
 import {waitingMessageFor} from './waiting-message.js';
 import * as journal from './session-journal.js';
-import {easyApplyBatch, LINKEDIN_NOTICES} from './easy-apply-batch.js';
+import {easyApplyBatch, LINKEDIN_NOTICES, LINKEDIN_SEND_NOTICES} from './easy-apply-batch.js';
 
 
 const instances = new WeakMap();
@@ -25,7 +25,7 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.',
   app_closed: 'The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.',
   app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.',
-  no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.', ...LINKEDIN_NOTICES};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.', ...LINKEDIN_NOTICES, ...LINKEDIN_SEND_NOTICES};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 const STATE_WORDS = {ready_for_review: 'Form filled — review the same background form and Submit', waiting_to_submit: 'Filled — waiting before automatic submission; Stop is available',
   submitting: 'Submission attempted — waiting for the site receipt', cloud: 'Handed to our cloud browser: it sends this application by itself, even with your computer off'};   // words-ok: our own state words
@@ -54,12 +54,12 @@ const nothingStarted = tally => {
 };
 
 /**
- * The mode and confirmation a batch is queued under, or the refusal. With `batch` ({autoConfirmedAt}) they are the call's own; without it, the saved Apply mode and its saved confirmation.
+ * The mode and confirmation a batch is queued under, or the refusal. With `batch` ({autoConfirmedAt, linkedinConfirmedAt}) they are the call's own; without it, the saved Apply mode and its saved confirmation.
  * Why (2026-10-29, owner: "go ahead" with the switch; 7 Nov 2026, #3363): Full automation runs only after the person confirmed it, in Settings → Apply or in this very call; the window's pick alone is not enough.
  * The first-choice stamp (`chosenAt`) always comes from Settings: the gate in lib/apply-choice-gate.js stays in front of every batch.
  */
 function batchSettings(saved, mode, batch) {
-  const chosen = batch ? {...saved, mode, autoConfirmedAt: mode === 'auto' ? batch.autoConfirmedAt || '' : ''} : saved;
+  const chosen = batch ? {...saved, mode, autoConfirmedAt: mode === 'auto' ? batch.autoConfirmedAt || '' : '', linkedinConfirmedAt: mode === 'auto' ? batch.linkedinConfirmedAt || '' : ''} : saved;
   if (mode === 'auto' && !chosen.autoConfirmedAt) return {error: batch ? 'Full automation is off until you confirm it: pick it again in Apply to jobs.' : 'Full automation is off until you confirm it in Settings → Apply.'};
   if (chosen.mode !== mode || !chosen.chosenAt) return {error: 'Confirm the saved Apply mode first.'};
   return {chosen};

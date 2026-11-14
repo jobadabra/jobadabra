@@ -1,6 +1,6 @@
 // LinkedIn Easy Apply's limits, plan 2/5 (spec docs/superpowers/specs/2026-11-13-linkedin-easy-apply-design.md; owner, 13 Nov 2026: D2 "15/day, 2 min apart (Recommended)", D3 "Stop 24 h"):
-// whether the next send may go now, the one cap counter, and what a LinkedIn warning does. The Easy Apply controller (plan 4/5) is the only caller: it asks turn() before it opens a job,
-// notes every press of LinkedIn's send button, and notes every warning, checkpoint, sign-in page or 401/403/429/999.
+// whether the next send may go now, the one cap counter, and what a LinkedIn warning does. Callers: lib/easy-apply-batch.js asks turn() before it opens a job and notes every warning,
+// checkpoint or sign-in page (noteStop); the Mac's Submit gate (lib/background-apply-store.js reserve) asks sendTurn() and notes every press of LinkedIn's send button (notePress).
 // Settings: settings.easyApply.cap = {day, sent, lastAt} (day = the computer's local date; a new date starts at 0) and settings.easyApply.stops. The pause itself is LinkedIn's one shared pause
 // (lib/linkedin-session.js notePause / pausedUntil), so a stop here also stops both LinkedIn reads, and their pause stops Easy Apply. Guard: test/unit/main/easy-apply-limits.test.js.
 import {notePause, pausedUntil} from './linkedin-session.js';
@@ -36,6 +36,18 @@ export function turn(storage, now) {
   if (today.sent >= CAP) return {wait: 'cap', until: nextLocalMidnight(now)};
   const next = (Date.parse(today.lastAt) || 0) + GAP_MS;
   return next > now.getTime() ? {wait: 'gap', until: next} : {go: true};
+}
+
+/**
+ * May the Mac's Full automation press send on LinkedIn for this queued item now? `item`: its store state (lib/background-apply-store.js). -> {go: true} | {wait: 'cap' | 'gap', until: epoch ms}
+ * | {stop: 'linkedin_not_confirmed' | 'linkedin_send_off' | 'linkedin_send_paused'} (a stop hands the filled form to the person; a wait keeps it ready).
+ * Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"; D1 "Follow the Apply mode (Recommended)"): only an item carrying its own "LinkedIn may
+ * send" stamp sends; the stop ids differ from lib/easy-apply-batch.js LINKEDIN_NOTICES, whose ids mean "never opened" there, while this form is open for the person.
+ */
+export function sendTurn(storage, item, now) {
+  if (!item?.linkedinConfirmedAt) return {stop: 'linkedin_not_confirmed'};
+  const next = turn(storage, now);
+  return next.wait === 'off' || next.wait === 'paused' ? {stop: `linkedin_send_${next.wait}`} : next;
 }
 
 /** The controller pressed LinkedIn's send button at `now`: one more for today, whatever LinkedIn answers (a press is what LinkedIn sees, so a refused send counts too). */

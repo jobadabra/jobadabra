@@ -5,7 +5,8 @@ import {randomUUID} from 'node:crypto';
 import {canStart, STARTABLE_STAGES} from './apply-eligibility.js';
 import {backgroundWaitNow} from './background-apply-clock.js';
 import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
-import {kitAllows, proofOk, sendAllowedAt} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
+import {kitAllows, linkedinAddress, proofOk, sendAllowedAt} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
+import {notePress, sendTurn} from './easy-apply-limits.js';
 
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
@@ -57,7 +58,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       }
       if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
-      return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, allowIneligible: config.allowIneligible === true, ...(mode === 'auto' ? {autoConfirmedAt: config.autoConfirmedAt || ''} : {}), state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});   // Why (7 Nov 2026, owner, #3363): a batch keeps its confirmation and eligibility choice on its item.
+      return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, allowIneligible: config.allowIneligible === true, ...(mode === 'auto' ? {autoConfirmedAt: config.autoConfirmedAt || '', linkedinConfirmedAt: config.linkedinConfirmedAt || ''} : {}), state: 'queued', owner: '', manualOverride: false, queuedAt: realNow()});   // Why (7 Nov 2026, owner, #3363; 14 Nov 2026, plan 4b-1): a batch keeps its confirmation, its LinkedIn yes and its eligibility choice on its item.
     });
   }
   async function claim(url, session, owner) {
@@ -105,7 +106,11 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       const stop = async reason => { const next = await manual(app, state, reason); return {submit: false, reason, state: next.state}; };
       // Why (7 Nov 2026, owner, #3363): the item's own mode and confirmation decide, not what Settings says now; an item queued without a confirmation (an older build) is handed over, never pressed.
       if (state.mode !== 'auto' || !state.chosenAt || !state.autoConfirmedAt) return stop('mode_changed_or_not_opted_in');
-      if (!sendAllowedAt(url, proof?.page)) return stop('send_not_allowed_here');   // LinkedIn, queued or landed on: filled to ready, the person sends (lib/submit-proof.js sendAllowedAt)
+      // LinkedIn, queued or landed on (Gitar on #4054): its own turn (lib/easy-apply-limits.js sendTurn: the item's "LinkedIn may send" stamp, Easy Apply on, no pause, 15 a day, 2 min apart).
+      const onLinkedin = linkedinAddress(url) || linkedinAddress(proof?.page);
+      if (!onLinkedin && !sendAllowedAt(url, proof?.page)) return stop('send_not_allowed_here');   // an address that cannot be read
+      const linkedin = onLinkedin ? sendTurn(storage, state, new Date(now())) : {go: true};
+      if (linkedin.stop) return stop(linkedin.stop);
       if (!proofOk(proof) || proof.signature !== state.signature) return stop('page_changed_or_incomplete');
       if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
       const checks = config.auto || {};   // Why (2026-10-29, owner: "remove all checks"): no facts, fit or limit gate here; the wait, the page's proof and the kit's eligibility stay
@@ -113,12 +118,15 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       if (!kitAllows({stage: app.stage, kit, allowIneligible: state.allowIneligible})) return stop('not_eligible');   // Why (2026-11-07, owner): stage proof always applies; only explicit false is overridden by this item's saved opt-in (lib/submit-proof.js).
       const waitMs = Math.max(0, Number(checks.waitMin ?? AUTO_DEFAULTS.waitMin)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
+      if (linkedin.wait) return {...deny('waiting'), dueAt: linkedin.until};   // D2: the 2 min gap or tomorrow's first send; the form stays ready
       const reservations = await ask('events', 'list', {kind: RESERVED});
       if (reservations.some(event => event.app_id === app.id)) return stop('attempt_already_reserved');
       if (stopped()) return stop('stopped');
       const attempt = uuid();
       // Why (2026-10-27, owner): reserve before the click; a crash or lost reply consumes the attempt and never creates a retry (the daily and per-employer limits are gone, 29 Oct 2026).
       await ask('events', 'add', {app_id: app.id, kind: RESERVED, at: new Date(now()).toISOString(), source: 'Full automation', source_id: `background:${session}:${attempt}`, changes: {session, attempt}});
+      // Counted with the reservation, before the click: like the attempt, a press whose answer is lost still counts (D2: a refused send counts too), so the cap can only err low.
+      if (onLinkedin) notePress(storage, new Date(now()));
       const next = await save(app, {...state, state: 'submitting', attempt, submittedAt: now()});
       if (stopped()) return stop('stopped');
       return {submit: true, attempt, state: next.state, control: proof.submitControl, signature: proof.signature};

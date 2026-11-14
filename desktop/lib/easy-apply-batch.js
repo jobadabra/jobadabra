@@ -9,7 +9,7 @@
 // Invariant: the session value is only in lib/linkedin-jar.js's Storage.setCookies call: never in a log, a result, the store or a thrown error.
 import * as realSession from './linkedin-session.js';
 import {state as easyApplyState} from './easy-apply-switch.js';
-import {noteCounted, noteStop, stopNotedAt} from './easy-apply-limits.js';
+import {noteCounted, noteStop, stopNotedAt, turn as limitsTurn} from './easy-apply-limits.js';
 import {clearJar, jar} from './linkedin-jar.js';
 import {notRunning} from './background-browser.js';
 import {sweepLinkedinLeftovers} from './linkedin-browser.js';
@@ -22,6 +22,12 @@ export const LINKEDIN_NOTICES = {
   linkedin_paused: 'LinkedIn asked for a check or a sign-in, so Jobadabra leaves LinkedIn alone for 24 hours. Open the job and apply on LinkedIn yourself, or try again later.',
   linkedin_off: 'LinkedIn Easy Apply is off, so this job was not opened. Turn it on in Settings → Connections, or open the job and apply on LinkedIn yourself.',
   linkedin_signin: 'Jobadabra has no LinkedIn sign-in, so this job was not opened. Renew it with ⌘K → Renew LinkedIn sign-in, or apply on LinkedIn yourself.',
+};   // words-ok: our own hand-off reason ids and user-facing words, not page knowledge
+/** What the card says when the Mac's Submit gate hands a filled LinkedIn form to the person (lib/easy-apply-limits.js sendTurn); the form stays open, so these are not LINKEDIN_NOTICES. */
+export const LINKEDIN_SEND_NOTICES = {
+  linkedin_not_confirmed: 'This LinkedIn application is filled, but sending on LinkedIn was not confirmed for this batch. Check it and press Submit yourself, or pick Full automation again (Apply to jobs or Settings → Apply) and confirm sending on LinkedIn.',
+  linkedin_send_off: 'This LinkedIn application is filled, but LinkedIn Easy Apply was turned off before it was sent. Check it and press Submit yourself.',
+  linkedin_send_paused: 'LinkedIn asked for a check or a sign-in, so Jobadabra sends nothing on LinkedIn for 24 hours. This application is filled: check it and press Submit yourself, or try again later.',
 };   // words-ok: our own hand-off reason ids and user-facing words, not page knowledge
 
 /**
@@ -75,7 +81,12 @@ export function easyApplyBatch({storage, send, readSession = realSession.readSes
       const {until, off} = first ? noteStop(storage, new Date(now()), newest) : noteCounted(storage, newest);
       if (first) log('easy-apply', 'LinkedIn showed a check or a sign-in page: all LinkedIn work stops for 24 h', {session: first[0].id, reason: first[1].state.reason, until: new Date(until).toISOString(), off});
     }
-    const waiting = mine.filter(([, each]) => NOT_OPENED.has(each.state.state));
+    const notOpened = mine.filter(([, each]) => NOT_OPENED.has(each.state.state));
+    // Why (14 Nov 2026, plan 4b-1; spec "waits in the queue as queued"): at the day's 15 sends, a Full automation job that would send on LinkedIn stays queued, not opened (its entry
+    // skipped this poll), until the next local date; a job that only fills still opens. A switch that is off or a pause is turn()'s, below.
+    const capped = notOpened.length > 0 && limitsTurn(storage, new Date(now())).wait === 'cap';
+    for (const entry of notOpened) if (capped && entry[1].state.mode === 'auto' && entry[1].state.linkedinConfirmedAt) entry[1] = null;
+    const waiting = notOpened.filter(entry => entry[1]);
     const {reason, session} = waiting.length ? turn() : {};
     // A hand-over write that throws or is refused skips only that job this poll (never opened: the next poll tries again), like the controller's other per-job reads.
     if (reason) for (const entry of waiting) entry[1] = await Promise.resolve().then(() => handOver(entry[0], reason)).then(state => {

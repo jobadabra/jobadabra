@@ -40,7 +40,7 @@ const clamp = (key, value) => {
   return Number.isFinite(n) ? Math.min(high, Math.max(low, n)) : AUTO_DEFAULTS[key];
 };
 
-// settings -> {mode, answers, auto, chosenAt, allowIneligible}: nothing saved yet is Standard automation (pre-selected, owner 26 Oct 2026) with facts only; the eligibility opt-in is false (owner, 7 Nov 2026).
+// settings -> {mode, answers, auto, chosenAt, autoConfirmedAt, linkedinConfirmedAt, allowIneligible}: nothing saved yet is Standard automation (pre-selected, owner 26 Oct 2026) with facts only; the eligibility opt-in is false (owner, 7 Nov 2026).
 // Invariant: mode is always a built mode; an older save of one not built yet reads as Standard automation, the mode that runs and the cards show.
 export function applyOf(settings) {
   const saved = settings?.apply || {}, auto = {...AUTO_DEFAULTS};
@@ -49,7 +49,8 @@ export function applyOf(settings) {
     auto[key] = clamp(key, saved.auto[key]);
   }
   const mode = modeBuilt(saved.mode) ? saved.mode : 'check';
-  return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : '', allowIneligible: saved.allowIneligible === true};
+  return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : '',
+    linkedinConfirmedAt: mode === 'auto' && saved.autoConfirmedAt ? saved.linkedinConfirmedAt || '' : '', allowIneligible: saved.allowIneligible === true};
 }
 // Why (7 Nov 2026, owner: "Change the label (Recommended)" for the Apply button on a job, after it began to follow the saved mode): the button says where the application runs.
 // Same three modes, same order as MODES; `tip` is the button's tooltip.
@@ -63,8 +64,18 @@ export function rowApply(settings) {
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
 /** True once the person confirmed Full automation for the mode it is saved in; a change to another mode clears it. */
 export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
+/**
+ * True when LinkedIn Easy Apply is on: its switch and LinkedIn jobs, which keeps the one sign-in it uses (settings.easyApply, settings.linkedinJobs). The one rule, read by lib/easy-apply-switch.js too.
+ */
+export const easyApplyOn = settings => settings?.easyApply?.on === true && settings?.linkedinJobs?.on === true;
+/**
+ * True when the Full automation confirmation must also carry the LinkedIn line: Easy Apply is on and the saved confirmation has no "LinkedIn may send" yes yet.
+ * Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"; D1 "Follow the Apply mode (Recommended)"): LinkedIn sends only after its own yes,
+ * asked in the same confirmation, so Easy Apply turned on after Full automation was confirmed asks again.
+ */
+export const linkedinUnconfirmed = settings => easyApplyOn(settings) && !applyOf(settings).linkedinConfirmedAt;
 /** True when a save would turn Full automation on without a confirmation yet: the dialog must ask first (save() in pages/apply-settings.js). */
-export const needsAutoConfirm = (change, settings) => change.mode === 'auto' && !change.autoConfirmedAt && !autoConfirmed(settings);
+export const needsAutoConfirm = (change, settings) => change.mode === 'auto' && !change.autoConfirmedAt && (!autoConfirmed(settings) || linkedinUnconfirmed(settings));
 /** A mode that runs in Jobadabra's own hidden browser (Background or Full automation) is the saved mode, so the Applying page offers that browser's download. One rule for the start-up and for a change in Settings.
  *  Why (1 Nov 2026, #2485): keyed on the runner, not on the id 'fill': Full automation shares the runner and the controller refuses its start without the browser (lib/background-apply-controller.js enqueue). */
 export const needsBrowser = settings => modeRunner(applyOf(settings).mode) === 'background';
@@ -74,19 +85,27 @@ export function applyPatch(settings, change = {}, {chosen = false, now = new Dat
   const current = applyOf(settings);
   const next = {...current, ...change, auto: {...current.auto, ...(change.auto || {})}};
   const autoConfirmedAt = next.mode === 'auto' ? change.autoConfirmedAt || current.autoConfirmedAt : '';
-  return {apply: applyOf({apply: {...next, autoConfirmedAt, chosenAt: chosen ? now.toISOString() : current.chosenAt}})};
+  const linkedinConfirmedAt = next.mode === 'auto' ? (change.autoConfirmedAt ? change.linkedinConfirmedAt || '' : current.linkedinConfirmedAt) : '';   // a new yes replaces both stamps
+  return {apply: applyOf({apply: {...next, autoConfirmedAt, linkedinConfirmedAt, chosenAt: chosen ? now.toISOString() : current.chosenAt}})};
 }
 
 /** How long a confirmation given in Apply to jobs counts for the batch it started: it is sent with Start, normally seconds after it was given; a dialog left open longer asks again (code review, 7 Nov 2026). */
 export const BATCH_CONFIRM_MS = 10 * 60000;
 /** True when picking `mode` in Apply to jobs must ask the Full-automation confirmation first: Full automation is not the confirmed saved mode. The pick never writes Settings (owner, 7 Nov 2026, #3363). */
-export const dialogNeedsConfirm = (mode, settings) => mode === 'auto' && !autoConfirmed(settings);
+export const dialogNeedsConfirm = (mode, settings) => mode === 'auto' && (!autoConfirmed(settings) || linkedinUnconfirmed(settings));
 /**
  * The Full-automation confirmation a dialog batch runs under: the stamp this very Start call carries when it is recent, else Settings' own when Settings itself is the confirmed Full automation, else ''.
+ * `key`: 'autoConfirmedAt', or 'linkedinConfirmedAt' for its "LinkedIn may send" yes (plan 4b-1), read the same way.
  * Invariant: a batch's confirmation comes from its own call or from Settings' saved one, never from an earlier batch's dialog (nothing here is stored).
  */
-export function batchConfirmation(stamp, settings, now = Date.now()) {
+export function batchConfirmation(stamp, settings, now = Date.now(), key = 'autoConfirmedAt') {
   const given = Date.parse(stamp);
   if (Number.isFinite(given) && given <= now + 60000 && now - given <= BATCH_CONFIRM_MS) return new Date(given).toISOString();
-  return applyOf(settings).autoConfirmedAt;
+  return applyOf(settings)[key];
 }
+/**
+ * The confirmations a batch picked in Apply to jobs or a job's ⋯ menu runs under (`call`: what that call carries): {autoConfirmedAt, linkedinConfirmedAt}, each read by batchConfirmation;
+ * both '' for any mode but Full automation. lib/apply-handlers.js hands it to the controller (lib/background-apply-controller.js batchSettings).
+ */
+export const batchOf = (picked, call, settings, now = Date.now()) => (picked !== 'auto' ? {autoConfirmedAt: '', linkedinConfirmedAt: ''}
+  : {autoConfirmedAt: batchConfirmation(call?.autoConfirmedAt, settings, now), linkedinConfirmedAt: batchConfirmation(call?.linkedinConfirmedAt, settings, now, 'linkedinConfirmedAt')});

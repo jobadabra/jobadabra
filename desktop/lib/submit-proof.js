@@ -23,9 +23,10 @@ export function kitAllows({stage, kit, allowIneligible}) {
 }
 
 /**
- * Pure: may an automatic press send on the job at `url`? Not on LinkedIn, whose Easy Apply fills up to ready and waits for the person until its own sending PR (plan 4b: the "LinkedIn
- * may send" stamp, 15 a day, 2 min apart); an address that cannot be read is refused too. The person's own Submit press is not an automatic press and is never asked here.
- * Why (13 Nov 2026, owner, LinkedIn Easy Apply: "4a fill, 4b send (Recommended)", asked via AskUserQuestion; "No live Easy Apply send by an agent, ever" for tests): until 4b nothing sends on LinkedIn.
+ * Pure: may an automatic press send on the job at `url`, with no LinkedIn turn asked? Not on LinkedIn, and not on an address that cannot be read. The person's own Submit press is not an
+ * automatic press and is never asked here.
+ * Why (14 Nov 2026, owner, plan 4b-1): the cloud browser never sends on LinkedIn, since the LinkedIn sign-in stays on the computer (owner, 13 Nov 2026: "lets' keep Linkedin and Google
+ * sessions/credentials windows/mac only"); the Mac's gate asks LinkedIn's own turn instead (lib/background-apply-store.js reserve, lib/easy-apply-limits.js sendTurn).
  */
 export function sendAllowedOn(url) {
   try { new URL(String(url)); } catch { return false; }   // no readable address: no press

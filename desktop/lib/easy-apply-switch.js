@@ -3,11 +3,12 @@
 // Settings: settings.easyApply = {on, warnedAt}. Invariant: nothing here writes settings.linkedinJobs, so turning Easy Apply off keeps LinkedIn's shared 24 h pause and its session (spec "One LinkedIn pause").
 // Guard: test/unit/main/easy-apply-switch.test.js.
 import {state as linkedinState} from './linkedin-session.js';
+import {easyApplyOn} from '../renderer/apply-settings-model.js';   // the one rule, shared with the window's Full automation confirmation
 
 /** The saved switch, read through LinkedIn jobs: with LinkedIn jobs off there is no sign-in, so Easy Apply reads as off whatever was saved. Always the same two keys. */
 export function state(storage) {
-  const mine = storage.settings().easyApply || {};
-  return {on: mine.on === true && linkedinState(storage).on, warnedAt: String(mine.warnedAt || '')};
+  const settings = storage.settings();
+  return {on: easyApplyOn(settings), warnedAt: String(settings.easyApply?.warnedAt || '')};
 }
 const save = (storage, patch) => storage.saveSettings({easyApply: {...(storage.settings().easyApply || {}), ...patch}});
 

@@ -33,7 +33,7 @@ test('Stop still ends the batch at its next item, whatever Settings says', async
 function enqueuer(settings) {
   const queued = [];
   const controller = createBackgroundApplyController({}, {
-    store: {queue: async (url, id, mode, config) => { queued.push({url, mode, mode_in_config: config.mode, autoConfirmedAt: config.autoConfirmedAt}); return {session: id, mode, state: 'queued'}; }},
+    store: {queue: async (url, id, mode, config) => { queued.push({url, mode, mode_in_config: config.mode, autoConfirmedAt: config.autoConfirmedAt, linkedinConfirmedAt: config.linkedinConfirmedAt}); return {session: id, mode, state: 'queued'}; }},
     browser: {ready: () => true, start: async () => ({owner: 'o1'})},
     terminals: {list: () => [], byUrl: () => null, startForm: ({id}) => ({id}), record: () => null, report: () => {}},
     config: () => settings, now: () => now, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
@@ -95,4 +95,12 @@ test('a Fill batch holding a job that is still queued for Full automation queues
   const only = await controller.enqueue([{url: 'https://jobs.example.test/a'}], 'fill', {autoConfirmedAt: ''});
   assert.equal(only.ok, false);
   assert.match(only.error, /already queued for Full automation/);
+});
+
+// Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"): the batch's "LinkedIn may send" yes reaches each queued item beside its Full automation yes.
+test('a Full automation batch carries its own "LinkedIn may send" yes to the store; another mode carries none', async () => {
+  const {queued, enqueue} = enqueuer(Object.freeze({mode: 'fill', chosenAt: 'c1', autoConfirmedAt: '', linkedinConfirmedAt: ''}));
+  assert.equal((await enqueue('a', 'auto', {autoConfirmedAt: STAMP, linkedinConfirmedAt: STAMP})).ok, true);
+  assert.equal((await enqueue('b', 'fill', {autoConfirmedAt: '', linkedinConfirmedAt: STAMP})).ok, true);
+  assert.deepEqual(queued.map(item => [item.mode, item.linkedinConfirmedAt]), [['auto', STAMP], ['fill', '']]);
 });

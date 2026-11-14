@@ -56,7 +56,7 @@ test("a mode picked in the job's ⋯ menu runs that job in that mode and never w
   await chrome.press('fill');
   await chrome.press('auto', stamp);
   await chrome.press('auto', '');
-  assert.deepEqual(chrome.enqueued, [['fill', {autoConfirmedAt: ''}], ['auto', {autoConfirmedAt: stamp}], ['auto', {autoConfirmedAt: ''}]], 'the pick, with its own confirmation or none');
+  assert.deepEqual(chrome.enqueued, [['fill', {autoConfirmedAt: '', linkedinConfirmedAt: ''}], ['auto', {autoConfirmedAt: stamp, linkedinConfirmedAt: ''}], ['auto', {autoConfirmedAt: '', linkedinConfirmedAt: ''}]], 'the pick, with its own confirmation or none');
   assert.deepEqual(chrome.opened, [], 'a hidden-browser pick opens no Chrome tab');
   const hidden = picking('fill');
   await hidden.press('check');
