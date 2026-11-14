@@ -42,7 +42,7 @@ def words(base):
 
 
 def record(cases):
-    """Each case's after side: the exact text this branch's field_kind and kind send for its link, or scripted (no ask), pages read once each
+    """Each case's after side: the exact text this branch's field_kind and kind send for its link, or scripted (neither asked), pages read once each
     through the engine's own reader, 2 s apart."""
     import time
     from src.sources import board_check, careers
@@ -63,8 +63,8 @@ def record(cases):
         sent = {}
         board = {'search_url': case['link']}
         board_check.field_kind(board, get, case['roles'], ask=lambda topic, key, text, *_, kept=sent: kept.setdefault('field', text))
-        found, _ = board_check.kind(board, get, case['roles'][0], ask=lambda topic, key, text, *_, kept=sent: kept.setdefault('kind', text))
-        case['after'] = {'scripted': True} if found == 'browser' else sent
+        board_check.kind(board, get, case['roles'][0], ask=lambda topic, key, text, *_, kept=sent: kept.setdefault('kind', text))
+        case['after'] = sent or {'scripted': True}   # neither judge asked: a list built by scripts (or no page at all)
         print(case['id'], sorted(case['after']), flush=True)
 
 

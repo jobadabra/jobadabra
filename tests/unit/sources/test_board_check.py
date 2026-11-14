@@ -81,11 +81,15 @@ class KindTests(unittest.TestCase):
         self.assertIn('Berufskraftfahrer CE, Nürnberg', listing, 'what it lists: the page the read opened')
         self.assertLess(listing.index('Berufskraftfahrer'), listing.index('Autos'), "the page's own links before the site's menu")
 
-    def test_a_search_page_built_by_scripts_is_the_browser_state_and_the_ai_is_not_asked(self):
-        # Why (14 Nov 2026, owner via sa, c12 runs A+B): a list built by scripts read 0 jobs, then its home page was judged 'other' for 30 days
+    def test_a_search_page_built_by_scripts_or_a_short_empty_one_gives_no_verdict_and_the_ai_is_not_asked(self):
+        # Why (14 Nov 2026, owner via sa, c12 runs A+B): a list built by scripts read 0 jobs, then its home page was judged 'other' for 30 days;
+        # Why (#4198, Gitar): a short server-rendered "no results" page is no visit either: no verdict, the read's own state stands
         frame = '<html><head><title>alle jobs</title></head><body><div id="root"></div></body></html>'
-        self.assertEqual(self.kind({'https://haulier.example/jobs?q=Elektriker&l=': frame, 'https://haulier.example/': HAULIER}.get,
-                                   term='Elektriker'), 'browser')
+        empty = '<html><head><title>Elektriker: 0 Treffer</title></head><body><p>Keine Treffer.</p><a href="/">Start</a></body></html>'
+        for page in (frame, empty):
+            with self.subTest(page=page[:40]):
+                self.assertIsNone(self.kind({'https://haulier.example/jobs?q=Elektriker&l=': page, 'https://haulier.example/': HAULIER}.get,
+                                            term='Elektriker'))
         self.assertEqual(self.asked, [])
 
     def test_a_search_page_that_is_not_there_leaves_the_home_page_alone(self):
@@ -161,11 +165,12 @@ class ReadTests(unittest.TestCase):
             with self.subTest(title=title):
                 self.assertEqual(board_check.name_of(f'<title>{title}</title>', 'x.example'), 'TLH Transport Logistics Hauke')
 
-    def test_an_empty_read_of_a_list_built_by_scripts_is_the_browser_state_never_not_a_board(self):
-        self.kinds['b3.example'] = (board_yield.scripted(), '')
+    def test_an_empty_read_of_a_list_built_by_scripts_is_neither_not_a_board_nor_a_visit(self):
+        self.kinds['b3.example'] = (None, '')   # kind(): a frame scripts fill gives no verdict
         self.read([board(3)], spare=[board(5)])
         self.assertNotIn('site_kind', self.data['boards']['b3.example'], "never kept as 'other' for 30 days")
-        self.assertFalse(any('is not a job board' in line for line in self.said), self.said)
+        self.assertNotEqual(self.data['boards']['b3.example'].get('state'), 'browser', 'a readable board is never offered as a visit')
+        self.assertFalse(any('is not a job board' in line or 'refuses automated reading' in line for line in self.said), self.said)
         self.assertEqual(board_check.kind.call_args.args[2], 'Berufskraftfahrer', "the search page asked with the search's first word")
 
     def test_a_not_a_board_verdict_is_asked_again_on_its_retry_and_follows_the_answer(self):
@@ -177,6 +182,14 @@ class ReadTests(unittest.TestCase):
         self.assertEqual([job['url'] for job in jobs], ['https://b4.example/1'], 'its retry was due: read, and its list shows jobs')
         self.assertEqual(self.data['boards']['b4.example']['site_kind'], 'job board', 'the stored kind follows the new answer')
         self.assertEqual([b['host'] for b in board_yield.pick([board(4)], self.data['boards'])], ['b4.example'], 'and stays a board')
+
+    def test_a_not_a_board_verdict_with_no_answer_on_its_retry_is_dropped(self):
+        from datetime import datetime, timedelta, timezone
+        day = datetime(2026, 11, 14, 9, tzinfo=timezone.utc)
+        self.data['boards']['b3.example'] = {'site_kind': 'other', 'state': 'empty', 'last_read': (day - timedelta(days=31)).isoformat()}
+        self.kinds['b3.example'] = (None, '')
+        self.read([board(3)], now=day)
+        self.assertNotIn('site_kind', self.data['boards']['b3.example'], 'no answer: the next empty read asks again')
 
     def test_a_not_a_board_verdict_before_its_retry_is_neither_read_nor_asked(self):
         from datetime import datetime, timedelta, timezone
