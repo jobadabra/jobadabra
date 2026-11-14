@@ -48,10 +48,11 @@ export async function brokerPost(env = process.env, fetchImpl = fetch) {
  * told(item, answer): the engine's answer after a read (refused_reads.outcome) -> the mark: read/empty = opened with its listing, stopped, waiting; else nothing (the page stays
  * reading for the day: nobody asks again).
  */
-export function markSeams(post, {ci = true, sleep = nap} = {}) {
+export function markSeams(post, {ci = true, sleep = nap, now = Date.now} = {}) {
   const ask = async (item, signal) => {
     if (!post) return ci ? {go: false, why: 'no shared CI mark in this run (no GitHub run token): not opened'} : {go: true};
-    for (let asked = 0; ; asked++) {
+    const began = now();
+    for (;;) {
       if (signal?.aborted) return {go: false, why: 'stopped before the shared CI mark answered: not opened'};
       const {status, json} = await post({op: 'reserve', page: item.url}).catch(() => ({status: 0, json: {}}));
       if (status !== 200) return {go: false, why: `the shared CI mark did not answer (HTTP ${status}): not opened`};
@@ -60,8 +61,8 @@ export function markSeams(post, {ci = true, sleep = nap} = {}) {
       // Why (14 Nov 2026, sa for the owner's pairs: "both sides of one pair get the same cards"): a page this run itself is reading (`own`, a pair's other side) is waited for,
       //   bounded only by the press (its Stop and deadline end `signal`); any other search's read stays an immediate skip (owner, 14 Nov 2026: "No wait, skip").
       if (!(json.state === 'reading' && json.own)) return {go: false, why: SKIP[json.state] || `not opened (${json.state || 'no state'})`};
-      // Why (Gitar on #4355): a read that ended without a report (a crash, the other side's deadline) leaves the page reading for the day: past the longest read, skip.
-      if (asked * OWN_STEP_MS >= OWN_MAX_MS) return {go: false, why: `the other side of this pair did not report its read within ${OWN_MAX_MS / 1000} s: not opened`};
+      // Why (Gitar on #4355, #4359): a read that ended without a report (a crash, the other side's deadline) leaves the page reading for the day: past the longest read, skip. Elapsed time, so slow broker calls count too.
+      if (now() - began >= OWN_MAX_MS) return {go: false, why: `the other side of this pair did not report its read within ${OWN_MAX_MS / 1000} s: not opened`};
       await sleep(OWN_STEP_MS, signal);
     }
   };

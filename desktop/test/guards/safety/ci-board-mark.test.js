@@ -68,14 +68,15 @@ test('a pair side waits for its own run\'s read of the page and gets the same ca
   assert.match((await markSeams(own.post, {sleep}).ask(item)).why, /turned CI's browser away before/, 'the other side was stopped: this side skips, never opens');
 });
 
-test('Gitar on #4355: a pair side whose other side never reports stops waiting after the longest read and skips, never opens', async () => {
-  const naps = [];
-  const {post, sent} = answers([{status: 200, json: {go: false, state: 'reading', own: true}}]);
-  const verdict = await markSeams(post, {sleep: async ms => { naps.push(ms); }}).ask(item);
+test('Gitar on #4355/#4359: a pair side whose other side never reports stops after the longest read in elapsed time, slow broker calls included, and skips, never opens', async () => {
+  let clock = 0;
+  const sent = [];
+  const post = async body => { sent.push(body); clock += 20_000; return {status: 200, json: {go: false, state: 'reading', own: true}}; };   // each broker round trip takes 20 s
+  const verdict = await markSeams(post, {sleep: async ms => { clock += ms; }, now: () => clock}).ask(item);
   assert.equal(verdict.go, false);
   assert.match(verdict.why, /did not report its read within 90 s/);
-  assert.equal(naps.length * OWN_STEP_MS, OWN_MAX_MS, 'waited exactly the longest read');
-  assert.equal(sent.length, naps.length + 1);
+  assert.ok(clock >= OWN_MAX_MS && clock < OWN_MAX_MS + 20_000 + OWN_STEP_MS, `ended at ${clock} ms: right after the bound, not after 30 naps`);
+  assert.ok(sent.length <= 5, `${sent.length} asks: the slow calls count against the bound`);
 });
 
 test('the own-read wait ends with the press: a Stop or the deadline during the wait opens nothing and asks no more', async () => {
