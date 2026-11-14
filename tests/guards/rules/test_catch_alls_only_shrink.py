@@ -14,7 +14,7 @@ EXEMPT = {'src/press/stage.py'}   # the guard itself
 # Measured on main 05c6bfbf, then d24b6d0e (lj #3676 moved one from feeds.py to feed_places.py), 10 Nov 2026; cr 4/5 moved 34 reader sites to the guard: `except Exception` / `except BaseException` / bare, per file. Only shrinks.
 KNOWN = {
     'src/press/clock.py': 1,
-    'src/sources/board_check.py': 3,
+    'src/sources/board_check.py': 2,
     'src/sources/board_pages.py': 1,
     'src/sources/board_rendered.py': 1,
     'src/sources/careers.py': 2,

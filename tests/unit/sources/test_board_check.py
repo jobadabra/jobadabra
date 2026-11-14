@@ -25,6 +25,8 @@ SEARCH = {'role_keywords': ['Berufskraftfahrer'], 'locations': {'top_tier': ['n�
 HAULIER = ('<html><head><title>M체ller Spedition | Transporte</title><meta name="description" content="Ihr Partner f체r Megatrailer-Transporte">'
            '</head><body><a href="/leistungen">Leistungsportfolio</a><a href="/frachtanfrage">Frachtanfrage</a>'
            '<a href="/karriere">Offene Stellenangebote</a></body></html>')
+TEXT = '<p>' + 'Transporte in ganz Europa, jeden Tag. ' * 30 + '</p>'   # a page with text, not a frame scripts fill (careers._shell)
+HAULIER = HAULIER.replace('</body>', TEXT + '</body>')
 PORTAL = '<html><head><title>Jobs finden</title></head><body><a href="/s">Jobs suchen</a><a href="/firmen">Arbeitgeber</a></body></html>'
 
 
@@ -47,8 +49,8 @@ class KindTests(unittest.TestCase):
     def ask(self, answer):
         return lambda topic, key, text, answers, instructions: self.asked.append((topic, key, text, answers)) or answer
 
-    def kind(self, fetch, answer='one employer'):
-        return board_check.kind(board(1, 'haulier.example'), fetch, ask=self.ask(answer))[0]
+    def kind(self, fetch, answer='one employer', term=''):
+        return board_check.kind(board(1, 'haulier.example'), fetch, term, ask=self.ask(answer))[0]
 
     def test_no_address_or_no_home_page_is_gone_without_asking_the_ai(self):
         for error in (ValueError('not a public web address'), http(404), http(410), urllib.error.URLError(socket.gaierror(8, 'nodename'))):
@@ -68,6 +70,32 @@ class KindTests(unittest.TestCase):
         self.assertIn('M체ller Spedition', text)
         self.assertIn('Frachtanfrage', text)
         self.assertEqual(board_check.name_of(HAULIER, 'haulier.example'), 'M체ller Spedition')
+
+    def test_the_ai_judges_the_search_page_the_read_opened_not_the_home_page(self):
+        # Why (14 Nov 2026, owner via sa): a classifieds site's job section was judged from its home page (cars, flats) as 'other'
+        pages = {'https://haulier.example/jobs?q=Fahrer&l=': '<title>Fahrer: 12 Anzeigen</title><header><a>Autos</a><a>Wohnungen</a></header>'
+                 '<a>Berufskraftfahrer CE, N체rnberg</a>' + TEXT, 'https://haulier.example/': '<title>Kleinanzeigen</title><a>Autos</a>' + TEXT}
+        self.assertEqual(self.kind(pages.get, answer='job board', term='Fahrer'), 'job board')
+        front, listing = self.asked[0][2].split("Its list for 'Fahrer':")
+        self.assertIn('Kleinanzeigen', front, 'what the site is: its home page')
+        self.assertIn('Berufskraftfahrer CE, N체rnberg', listing, 'what it lists: the page the read opened')
+        self.assertLess(listing.index('Berufskraftfahrer'), listing.index('Autos'), "the page's own links before the site's menu")
+
+    def test_a_search_page_built_by_scripts_is_the_browser_state_and_the_ai_is_not_asked(self):
+        # Why (14 Nov 2026, owner via sa, c12 runs A+B): a list built by scripts read 0 jobs, then its home page was judged 'other' for 30 days
+        frame = '<html><head><title>alle jobs</title></head><body><div id="root"></div></body></html>'
+        self.assertEqual(self.kind({'https://haulier.example/jobs?q=Elektriker&l=': frame, 'https://haulier.example/': HAULIER}.get,
+                                   term='Elektriker'), 'browser')
+        self.assertEqual(self.asked, [])
+
+    def test_a_search_page_that_is_not_there_leaves_the_home_page_alone(self):
+        def fetch(url):
+            if url != 'https://haulier.example/':
+                raise http(404)
+            return HAULIER
+        self.assertEqual(self.kind(fetch, term='Fahrer'), 'one employer')
+        self.assertIn('M체ller Spedition', self.asked[0][2])
+        self.assertNotIn('Its list for', self.asked[0][2], 'a list page that is not there: the home page alone')
 
     def test_no_ai_or_an_answer_outside_the_list_is_unknown(self):
         self.assertIsNone(self.kind(lambda url: HAULIER, answer=None))
@@ -89,7 +117,7 @@ class ReadTests(unittest.TestCase):
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(board_ideas, 'load', side_effect=lambda: self.data),
                       mock.patch.object(board_ideas, 'save'), mock.patch.object(found_boards, '_dead', return_value=set()),
                       mock.patch.object(found_boards.board_employers, 'note'),
-                      mock.patch.object(board_check, 'kind', side_effect=lambda b, fetch: self.kinds.get(b['host'], ('job board', PORTAL))),
+                      mock.patch.object(board_check, 'kind', side_effect=lambda b, fetch, term='': self.kinds.get(b['host'], ('job board', PORTAL))),
                       mock.patch('builtins.print', lambda *a, **k: self.said.append(' '.join(map(str, a))))):
             patch.start()
             self.addCleanup(patch.stop)
@@ -132,6 +160,30 @@ class ReadTests(unittest.TestCase):
         for title in ('TLH Transport Logistics Hauke: Bewerbung', 'TLH Transport Logistics Hauke | Karriere', 'TLH Transport Logistics Hauke - Home'):
             with self.subTest(title=title):
                 self.assertEqual(board_check.name_of(f'<title>{title}</title>', 'x.example'), 'TLH Transport Logistics Hauke')
+
+    def test_an_empty_read_of_a_list_built_by_scripts_is_the_browser_state_never_not_a_board(self):
+        self.kinds['b3.example'] = (board_yield.scripted(), '')
+        self.read([board(3)], spare=[board(5)])
+        self.assertNotIn('site_kind', self.data['boards']['b3.example'], "never kept as 'other' for 30 days")
+        self.assertFalse(any('is not a job board' in line for line in self.said), self.said)
+        self.assertEqual(board_check.kind.call_args.args[2], 'Berufskraftfahrer', "the search page asked with the search's first word")
+
+    def test_a_not_a_board_verdict_is_asked_again_on_its_retry_and_follows_the_answer(self):
+        # Why (14 Nov 2026, owner via sa): a wrong 'other' was read again every 30 days but never judged again, so it never cleared
+        from datetime import datetime, timedelta, timezone
+        day = datetime(2026, 11, 14, 9, tzinfo=timezone.utc)
+        self.data['boards']['b4.example'] = {'site_kind': 'other', 'state': 'empty', 'last_read': (day - timedelta(days=31)).isoformat()}
+        jobs = self.read([board(4)], now=day)
+        self.assertEqual([job['url'] for job in jobs], ['https://b4.example/1'], 'its retry was due: read, and its list shows jobs')
+        self.assertEqual(self.data['boards']['b4.example']['site_kind'], 'job board', 'the stored kind follows the new answer')
+        self.assertEqual([b['host'] for b in board_yield.pick([board(4)], self.data['boards'])], ['b4.example'], 'and stays a board')
+
+    def test_a_not_a_board_verdict_before_its_retry_is_neither_read_nor_asked(self):
+        from datetime import datetime, timedelta, timezone
+        day = datetime(2026, 11, 14, 9, tzinfo=timezone.utc)
+        self.data['boards']['b4.example'] = {'site_kind': 'other', 'state': 'empty', 'last_read': (day - timedelta(days=3)).isoformat()}
+        self.assertEqual(self.read([board(4)], now=day), [])
+        self.assertEqual((board_check.kind.call_count, self.data['boards']['b4.example']['site_kind']), (0, 'other'))
 
     def test_an_empty_real_board_is_checked_once(self):
         self.read([board(3)])
