@@ -297,6 +297,20 @@ class OwnDatabase(unittest.TestCase):
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
         self.assertEqual(cells.seed(sqlite3.connect(':memory:'), os.path.join(os.path.dirname(self.own_path), 'none.sqlite'), out=lambda line: None), 0)
 
+    def test_seeded_facts_keep_every_column_the_rule_included(self):
+        # the same class as the lane merge (Gitar on #4136): a copy path that lists the columns by hand drops the one added last
+        with sqlite3.connect(self.scout_path) as scout_db:
+            scout_db.execute("UPDATE scout_board_facts SET browser = 1, layout = '{\"item\": \"li\"}', listed_families = '[\"kitchen\"]', rule = ?", (scout_board_counts.LISTED_RULE,))
+        own = sqlite3.connect(self.own_path)
+        cells.seed(own, self.scout_path, out=lambda line: None)
+        columns = [row[1] for row in own.execute('PRAGMA table_info(scout_board_facts)')]
+        have = dict(zip(columns, own.execute('SELECT * FROM scout_board_facts').fetchone()))
+        with sqlite3.connect(self.scout_path) as scout_db:
+            want = dict(zip(columns, scout_db.execute(f'SELECT {", ".join(columns)} FROM scout_board_facts').fetchone()))
+        self.assertEqual(have, want)
+        self.assertEqual(have['rule'], scout_board_counts.LISTED_RULE)
+        self.assertEqual({name for name, value in have.items() if value is None}, set(), 'every column of the sample row is filled, so a dropped one shows')
+
     def test_a_board_the_scout_s_browser_was_stopped_at_stays_stopped_in_discovery_on_every_run(self):
         # a refusal is final (CLAUDE.md, refused sites); the stop is written by the Scout's own writer (src/scout_boards.py seed_final), not by hand
         with sqlite3.connect(self.scout_path) as scout_db:

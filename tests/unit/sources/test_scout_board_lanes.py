@@ -121,6 +121,24 @@ class Merge(unittest.TestCase):
             stops = {row[0] for row in db.execute('SELECT host FROM scout_browser_final')}
             self.assertEqual(stops, {'refused-sk.example', 'refused-nl.example'}, 'a stop is final: every lane\'s stops are kept')
 
+    def test_a_merged_fact_keeps_every_column_it_had_the_rule_included(self):
+        # Gitar on #4136: merge listed the columns by hand and dropped `rule`, so a lane's re-measured fact came back with NULL and was due again on every pass.
+        # One loop over the table's own columns: a column added later must travel through merge with no edit to it.
+        lane = os.path.join(self.dir, 'lane-sk.sqlite')
+        shutil.copyfile(self.path, lane)
+        with closing(sqlite3.connect(lane)) as db:
+            scout_boards.ensure(db)
+            columns = [row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')]
+            sample = {'host': 'sk-jobs.example', 'country': 'sk', 'url': 'https://sk-jobs.example/?q={role}', 'families': 'kitchen', 'local_jobs': 7, 'read_at': TODAY.isoformat(),
+                      'browser': 1, 'layout': json.dumps({'item': 'li'}), 'family_jobs': json.dumps({'kitchen': 4}), 'listed_families': json.dumps(['kitchen']), 'rule': scout_board_counts.LISTED_RULE}
+            self.assertEqual(sorted(sample), sorted(columns), 'a new column is added to this sample too: it is what the loop compares')
+            db.execute(f'INSERT OR REPLACE INTO scout_board_facts ({", ".join(columns)}) VALUES ({", ".join("?" * len(columns))})', [sample[name] for name in columns])
+            db.commit()
+        with closing(sqlite3.connect(self.path)) as db:
+            lanes.merge(db, lane, 'sk')
+            row = db.execute('SELECT * FROM scout_board_facts WHERE host = ?', ('sk-jobs.example',)).fetchone()
+            self.assertEqual(dict(zip([c[1] for c in db.execute('PRAGMA table_info(scout_board_facts)')], row)), sample)
+
     def test_only_the_lane_s_own_country_is_copied(self):
         sk = self.lane('sk', [('sk-jobs.example', FAMILIES[:1])])
         with closing(sqlite3.connect(sk)) as db:   # a lane's copy holds every other country as it was at the start: stale by the time it comes back
