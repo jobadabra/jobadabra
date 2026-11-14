@@ -25,14 +25,17 @@ const tmp = fs.realpathSync(os.tmpdir()), base = path.join(tmp, 'jp-same-inputs'
 const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15), work = path.join(base, `${id}-${stamp}-${process.pid}`);
 const share = !args.includes('--no-share'), keep = args.includes('--keep');
 for (const name of ['JOBADABRA_DATA_DIR', 'JOBADABRA_CONFIG_DIR']) {   // the owner's app folder is never a search's: only a throwaway under the temp folder may be named
-  if (process.env[name] && !fs.realpathSync(process.env[name]).startsWith(tmp + path.sep)) { console.error(`${name} names a folder outside ${tmp}: refused`); process.exit(2); }
+  const named = process.env[name];
+  let real = null;
+  try { real = named ? fs.realpathSync(named) : null; } catch { real = path.resolve(named); }   // a folder that does not exist yet is judged by its path
+  if (named && (path.relative(tmp, real).startsWith('..') || path.isAbsolute(path.relative(tmp, real)))) { console.error(`${name} names a folder outside ${tmp}: refused`); process.exit(2); }
 }
 const env = {...cleanEnv(process.env), JOBADABRA_NO_DOTENV: '1', JOBADABRA_AI_CALL_LOG: '1', JOBADABRA_STAGE_LOG: '1',
   ...(share ? {JOBADABRA_TAPE_SHARED: path.join(work, 'shared'), ...(args.includes('--no-ai') ? {} : {JOBADABRA_TAPE_SHARED_AI: '1'})} : {})};
-for (const name of Object.keys(env)) if (/(_API_KEY|_KEY)$/.test(name) || ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL', 'JOBADABRA_EURES', 'JOBADABRA_LINKEDIN_GUEST', 'JOBADABRA_AI_ENGINE'].includes(name)) delete env[name];
+for (const name of Object.keys(env)) if (/(_API_KEY|_KEY)$/.test(name) || ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL', 'JOBADABRA_EURES', 'JOBADABRA_AI_ENGINE'].includes(name) || /^JOBADABRA_LINKEDIN/.test(name)) delete env[name];   // every LinkedIn switch off too: CI and tools never read LinkedIn
 
 const git = (...a) => execFileSync('git', a, {cwd: ROOT, encoding: 'utf8'}).trim();
-const HOOK = "\nif _os.getenv('JOBADABRA_TAPE_SHARED'):\n    from . import same_inputs as _same_inputs  # noqa: E402\n    _same_inputs.install()\n";
+const HOOK = "\nimport os as _os_si  # noqa: E402\nif _os_si.getenv('JOBADABRA_TAPE_SHARED'):\n    from . import same_inputs as _same_inputs  # noqa: E402\n    _same_inputs.install()\n";
 
 /** The folder whose code searches: a folder as it is (it must hold src/same_inputs.py), else a throwaway worktree of the ref, made once, with the module added when the ref predates it. */
 function tree(ref) {
@@ -42,7 +45,7 @@ function tree(ref) {
   }
   const sha = git('rev-parse', '--verify', `${ref}^{commit}`), dir = path.join(base, 'trees', sha.slice(0, 12));
   if (!fs.existsSync(path.join(dir, '.git'))) { fs.mkdirSync(path.dirname(dir), {recursive: true}); git('worktree', 'add', '--detach', dir, sha); }
-  if (!fs.existsSync(path.join(dir, 'src', 'same_inputs.py'))) {
+  if (!fs.readFileSync(path.join(dir, 'src', '__init__.py'), 'utf8').includes('same_inputs')) {   // the module and its hook go in together, once
     fs.copyFileSync(path.join(ROOT, 'src', 'same_inputs.py'), path.join(dir, 'src', 'same_inputs.py'));
     fs.appendFileSync(path.join(dir, 'src', '__init__.py'), HOOK);
   }

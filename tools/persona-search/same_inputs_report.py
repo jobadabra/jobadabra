@@ -50,7 +50,7 @@ listed = {s: {j.get('url') or f"{j['title']}|{j['company']}": j for j in side[s]
 stages, never = {}, {}
 for s in SIDES:
     logs = [os.path.join(d, f) for d, _, files in os.walk(os.path.join(work, s)) for f in files if f == 'run-1.log']
-    stages[s] = inout.stages(logs[0]) if logs else {}
+    stages[s] = (inout.stages(logs[0]) if logs else None) or {}   # a run cut before its first stage line has none: READ 0, not a crash
     never[s] = sum(1 for st in stages[s].values() if all(x == 'read' for x in st))
 L = {s: set(listed[s]) for s in SIDES}
 print(f'{pid}: LISTED both / only A / only B: {cells(L["a"], L["b"])}')

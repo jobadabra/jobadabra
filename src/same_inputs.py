@@ -53,8 +53,13 @@ def _role(base):
     try:
         fd = os.open(base + '.lock', os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
-        with open(base + '.lock', encoding='utf-8') as file:
-            return 'own' if file.read().strip() == SIDE else 'other'
+        for _ in range(200):   # the creator writes its id just after creating the file: an empty file is not "the other search" yet
+            with open(base + '.lock', encoding='utf-8') as file:
+                owner = file.read().strip()
+            if owner:
+                return 'own' if owner == SIDE else 'other'
+            time.sleep(0.01)
+        return 'other'
     os.write(fd, SIDE.encode())
     os.close(fd)
     return 'first'
@@ -95,7 +100,7 @@ def _fetch(real, request, data, timeout, args, kwargs, base, url):
         body = error.read() if hasattr(error, 'read') else b''
         meta.update(status=error.code, error=str(error.reason)[:200], exc='HTTPError')
         failure = error
-    except (urllib.error.URLError, OSError) as error:
+    except Exception as error:   # any failure is written too: the other search must not wait out its limit for a record that never comes
         meta.update(error=f'{type(error).__name__}: {error}'[:200], exc=type(error).__name__)
         failure = error
     meta['seconds'] = round(time.monotonic() - started, 3)
@@ -150,11 +155,18 @@ class _Messages:
             record = json.load(open(base + '.json', encoding='utf-8'))
             time.sleep(record['seconds'] * SCALE)
             _count('ai_replayed')
+            if record.get('error'):
+                raise RuntimeError(record['error'])
             return search_tape._response(record)
         asked, role = time.monotonic(), _role(base)
         if role == 'first':
             _count('ai_live')
-            answer = self.live().messages.create(**params)
+            try:
+                answer = self.live().messages.create(**params)
+            except Exception as error:   # the failure is written too, so the other search raises it at once instead of waiting out its limit
+                _write(base + '.json', json.dumps({'error': f'{type(error).__name__}: {error}'[:300], 'seconds': round(time.monotonic() - asked, 3)}).encode())
+                _log('ai_failed', key, time.monotonic() - asked)
+                raise
             usage = getattr(answer, 'usage', None)
             record = {'model': getattr(answer, 'model', ''), 'stop_reason': getattr(answer, 'stop_reason', 'end_turn'), 'engine': getattr(answer, 'engine', ''),
                       'texts': [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'], 'seconds': round(time.monotonic() - asked, 3),
@@ -168,6 +180,8 @@ class _Messages:
             return self.live().messages.create(**params)
         _count('ai_shared')
         _log('ai_shared', key, time.monotonic() - asked)
+        if record.get('error'):
+            raise RuntimeError(record['error'])
         return search_tape._response(record)
 
 
