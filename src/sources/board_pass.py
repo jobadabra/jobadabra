@@ -35,10 +35,11 @@ def owed(jobs):
 
 class Track:
     """What a pass set out to ask, filled as it starts (judge), so the last hand-over lists what was answered by the deadline when the pass is
-    still out (cut). Written by the lane's pass thread once, before its first AI call; read by the main thread after it."""
+    still out (cut). One attribute, one writer: the lane's pass thread sets `plan` once, before its first AI call, and only when the pass runs;
+    the main thread reads it after (None: not begun or not run)."""
 
     def __init__(self):
-        self.plan, self.why = None, None   # plan: (owed jobs, the ones whose place is asked, the second it began), set in one assignment
+        self.plan = None   # (owed jobs, the ones whose place is asked, the second it began), set in one assignment
 
 
 def judge(jobs, track=None):
@@ -61,7 +62,6 @@ def judge(jobs, track=None):
     at = int(time_budget.now() - began)
     if why:
         print(f'Board pass: not run at {at}s: {why}', flush=True)
-        track.why = why
         return Done([], at, 0, 0, why)
     # only the places still open: a job the place words put in your places waits for its title alone (job_stage.of)
     unplaced = [job for job in waiting if feeds.place_of(job) is None and not feeds.wanted_location(job) and (job.get('location') or '').strip()]
@@ -75,7 +75,9 @@ def judge(jobs, track=None):
         sorting.start()
         feed_places.place_jobs(unplaced, chosen=True, land=True)
         said('places')
-        sorting.join()
+        # Why (Gitar on #4300): a title call that never returned kept the pass out past the run's end with no per-board line; the join ends
+        # with the search's clock, and the lines below say what the stores hold then
+        sorting.join(timeout=max(0.0, end - time_budget.now()))
     _say(unplaced, [job for job in waiting if job.get('title')])
     return Done([job for job, place, title in _answers(waiting) if place or title is not None], at, places, titles, None, owed=waiting)
 
@@ -83,7 +85,7 @@ def judge(jobs, track=None):
 def cut(track):
     """The pass still out at the deadline -> Done with what its answers cover now (Beside.last_pass), or None when it had not begun.
     Each job's answers are read once and the counts come from that one read (Gitar on #4219: the pass's threads are still writing)."""
-    if track.plan is None or track.why:
+    if track.plan is None:
         return None
     waiting, unplaced, at = track.plan
     places, titles = _counts(waiting, unplaced)
