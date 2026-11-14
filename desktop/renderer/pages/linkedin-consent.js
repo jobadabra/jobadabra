@@ -10,7 +10,7 @@ import {CONSENT, askOnPress, notOpened, renewCommandOf, signInEnded} from '../li
 import {NO_PLACE} from '../targets.js';
 import {SIGNIN_WAIT_MS} from '../apply-settings-model.js';
 
-export const view = {loaded: false, on: false, signedIn: false, chromeWay: 'closed', asked: 0, declined: 0, ask: false, hasSession: false, extension: false, easyApply: false, signin: {state: 'ok', why: '', empties: 0}};
+export const view = {loaded: false, on: false, signedIn: false, login: 'none', asked: 0, declined: 0, ask: false, hasSession: false, extension: false, easyApply: false, signin: {state: 'ok', why: '', empties: 0}};
 // Why (31 Oct 2026, push gate no-circular): startup.js imports the pages that import this module, so it hands its toast in (bindToast) instead of being imported here.
 let toast = () => {};
 /** Startup gives this module its toast function once; before that a message is dropped, never thrown. */
@@ -25,22 +25,22 @@ export async function refreshLinkedin() {
 }
 const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;   // the main side takes the Chrome copy exactly this long (lib/linkedin-session.js WANTED_MS)
 let watching = false;
-// The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until this press's Chrome way ends. Then, only if its copy was kept,
+// The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until the one sign-in state leaves 'waiting'. Then, only if its copy was kept,
 // the press that asked turns its own switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the asking switch is on.
-// Why (Gitar on #4350): an older kept sign-in is no answer to this press, so the watch reads this press's own Chrome way (lib/linkedin-session.js chromeWay), never `signedIn` alone.
+// Why (Gitar on #4350, #4358): an older kept sign-in is no answer to this press: opening the Chrome way moves the one state to 'waiting' (lib/linkedin-session.js loginOf), so the watch reads that state, never `signedIn` alone.
 async function watchUntilSignedIn() {
   if (watching) return false;
   watching = true;
   const until = Date.now() + WATCH_FOR_MS;
   try {
     await refreshLinkedin().catch(() => {});
-    while (Date.now() < until && view.chromeWay === 'open') {
+    while (Date.now() < until && view.login === 'waiting') {
       await new Promise(done => setTimeout(done, WATCH_MS));
       await refreshLinkedin().catch(() => {});
     }
   } finally { watching = false; }
-  if (view.chromeWay === 'closed' && view.signedIn) return turnOnKept();
-  if (view.chromeWay === 'expired') toast(...signInEnded({reason: 'no-copy'}, view));   // Gitar on #4354: the person who went to Chrome hears how it ended
+  if (view.login === 'kept') return turnOnKept();
+  if (view.login === 'none') toast(...signInEnded({reason: 'no-copy'}, view));   // Gitar on #4354: the person who went to Chrome hears how it ended
   return false;
 }
 

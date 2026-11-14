@@ -11,15 +11,10 @@ import {easyApplyOn} from '../renderer/apply-settings-model.js';
 export function linkedinRoutes(storage, deps = {}) {
   const note = deps.refresh || realRefresh;
   return {
-    // Why (Gitar on #4276, #4283): a copy is kept only while a Chrome way the window opened still waits (WANTED_MS), or as a refresh of a kept sign-in; it turns no switch on (owner, 14 Nov 2026).
-    session: payload => {
-      if (!session.signinOpen(storage, deps) && !session.signedIn(storage)) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
-      const saved = session.saveSession(storage, payload?.cookies, deps);
-      if (saved.ok) session.closeSignin(storage);
-      return saved;
-    },
-    // Why (#4312): a kept sign-in or an open Chrome consent keeps the extension's grants, so an unfinished consent can deliver its copy before any revoke; a Find jobs press asks for a fresh copy.
-    pending: () => ({revoke: !session.signedIn(storage) && !session.signinOpen(storage, deps), refresh: session.state(storage).on && note.look()}),
+    // Why (Gitar on #4276, #4283, #4358): a copy is taken only while the one sign-in state says so (lib/linkedin-session.js takesCopy: a Chrome way waiting, kept, or lost while on); it turns no switch on.
+    session: payload => (session.takesCopy(storage, deps) ? session.saveSession(storage, payload?.cookies, deps) : {ok: false, error: 'Nobody asked for a LinkedIn sign-in'}),
+    // Why (#4312, Gitar on #4358): the grants follow the same state, so LinkedIn jobs on with its sign-in lost keeps them and a Chrome sign-in again comes back; a Find jobs press asks for a fresh copy.
+    pending: () => ({revoke: !session.keepsGrants(storage, deps), refresh: session.state(storage).on && note.look()}),
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
 }
@@ -27,7 +22,7 @@ export function linkedinRoutes(storage, deps = {}) {
 /** What the window needs: the state, whether the ask is due on this Find jobs press, and whether a session is held (never its value). */
 export function linkedinView(storage, deps = {}) {
   const mine = session.state(storage);
-  return {...mine, signedIn: session.signedIn(storage), chromeWay: session.chromeWay(storage, deps), ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), signin: session.signinView(storage)};   // signin: the one state (#3911)
+  return {...mine, signedIn: session.signedIn(storage), login: session.loginOf(storage, deps).state, ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), signin: session.signinView(storage)};   // signin: the one state (#3911)
 }
 
 /**
@@ -37,17 +32,17 @@ export function linkedinView(storage, deps = {}) {
  */
 export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn, openPage, deps = {}, log = appLog}) {
   const routes = linkedinRoutes(storage, deps);
-  if (!DEMO) session.forgetUnused(storage, deps);   // Gitar on #4350: a sign-in no switch uses is not kept past a start
+  if (!DEMO) session.forgetUnused(storage, deps);   // Gitar on #4350, #4354: a sign-in no press can still turn on is not kept past a start
   server.setVisitRoute('/extension/linkedin-session', payload => routes.session(payload));
   server.setVisitRoute('/extension/linkedin-pending', () => routes.pending());
   server.setVisitRoute('/extension/linkedin-refresh', payload => routes.refresh(payload));
-  ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, signedIn: false, chromeWay: 'closed', asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}, easyApply: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.(), easyApply: easyApplyOn(storage.settings())}));
+  ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, signedIn: false, login: 'none', asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}, easyApply: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.(), easyApply: easyApplyOn(storage.settings())}));
   ipcMain.handle('linkedinJobsAsked', () => { if (!DEMO) session.noteAsked(storage); return {ok: true}; });
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
   ipcMain.handle('linkedinJobsConnect', async () => {
     if (DEMO) return {opened: true};
     const answer = await openPage();
-    if (answer?.opened) session.openSignin(storage);   // Gitar on #4337, #4340: only a page that opened waits for a copy (one that failed or threw never opens the way)
+    if (answer?.opened) session.openSignin(storage, deps);   // Gitar on #4337, #4340: only a page that opened waits for a copy (one that failed or threw never opens the way)
     return answer;
   });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
   // Why (#4301, owner 14 Nov 2026): the asking switch is local to this window press, never stored for a later Chrome copy. Complete it before replying so a renderer close cannot lose the press.
@@ -62,7 +57,6 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
     }
     const got = await signIn();
     const saved = got.ok ? session.saveSession(storage, got.cookies, deps) : got;
-    if (saved.ok) session.closeSignin(storage);   // Gitar on #4328: a Chrome way left open before this window is done too, so its late copy is not taken
     // Gitar on #4317: the answer is the asking switch's own turn-on, so a refused turn-on never reads as "on" (the sign-in stays kept either way)
     const on = !saved.ok || !turnOn ? {ok: true} : session.turnOn(storage, deps);
     log('linkedin-jobs', 'press', {path: 'window', outcome: saved.ok ? (on.ok ? 'signed-in' : `signed-in, ${on.reason}`) : (got.ok ? 'not-kept' : got.reason)});
