@@ -13,7 +13,8 @@
       "prompts": {
         "src/sources/board_check.py": [
           "INSTRUCTIONS",
-          "FIELD_INSTRUCTIONS"
+          "FIELD_INSTRUCTIONS",
+          "JOB_BOARD_EXAMPLES"
         ]
       }
     },

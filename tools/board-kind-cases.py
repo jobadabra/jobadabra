@@ -34,11 +34,14 @@ RIGHT = {'field': {'board': {'field board', 'job board'}, 'other': {'other'}, 'o
 def words(base):
     """{'INSTRUCTIONS': ..., 'FIELD_INSTRUCTIONS': ...} of board_check.py at `base` (git), read without importing it."""
     source = subprocess.run(['git', 'show', f'{base}:src/sources/board_check.py'], cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    found = {}
+    known = {}   # every top-level string constant in order, so one built from another (JOB_BOARD_EXAMPLES) reads as the module does
     for node in ast.parse(source).body:
-        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id in ('INSTRUCTIONS', 'FIELD_INSTRUCTIONS'):
-            found[node.targets[0].id] = ast.literal_eval(node.value)
-    return found
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            try:
+                known[node.targets[0].id] = eval(compile(ast.Expression(node.value), 'board_check', 'eval'), {'__builtins__': {}}, dict(known))
+            except Exception:  # noqa: BLE001 — not a plain string constant (a class, a call): not a prompt
+                continue
+    return {name: known[name] for name in ('INSTRUCTIONS', 'FIELD_INSTRUCTIONS')}
 
 
 def record(cases):
