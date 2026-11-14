@@ -1,5 +1,4 @@
-"""Part 3c prepares _pass/last_pass for direct calls; part 4 starts the pass in production.
-The job boards the run's web search found, read at once, beside the first-jobs slice and the employer sites (owner, 26 Oct 2026: "START A
+"""The job boards the run's web search found, read at once, beside the first-jobs slice and the employer sites (owner, 26 Oct 2026: "START A
 JOB SEARCH WITH SEARCHING ON GOOGLE!"; the pilot search's web search found 4 aviation boards at 37 s that were read after 1,123 employer
 sites, or never). It reads the boards that gave this install jobs in this field and places before (board_yield.working) at once, then
 waits for the web search started with the run (src/sources/board_web.py early) up to WEB_WAIT seconds and reads what it found; each group's
@@ -7,7 +6,8 @@ first pages are read in parallel (src/sources/board_reader.py, which only reads)
 keeps only its best sites (src/sources/read_budget.py short). The full board read reads their next pages later, from the pages fetched here. Without a web search in this
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. Every Find jobs run starts them
 at second 0 as a lane of their own (Beside), ending at the run's end, not at the employer sites' read cut (lanes 4a); a first run's own board
-list (src/first_jobs.py board_jobs) is read in the same lane. Tests: tests/unit/sources/test_boards_first.py, tests/unit/sources/test_board_lane_clock.py."""
+list (src/first_jobs.py board_jobs) is read in the same lane. Tests: tests/unit/sources/test_boards_first.py, tests/unit/sources/test_board_lane_clock.py.
+Standalone _pass/last_pass are prepared here; part 4 starts and connects them in production."""
 from ..press import budget, stage, step_yield
 from ..press.run import Run
 
@@ -54,9 +54,9 @@ class Beside:
         self.count, self.left = threading.Lock(), len(reads)
         self.urls = set()   # the links handed board by board: a list that returns copies of them hands none twice
         self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
-        # Why (part 3c, 14 Nov 2026): part 4 starts _pass and calls last_pass; this preparation starts reader threads only.
         self.read, self.track, self.done_pass = [], None, None
-        self.passed, self.closed, self.woken, self.now = (threading.Event() for _ in range(4))
+        self.passed, self.woken, self.now = (threading.Event() for _ in range(3))
+        self.listed_urls = set()
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
         for thread in self.threads:
@@ -209,19 +209,19 @@ class Beside:
                 found, views = self.groups.get_nowait()
             except queue.Empty:
                 return
-            # Why (#4302, 14 Nov 2026): groups can land during the pass wait or after its hand-over; only this cache owner deduplicates,
-            # before recording or adding waiting rows, so neither a stale group nor the pass can list an already listed URL again
-            seen, fresh = {item.get('url') for item in self.matched}, []
+            # Why (#4302, #4367): only the cache owner remembers successful URL deliveries; unlisted jobs can retry after answers arrive.
+            # Linkless jobs cannot be listed or settled; repeated URLs within a group enter kept only once.
+            fresh = {}
             for job in found:
-                if job.get('url') and job['url'] in seen:
-                    continue
-                fresh.append(job)
-                seen.add(job.get('url'))
+                url = job.get('url')
+                if url and url not in self.listed_urls:
+                    fresh.setdefault(url, job)
             with batch_scope.using(views):
-                matched = aggregators.kept(feed_db, boards_ahead.NAME, fresh)
+                matched = aggregators.kept(feed_db, boards_ahead.NAME, list(fresh.values()))
             if matched:
                 on_jobs(matched)
                 self.matched += matched
+                self.listed_urls.update(item['url'] for item in matched)
                 self.shortened = self.shortened or _enough(self.matched)
 
     def take(self, feed_db, on_jobs, until=None):
@@ -241,16 +241,17 @@ class Beside:
         from . import board_pass, read_budget
         caught = None
         try:
-            # Why (#4315): the guard covers the whole pass lifecycle; any exit without Done retains its published plan for last_pass
+            # Why (#4315, #4367): guard the timed pass lifecycle; failures retain their plan, while an untimed call starts no judge.
             with stage.guard('board pass') as caught:
-                while not self.closed.is_set():
-                    left = read_budget.seconds_left(read_budget.pass_at())
+                while True:
+                    at = read_budget.pass_at()
+                    if at is None:
+                        return
+                    left = read_budget.seconds_left(at)
                     if not left or self.now.is_set():
                         break
                     self.woken.wait(min(left, read_budget.BETWEEN_S))
                     self.woken.clear()
-                if self.closed.is_set():
-                    return
                 with self.count:
                     read = list(self.read)
                 self.track = board_pass.Track()
@@ -266,28 +267,27 @@ class Beside:
     def last_pass(self, feed_db, on_jobs):
         """Explicit cache-owner hand-over: recover available answers, list each URL once, and settle only final rows.
         Part 4 connects this to the search; every wait here uses its existing clock."""
-        from .. import time_budget
         from . import board_pass, read_budget, waiting_jobs
         at, end = read_budget.pass_at(), read_budget.run_end()
         if at is not None and not self.done.is_set() and read_budget.seconds_left(at):
             self.take(feed_db, on_jobs, until=at)
         self.deliver(feed_db, on_jobs)
         if at is not None and self.done.is_set():
-            # Why (#4199, CI store + strategy suites on e0d6e55c): with every board ended the pass still waited for its time, and a search
-            # done early sat idle until it (9 store files past 180 s); try 1 judged here once the lane was done
+            # Why (#4367): once every reader ended, waiting for a later start cannot add jobs to the snapshot.
             self.now.set()
             self.woken.set()
         if at is not None:
-            self.passed.wait(read_budget.seconds_left(time_budget.end()))
-        # Why (#4199 and #4315): an unfinished or failed pass may already have answers; only a Done, never the completion event, replaces its plan
-        done = self.done_pass if self.done_pass is not None else board_pass.cut(self.track) if self.track is not None else None
+            # Why (#4367): preserve the existing tail for search completion, even when the judge hangs.
+            self.passed.wait(read_budget.seconds_left(end))
+        # Why (#4315, #4367): a timed pass recovers its plan unless it returned Done; an untimed hand-over settles no earlier result.
+        done = None if at is None else self.done_pass if self.done_pass is not None else board_pass.cut(self.track) if self.track is not None else None
         if done is not None:
             again = board_pass.listable(done)
             if again:
                 self._queue(again)
                 self.deliver(feed_db, on_jobs)
-            # Why (#4311, owner 14 Nov 2026): one snapshot owns every count and settlement; earlier group deliveries count in both lines
-            settled, lines = done.report({item.get('url') for item in self.matched})
+            # Why (#4311, #4367): the cache owner's listed URL index feeds one snapshot for counts and settlement, including earlier groups.
+            settled, lines = done.report(self.listed_urls)
             waiting_jobs.listed(feed_db, settled)
             for line in lines:
                 print(line, flush=True)

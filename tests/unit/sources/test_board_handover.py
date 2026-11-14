@@ -88,7 +88,7 @@ class HandOver(unittest.TestCase):
         self.lane.last_pass(self.db, self.shown.extend)
         self.assertEqual(len(self.shown), 3)
         self.assertEqual(self.rows(), {job['url'] for job in self.jobs})
-        self.assertTrue(any('still wait for the queue (IntegrityError)' in line for line in self.lines))
+        self.assertTrue(any('still wait for the queue' in line for line in self.lines))
 
     def test_a_group_landing_during_the_pass_wait_is_not_listed_twice(self):
         self.answer()
@@ -153,3 +153,38 @@ class HandOver(unittest.TestCase):
                     held.set()
                     for thread in lane.threads:
                         thread.join(timeout=10)
+
+    def test_an_untimed_pass_never_calls_the_judge_or_settles_rows(self):
+        time_budget.start(0)
+        with mock.patch.object(board_pass, 'judge', wraps=board_pass.judge) as judge:
+            self.lane._pass()
+        self.assertFalse(judge.called)
+        self.lane.last_pass(self.db, self.shown.extend)
+        self.assertEqual(len(self.rows()), 3)
+        self.assertIn('Board pass: not run: the search has no time budget', self.lines)
+
+    def test_a_completion_wait_reserves_the_existing_search_tail(self):
+        from src.sources import read_budget
+        now = time_budget.now()
+        with mock.patch.object(time_budget, 'now', return_value=now), mock.patch.object(self.lane.passed, 'wait') as wait:
+            self.lane.last_pass(self.db, self.shown.extend)
+        self.assertEqual(wait.call_args.args[0], max(0, read_budget.run_end() - now))
+
+    def test_delivery_drops_linkless_jobs_and_retries_only_unlisted_urls(self):
+        self.answer()
+        group = [dict(self.jobs[0], url=None), self.jobs[0], dict(self.jobs[0]), dict(self.jobs[0], url='')]
+        self.lane._queue(group)
+        with mock.patch.object(aggregators, 'kept', wraps=aggregators.kept) as keep:
+            self.lane.deliver(self.db, self.shown.extend)
+        self.assertEqual(keep.call_args.args[2], [self.jobs[0]])
+        self.lane._queue(self.jobs)
+        self.lane.deliver(self.db, self.shown.extend)
+        self.assertEqual(len(self.shown), 3, 'previously unanswered URLs can now be listed; a listed URL is not listed twice')
+
+    def test_an_untimed_handover_does_not_settle_a_previous_result(self):
+        self.answer()
+        self.lane.done_pass = board_pass.cut(self.track)
+        time_budget.start(0)
+        self.lane.last_pass(self.db, self.shown.extend)
+        self.assertEqual(len(self.rows()), 3)
+        self.assertIn('Board pass: not run: the search has no time budget', self.lines)

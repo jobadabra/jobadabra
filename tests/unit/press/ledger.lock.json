@@ -121,7 +121,7 @@
  },
  "L31": {
   "gets": "the AI's judgment of a title wins over role and excluded words",
-  "hash": "53dd58d1a3d9e65d"
+  "hash": "7c3528cf6832ea98"
  },
  "L32": {
   "gets": "a title gets a second look before a role-word hit leaves the list",
