@@ -343,7 +343,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             board = {**board, 'rendered': True}
         board = {**board, **({'charset': entry['charset']} if entry.get('charset') else {})}   # its search words in its own charset (board_paths.read)
         handed = _claims.hand_over(board['host'], early)   # Why (14 Nov 2026, #4145): only a full read takes an entry, and only a finished early read's: a read still open keeps its claim
-        return (board, entry, (handed[1] or {}) if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 else {}, {}, proposed)
+        return (board, entry, handed[1] if handed else {}, {}, proposed)
     reads = [item(board) for board in todo]
     late_pages = {} if early else {board['host']: page for board in todo if (page := late_reads.take('board', board['host'])) is not None}
     if late_pages:
@@ -399,6 +399,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 taken.setdefault(read_item[0]['host'], []).append((spare_item, result))
             name = spare_item[0]['name']
         return first
+
+    one_or_spare = _claims.releasing(one_or_spare, early)   # a read that raised has read nothing: its claim goes back (board_claims.py)
 
     def keep(read_item, result, after=None):   # after: the board this one was read in place of
         board, entry, _, fetched, proposed = read_item

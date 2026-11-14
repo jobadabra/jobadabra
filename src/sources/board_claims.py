@@ -4,7 +4,8 @@ group ("ALO.bg", 57 s to 85 s); the two names have one host, and nothing recorde
 Design: a board is one host (found_boards keeps every board by it). The registry is found_boards._early, the early reads' hand-over, with no second
 state beside it (tests/guards/rules/test_run_state_only_shrinks.py): an early read puts its host there when it STARTS (pages None) and fills it when
 it ends; a later early read of a host that is there leaves it out and says so; the full read (not early) is never held back, it takes the pages as
-before. Without a press (JOBADABRA_SEARCH_AT unset: a CLI run, a unit test) nothing is held. An entry older than `lapse` seconds is a past press's.
+before. The claim lives until the read ends: finished (pages), or raised (given back, `releasing`); a read cut at the search's time is still being read and keeps it.
+One owner of "is the entry still a past press's": `_live` (the lapse), for take, free and hand_over. Without a press (JOBADABRA_SEARCH_AT unset: a CLI run, a unit test) nothing is held. An entry older than `lapse` seconds is a past press's.
 Tests: tests/unit/sources/test_board_claims.py."""
 import os
 import time
@@ -39,7 +40,19 @@ class Claims:
         """The entry of a FINISHED early read of `host`, taken out for the full read that follows it; None for an early read, a host never read early, or
         one still being read (pages None): its claim stays until it ends (Gitar on #4145)."""
         entry = self.held.get(host)
-        return self.held.pop(host, None) if not early and entry is not None and entry[1] is not None else None
+        return self.held.pop(host, None) if not early and entry is not None and entry[1] is not None and self._live(host) else None
+
+    def releasing(self, read, early):
+        """`read(read_item)` that gives back the item's claim when it raises: a read that failed has read nothing, so another lane may read the board.
+        A read cut at the search's time is not given back: it is still being read (found_boards: its result goes to late_reads)."""
+        def run(read_item):
+            try:
+                return read(read_item)
+            except BaseException:
+                if early and (self.held.get(read_item[0]['host']) or (0, 0))[1] is None:
+                    self.held.pop(read_item[0]['host'], None)
+                raise
+        return run
 
     def first(self, boards, early=True):
         """`boards` that this early read takes, in order (a host repeated in the list is read once)."""

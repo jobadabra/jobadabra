@@ -45,12 +45,15 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
             self.addCleanup(patch.stop)
         found_boards._early.clear()
         self.addCleanup(found_boards._early.clear)
-        self.reads, self.said, self.gate = [], [], None
+        self.reads, self.said, self.gate, self.started, self.crash = [], [], None, threading.Event(), None
         self.fetch = lambda url: '<html></html>'   # no test here reaches a real site (the full read looks at a board's home page)
 
     def read(self, boards, early=True, spare=()):
         def read_board(board, search, fetch, route=None, early=False, show=None):
             self.reads.append((board['name'], early))
+            self.started.set()
+            if self.crash:
+                raise self.crash
             if self.gate is not None and board['host'] == 'alo.bg':   # only the board under test is held
                 self.gate.wait(5)
             return ([{'title': 'LKW Fahrer', 'url': f"https://{board['host']}/1"}], 'ok', None)
@@ -71,8 +74,7 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         self.gate = threading.Event()
         running = threading.Thread(target=self.read, args=([board('alo.bg')],))
         running.start()
-        while not self.reads:
-            self.gate.wait(0.01)
+        self.assertTrue(self.started.wait(5), 'the early read started')
         self.read([board('ALO.bg')])
         self.gate.set()
         running.join(10)
@@ -140,24 +142,21 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
 
     def test_a_board_being_read_is_not_handed_to_the_full_read_until_it_has_its_pages(self):
         """Gitar on #4145: an entry for a read still open fed not_read_since(handed=) as 'read early, next pages still to read'."""
-        self.gate, handed = threading.Event(), []
+        self.gate, handed_seen = threading.Event(), []
         running = threading.Thread(target=self.read, args=([board('alo.bg')],))
         running.start()
-        while not self.reads:
-            self.gate.wait(0.01)
+        self.assertTrue(self.started.wait(5), 'the early read started')
         self.assertIsNone(found_boards._early['alo.bg'][1], 'being read: no pages yet')
         def seen(boards, kept, since, handed=()):
             handed_seen.append(set(handed))
             return list(boards)
-        handed_seen = handed
         with mock.patch.object(found_boards.board_yield, 'not_read_since', seen):
             self.read([board('TRANS.BG', 'trans.bg')], early=False)
         self.gate.set()
         running.join(10)
-        self.assertEqual(handed, [set()], 'nothing handed while the early read has no pages')
+        self.assertEqual(handed_seen, [set()], 'nothing handed while the early read has no pages')
         self.read([board('TRANS.BG', 'trans.bg')], early=False)
         self.assertIsNotNone(found_boards._early['alo.bg'][1], 'finished: its pages are the full read\'s')
-
 
     def test_a_full_read_does_not_take_the_claim_of_an_early_read_still_open(self):
         """Gitar on #4145: the full read popped the (time, None) entry of a running early read, and a second early read then read the board too."""
@@ -166,6 +165,21 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         self.assertEqual(found_boards._early.get('alo.bg', (0, 0))[1], None, 'still being read: the claim stays')
         self.read([board('ALO.bg')])
         self.assertEqual(self.reads, [('alo.bg', False)], 'the second early read leaves it out')
+
+    def test_a_read_that_raised_gives_its_claim_back(self):
+        """Gitar on #4157: a read that failed before any page stayed claimed for 60 minutes and no other lane read the board."""
+        self.crash = RuntimeError('a read that fails')
+        with self.assertRaises(RuntimeError):
+            self.read([board('alo.bg')])
+        self.crash = None
+        self.read([board('ALO.bg')])
+        self.assertEqual([name for name, _ in self.reads], ['alo.bg', 'ALO.bg'])
+
+    def test_a_stale_finished_entry_is_not_handed_to_the_full_read(self):
+        """One owner of the 60-minute lapse (Claims._live): take, free and hand_over."""
+        found_boards._early['alo.bg'] = (time.monotonic() - found_boards.EARLY_MINUTES * 60 - 1, {'https://www.alo.bg/': '<html>old</html>'})
+        self.assertIsNone(found_boards._claims.hand_over('alo.bg', early=False))
+
 
 class NamedLaterTests(unittest.TestCase):
     def test_only_the_boards_that_started_are_said_and_read(self):
