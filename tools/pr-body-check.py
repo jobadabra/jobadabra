@@ -42,10 +42,12 @@ def title_gap(title):
 
 
 # The files that decide what Find jobs reads, keeps, scores or orders (the finish-line spec, guardrail G4), and the ones that write its words and places before it reads.
-# Why (13 Nov 2026, owner via sa: "let's close these gaps"): the strategy draft (desktop/lib/strategy*.js), the place reader (src/places.py, src/fragment_words.py), the board ideas
+# Why (13 Nov 2026, owner via sa: "let's close these gaps"; 14 Nov: geo, employer index and title queue added, see below): the strategy draft (desktop/lib/strategy*.js), the place reader (src/places.py, src/fragment_words.py), the board ideas
 # (src/ai/board_ideas.py) and the search settings (src/notion/search_settings.py) change what a first search asks; #2977 (places.py) and #3857 (strategy places) changed it unmeasured.
-SEARCH_FILES = re.compile(r'^(src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots|board_ideas)\.py$|(ai/)?(time_budget|job_rank)\.py$'
-                          r'|places\.py$|fragment_words\.py$|notion/search_settings\.py$)|desktop/lib/strategy(-draft[^/]*)?\.js$)')
+# Why (14 Nov 2026, mac-95 via sa): src/geo.py (the place map) and the scoring and title-queue modules a press imports were missing, so #4280 (geo only) got no pair and "All checks passed" went green;
+#   tests/tooling/ci/test_search_files_reach.py now fails for any module a search entry file imports that is neither listed here nor named there as not a search decision.
+SEARCH_FILES = re.compile(r'^(src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|title_queue|batch_scope|slots|board_ideas)\.py$|(ai/)?(time_budget|job_rank)\.py$'
+                          r'|places\.py$|geo\.py$|employer_index\.py$|fragment_words\.py$|notion/search_settings\.py$)|desktop/lib/strategy(-draft[^/]*)?\.js$)')
 # Why (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Accept your measure (Recommended)"): a move from saved runs (before) to the owner's
 # chosen after-run is also a measure: `(<N> saved runs before, <M> run(s) after)`, its after-number `pending` while that run runs (the pair's row holds the PR's "All checks passed" until then, tools/pr_verdict_pair_gate.py).
 # Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after. not 3 (which are 6)"): a search PR's live proof is one search a side, started in the same minute, with the person's usual run-to-run difference beside it;
