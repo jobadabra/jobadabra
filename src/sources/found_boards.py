@@ -64,7 +64,8 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
     sitemap that gave the jobs (kept, tried first next time), None when the search page itself did. A page no free step reads tries its
     declared routes (src/sources/board_routes.py); a script-only one with none is read by the headless browser (show: careers.renderer(),
     owner 19 Oct 2026), else 'browser' (a visit); a readable one goes to the AI page reader once per board per run, within its caps, and the
-    recipe it leaves replays with no model next time. early: the first-jobs slice; in the boards' lane it then goes on as the full read (board_pages.held)."""
+    recipe it leaves replays with no model next time. early: the first-jobs slice; in the boards' lane its full read (other words, next pages) is
+    handed to the lane, which reads it after the first-jobs step (board_pages.held, boards_first.Beside.go_on): this read ends with its slice."""
     from .. import read_methods
     with read_methods.reading(board.get('host') or board.get('search_url'), 'ai_board') as read:
         fetch, ai = board_pages.once(fetch) if early else fetch, {'asks': 0, 'words': set()}   # the read that goes on asks the slice's pages again: from memory, and the AI page reader's tally is the board read's (Gitar, #4180)
@@ -73,13 +74,12 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
         if why:
             print(f"Job boards: {board.get('name') or board.get('host')}: next pages and other words not asked ({why})", flush=True)
         elif early:
-            print(f"Job boards: {board.get('name') or board.get('host')}: first jobs handed; the read goes on with its other words and next pages", flush=True)
-            with stage.guard('found boards: read on') as caught, slots.priority(slots.NORMAL):   # a failure here keeps the slice's jobs and verdict
-                # Why (sa, 14 Nov 2026, pair 1 of #4180: d01's first-jobs step closed at 129 s against 81 s): background reading, so its AI calls queue at the lane's later level (NORMAL, as the known boards' read), never at the slice's FIRST
-                more, after, _ = _read(board, search, fetch, None, False, show, ai)
-                jobs, state = jobs + more, after if after == 'browser' else state   # a refusal on the way on is kept as one (never asked again)
-            if caught:
-                print(f"Warning: {board.get('name') or board.get('host')}: its read did not go on: {caught.reason}: {caught.error}", flush=True)
+            print(f"Job boards: {board.get('name') or board.get('host')}: first jobs handed; its other words and next pages are read after the first-jobs step", flush=True)
+
+            def read_on(on_round):   # Why (Gitar, #4200): run here, it held a board worker and the board's keep until it ended; the lane runs it
+                fetch.on_round = on_round   # its rounds go to the lane: this board's read has ended
+                return _read(board, search, fetch, None, False, show, ai)[0]
+            slots.go_on()(read_on, board.get('name') or board.get('host'))
         read.jobs = read_methods.in_places(jobs)
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)
 

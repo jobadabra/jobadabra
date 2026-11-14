@@ -63,8 +63,11 @@ class BoardReaderTest(unittest.TestCase):
             today = boards_first.Beside(SEARCH).take(self.db, lambda jobs: None)
             searching.exception(timeout=10)
         self.setUp()   # the same old state again: a fresh job cache, no board read early
-        with slots.in_lane(read_budget.run_end()):   # read where the lane reads: in it, a board's slice goes on to its next pages (board_pages.held, ab 14 Nov 2026)
+        went_on = []   # read where the lane reads: in it, a board's slice hands its read-on to the lane (Beside.go_on), run here at once (ab, 14 Nov 2026)
+        with slots.in_lane(read_budget.run_end(), lambda read_on, name: went_on.append(read_on(None))):
             again = listed_then_kept(self.db)
+        seen = {job['url'] for job in again}
+        again += aggregators.kept(self.db, boards_ahead.NAME, [job for more in went_on for job in more if job['url'] not in seen])
         self.assertEqual([job['url'] for job in again], [job['url'] for job in today])
         self.assertEqual(len(today), 17, "the two boards' 14 first-page jobs and the 3 more cv-board gives once its read goes on")
 

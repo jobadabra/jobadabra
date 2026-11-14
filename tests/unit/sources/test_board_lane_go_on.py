@@ -17,7 +17,7 @@ from unittest import mock
 
 from src import time_budget
 from src.ai import slots
-from src.sources import board_pages, boards, careers, found_boards, page_recipes, read_budget
+from src.sources import board_pages, boards, boards_first, careers, found_boards, page_recipes, read_budget
 
 BUDGET = 3   # the app's run, scaled (time_budget.part)
 _READER = careers.READER
@@ -51,13 +51,15 @@ def relevant(jobs):   # the role and place judges, without the AI triage
     return [job for job in jobs if 'fahrer' in job['title'].lower()]
 
 
-def inside_the_lane_with_time_left():
-    """The clock 100 s into the app's 180 s: past the employer sites' read cut (90 s), before the run's end; the lane reads to that end."""
+def inside_the_lane_with_time_left(after=None):
+    """The clock 100 s into the app's 180 s: past the employer sites' read cut (90 s), before the run's end; the lane reads to that end.
+    after(read_on, name): where a board hands its read-on (the lane's Beside.go_on); None: a lane that takes none."""
     time_budget.start(BUDGET, now=time.monotonic() - BUDGET * 100 / time_budget.PLANNED)
-    return slots.in_lane(read_budget.run_end())
+    return slots.in_lane(read_budget.run_end(), after)
 
 
 class TheLaneGoesOn(unittest.TestCase):
+    """read_board in the boards' lane: the slice, then its read-on handed to the lane (here run at once, as after the first-jobs step)."""
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -67,7 +69,7 @@ class TheLaneGoesOn(unittest.TestCase):
                       mock.patch.object(boards, 'board_queries', return_value=[])):
             patch.start()
             self.addCleanup(patch.stop)
-        self.asked, self.rounds = [], []
+        self.asked, self.rounds, self.more, self.handed = [], [], [], []
 
     def fetch(self, url):
         self.asked.append(url)
@@ -75,11 +77,16 @@ class TheLaneGoesOn(unittest.TestCase):
             raise urllib.error.HTTPError(url, 404, 'Not Found', None, None)
         return PAGES[url]
 
+    def go_on(self, read_on, name):
+        """The lane, at once: the read-on runs now and its rounds and jobs are kept apart from the slice's."""
+        self.handed.append(name)
+        self.more.extend(read_on(self.rounds.append))
+
     def read(self, lane):
         told = lambda url: self.fetch(url)   # noqa: E731 — a fetch the search listens on (board_rounds.ended), as found_boards.read's
         told.on_round = self.rounds.append
         out = io.StringIO()
-        with redirect_stdout(out), (inside_the_lane_with_time_left() if lane else mock.patch.object(time_budget, 'DEADLINE', None)):
+        with redirect_stdout(out), (inside_the_lane_with_time_left(self.go_on) if lane else mock.patch.object(time_budget, 'DEADLINE', None)):
             jobs, state, _ = found_boards.read_board(BOARD, SEARCH, fetch=told, early=True)
         return jobs, state, [url for url in self.asked if not url.endswith('robots.txt')], out.getvalue()
 
@@ -89,66 +96,23 @@ class TheLaneGoesOn(unittest.TestCase):
         self.assertEqual(asked[:2], ['https://stellen.example/jobs/fahrer', 'https://stellen.example/jobs/kraftfahrer'],
                          'the slice first, as before: page 1 of its 2 words, before any next page or other word')
         self.assertEqual(sorted(asked), sorted(PAGES), 'then every word and its next pages, each page fetched once')
-        self.assertEqual(len(jobs), len(PAGES))
+        self.assertEqual(len(jobs), 2, 'the board\'s own read ends with its slice (Gitar, #4200)')
+        self.assertEqual(len({job['url'] for job in jobs + self.more}), len(PAGES), 'the read-on gives the rest, to the lane')
         self.assertEqual([job['url'] for job in self.rounds[0]], ['https://stellen.example/job/fahrer-1'], 'the first round is handed with its first page only')
-        self.assertIn('Job boards: Stellen: first jobs handed; the read goes on with its other words and next pages', log)
-        self.assertIn("round 'busfahrer': 1 job(s) on the page (3 with its next pages)", log, 'a word asked by the read that goes on is paged')
+        self.assertIn('Job boards: Stellen: first jobs handed; its other words and next pages are read after the first-jobs step', log)
+        self.assertIn("round 'busfahrer': 1 job(s) on the page (3 with its next pages)", log, 'a word asked by the read-on is paged')
 
     def test_outside_a_lane_the_slice_reads_page_one_of_two_words_and_says_why_not_more(self):
         jobs, _, asked, log = self.read(lane=False)
         self.assertEqual(asked, ['https://stellen.example/jobs/fahrer', 'https://stellen.example/jobs/kraftfahrer'])
-        self.assertEqual(len(jobs), 2)
+        self.assertEqual((len(jobs), self.handed), (2, []))
         self.assertIn('next pages and other words not asked (the first jobs\' read, outside the boards\' lane)', log)
 
     def test_the_lane_at_its_end_does_not_go_on_and_says_so(self):
         with mock.patch.object(read_budget, 'past_cut', return_value=True):
             jobs, _, asked, log = self.read(lane=True)
-        self.assertEqual(len(asked), 2)
-        self.assertEqual(len(jobs), 2)
+        self.assertEqual((len(asked), len(jobs), self.handed), (2, 2, []))
         self.assertIn('next pages and other words not asked (time is up)', log)
-
-    def test_a_failure_on_the_way_on_keeps_the_slices_jobs_and_says_so(self):
-        real = found_boards._read
-
-        def failing_on(board, search, fetch, route, early, *rest):   # the slice reads as usual; the read that goes on fails
-            if not early:
-                raise RuntimeError('a page the layout could not read')
-            return real(board, search, fetch, route, early, *rest)
-        with mock.patch.object(found_boards, '_read', side_effect=failing_on):
-            jobs, state, asked, log = self.read(lane=True)
-        self.assertEqual((len(jobs), state, len(asked)), (2, 'ok', 2))
-        self.assertIn('Warning: Stellen: its read did not go on: RuntimeError: a page the layout could not read', log)
-
-    def test_the_read_on_queues_behind_the_first_jobs_title_sorting(self):
-        """sa, 14 Nov 2026, from pair 1 of #4180 (d01: the first-jobs step closed at 129 s against 81 s): the read that goes on is background
-        work; its AI calls queue at the lane's later level (NORMAL, as the known boards' read), never at the slice boards' FIRST, so with one
-        slot busy a title batch asked together with a read-on link question is served first."""
-        levels = {}
-
-        def fetch(url):
-            levels[url] = slots.level()   # the level this thread's AI calls (link questions, the page reader) queue at
-            return self.fetch(url)
-        fetch.on_round = None
-        with slots.priority(slots.FIRST), redirect_stdout(io.StringIO()), inside_the_lane_with_time_left():
-            found_boards.read_board(BOARD, SEARCH, fetch=fetch, early=True)
-        self.assertEqual(levels['https://stellen.example/jobs/fahrer'], slots.FIRST, 'the slice keeps its level')
-        read_on = levels['https://stellen.example/jobs/busfahrer']
-        self.assertEqual(read_on, slots.NORMAL)
-        one, served = slots.Slots(1), []
-
-        def ask(name, at):
-            with slots.priority(at), one:
-                served.append(name)
-        with one:   # the one slot busy; the read-on call asks first, the title batch after it
-            waiting = []
-            for name, at in (('read on', read_on), ('title batch', slots.TITLES)):
-                waiting.append(threading.Thread(target=ask, args=(name, at)))
-                waiting[-1].start()
-                while one.waiting() < len(waiting):   # wait for the state (both queued), never a fixed time
-                    time.sleep(0.001)
-        for thread in waiting:
-            thread.join(5)
-        self.assertEqual(served, ['title batch', 'read on'])
 
     def test_a_round_whose_page_links_no_next_page_says_so(self):
         """c12 Graz's board: a scripted "load more" button and no link to page 2; its round line said nothing about the next pages."""
@@ -158,71 +122,96 @@ class TheLaneGoesOn(unittest.TestCase):
         self.assertIn("round 'fahrer': 1 job(s) on the page, 1 new, next pages: none linked on the page", out.getvalue())
 
 
-class TheReadOnWaitsForTheFirstJobsStep(unittest.TestCase):
-    """sa, 14 Nov 2026, from pair 2 of #4180 (c12: the first-jobs step closed at 71 s against 46 s on main; a 6-title batch asked at 49 s was
-    answered at 70 s, at 6 s on main): a read-on call already in an AI slot keeps it, whatever the level. In a first run the read that goes on
-    starts only when the first-jobs step has ended (boards_first.Beside.step_ended), so the step's AI calls never wait behind one."""
+class TheLaneReadsOnAfterTheFirstJobsStep(unittest.TestCase):
+    """A real boards' lane (boards_first.Beside) whose listed board is read by read_board. Why (sa, 14 Nov 2026, pairs 1-2 of #4180: c12's
+    first-jobs step closed at 71 s against 46 s, a 6-title batch waiting 21 s behind read-on calls already in a slot; Gitar, #4200: a read-on
+    inside the board's read held a board worker and the board's keep): the board's read ends with its slice; the lane reads on after the step."""
     setUp, fetch = TheLaneGoesOn.setUp, TheLaneGoesOn.fetch
 
-    def start(self, after):
-        """read_board in its own thread, in a lane whose boards go on past their first jobs only through `after`."""
-        told = lambda url: self.fetch(url)   # noqa: E731 — a fetch the search listens on, as in TheLaneGoesOn.read
-        told.on_round, out = self.rounds.append, {}
+    def lane(self, read_on=None):
+        """A first run's lane with one listed board (Stellen) and no known board; returns (lane, the slice's read_board results)."""
+        for patch in (mock.patch('src.sources.board_reader.read', return_value=iter(())), mock.patch('src.sources.feeds.triage')):
+            patch.start()
+            self.addCleanup(patch.stop)
+        if read_on is not None:
+            real = found_boards._read
+            patch = mock.patch.object(found_boards, '_read', side_effect=lambda board, search, fetch, route, early, *rest:
+                                      real(board, search, fetch, route, early, *rest) if early else read_on())
+            patch.start()
+            self.addCleanup(patch.stop)
+        sliced = []
 
-        def read():
-            with redirect_stdout(io.StringIO()):
-                out['jobs'] = found_boards.read_board(BOARD, SEARCH, fetch=told, early=True)[0]
+        def listed(on_board):   # the first-jobs step's board list: read_board's slice, kept by on_board as found_boards.read keeps it
+            told = lambda url: self.fetch(url)   # noqa: E731
+            told.on_round = None
+            jobs = found_boards.read_board(BOARD, SEARCH, fetch=told, early=True)[0]
+            sliced.append(([job['url'] for job in jobs], list(self.asked)))
+            on_board(jobs)
+            return jobs
         time_budget.start(BUDGET, now=time.monotonic() - BUDGET * 100 / time_budget.PLANNED)
-        with slots.in_lane(read_budget.run_end(), after):
-            thread = threading.Thread(target=slots.carry(read))
-        thread.start()
-        return thread, out
+        return boards_first.Beside(SEARCH, listed=listed), sliced
 
-    def test_no_page_of_the_read_on_is_fetched_before_the_first_jobs_step_ends(self):
-        step_ended, waiting = threading.Event(), threading.Event()
+    def until(self, state):
+        for _ in range(5000):   # a state, never a fixed time (hang guard: 5 s)
+            if state():
+                return True
+            time.sleep(0.001)
+        return False
 
-        def after(seconds):
-            waiting.set()
-            return step_ended.wait(seconds)
-        thread, out = self.start(after)
-        self.assertTrue(waiting.wait(5), 'the read reached the wait for the step')   # hang guard only
-        self.assertEqual(self.asked, ['https://stellen.example/jobs/fahrer', 'https://stellen.example/jobs/kraftfahrer'],
-                         'while the step runs: the slice\'s 2 pages only')
-        self.assertEqual(len(self.rounds), 2, 'the slice\'s jobs were handed before the wait')
-        step_ended.set()
-        thread.join(5)
-        self.assertEqual(sorted(set(self.asked)), sorted(PAGES), 'after it: every word and its next pages')
-        self.assertEqual(len(out['jobs']), len(PAGES))
+    def test_the_boards_read_ends_with_its_slice_and_the_lane_reads_on_after_the_step(self):
+        with redirect_stdout(io.StringIO()):
+            lane, sliced = self.lane()
+            self.assertTrue(self.until(lambda: sliced and lane.left == 1), 'the slice ended; its read-on waits in the lane')
+            self.assertEqual(sliced[0], (['https://stellen.example/job/fahrer-1', 'https://stellen.example/job/kraftfahrer-1'],
+                                         ['https://stellen.example/jobs/fahrer', 'https://stellen.example/jobs/kraftfahrer']),
+                             'read_board returned its slice (the board is kept, its worker free) with no read-on page fetched')
+            self.assertEqual(len(self.asked), 2, 'nothing more is fetched while the first-jobs step runs')
+            self.assertFalse(lane.done.is_set(), 'the lane stays open for its read-on')
+            lane.step_ended.set()
+            self.assertTrue(lane.done.wait(5))
+        self.assertEqual(sorted(set(self.asked)), sorted(PAGES), 'after the step: every word and its next pages')
+        self.assertEqual(lane.urls, {f'https://stellen.example/job/{word}-{n}' for word in WORDS for n in (1, 2, 3)}, 'every job handed to the lane once')
 
     def test_the_steps_last_title_batch_is_not_behind_a_read_on_call(self):
-        one, served, step_ended, release, waiting = slots.Slots(1), [], threading.Event(), threading.Event(), threading.Event()
-        real = found_boards._read
+        one, served, release = slots.Slots(1), [], threading.Event()
 
-        def read_on_holds_a_slot(board, search, fetch, route, early, *rest):   # a read-on AI call (a link question) that keeps its slot a while
-            if early:
-                return real(board, search, fetch, route, early, *rest)
+        def read_on_holds_a_slot():   # a read-on AI call (a link question) that keeps its slot a while
             with one:
-                served.append('read on')
+                served.append(('read on', slots.level()))
                 release.wait(5)   # hang guard only
             return [], 'ok', None
-
-        def title_batch():
-            with slots.priority(slots.TITLES), one:
-                served.append('title batch')
-        with mock.patch.object(found_boards, '_read', side_effect=read_on_holds_a_slot):
-            thread, _ = self.start(lambda seconds: waiting.set() or step_ended.wait(seconds))
-            for _ in range(5000):   # until the read waits for the step, or (without that wait) a read-on call holds the slot: a state, never a fixed time
-                if waiting.is_set() or served:
-                    break
-                time.sleep(0.001)
-            batch = threading.Thread(target=title_batch)
-            batch.start()
-            batch.join(2)   # hang guard: behind a read-on call it would wait for `release`
-            self.assertEqual(served, ['title batch'], 'the step\'s title batch took the slot at once; no read-on call held it')
-            step_ended.set()
+        with redirect_stdout(io.StringIO()):
+            lane, sliced = self.lane(read_on_holds_a_slot)
+            self.assertTrue(self.until(lambda: sliced and lane.left == 1))
+            with slots.priority(slots.TITLES), one:   # the step's last title batch, the read-on waiting for the step
+                served.append(('title batch', slots.level()))
+            lane.step_ended.set()
+            self.assertTrue(self.until(lambda: len(served) == 2))
             release.set()
-            thread.join(5)
-        self.assertEqual(served, ['title batch', 'read on'])
+            self.assertTrue(lane.done.wait(5))
+        self.assertEqual(served, [('title batch', slots.TITLES), ('read on', slots.NORMAL)],
+                         'the title batch took the slot at once; the read-on came after, at the known boards\' level, not the slice\'s FIRST')
+
+    def test_a_failure_on_the_way_on_keeps_the_slices_jobs_and_says_so(self):
+        def failing():
+            raise RuntimeError('a page the layout could not read')
+        with redirect_stdout(io.StringIO()) as out:   # the whole process's output: the lane's threads print after the step
+            lane, sliced = self.lane(failing)
+            self.assertTrue(self.until(lambda: sliced and lane.left == 1))
+            lane.step_ended.set()
+            self.assertTrue(lane.done.wait(5))
+        self.assertEqual(lane.urls, {'https://stellen.example/job/fahrer-1', 'https://stellen.example/job/kraftfahrer-1'})
+        self.assertIn('Warning: Stellen: its read did not go on: RuntimeError: a page the layout could not read', out.getvalue())
+
+    def test_a_lane_whose_end_comes_first_reads_nothing_more_and_says_so(self):
+        with redirect_stdout(io.StringIO()) as out:
+            lane, sliced = self.lane()
+            self.assertTrue(self.until(lambda: sliced and lane.left == 1))
+            with mock.patch.object(read_budget, 'past_cut', return_value=True):
+                lane.step_ended.set()
+                self.assertTrue(lane.done.wait(5))
+        self.assertEqual(len(self.asked), 2)
+        self.assertIn('Job boards: Stellen: next pages and other words not asked (time is up)', out.getvalue())
 
 
 class TheSearchEndsTheStepForTheLane(unittest.TestCase):
@@ -256,10 +245,10 @@ class TheAiReaderOncePerPage(unittest.TestCase):
     def test_a_page_the_ai_read_in_the_slice_is_not_read_by_the_ai_again(self):
         prose = '<html><body>' + '<p>Finden Sie Stellen in Ihrer Region und bewerben Sie sich bei den besten Arbeitgebern.</p>' * 20 + '</body></html>'
         pages = {'https://stellen.example/jobs/fahrer': prose, 'https://stellen.example/jobs/kraftfahrer': _page('kraftfahrer', 1, False)}
-        with redirect_stdout(io.StringIO()) as out, inside_the_lane_with_time_left():
+        went_on = []
+        with redirect_stdout(io.StringIO()), inside_the_lane_with_time_left(lambda read_on, name: went_on.append(read_on(None))):
             jobs, state, _ = found_boards.read_board(BOARD, {**SEARCH, 'jobs_board_search_queries': WORDS[:2]}, fetch=lambda url: pages.get(url, ''), early=True)
-        self.assertEqual((state, len(jobs)), ('ok', 1))
-        self.assertIn('the read goes on', out.getvalue(), 'positive control: the read went on')
+        self.assertEqual((state, len(jobs), len(went_on)), ('ok', 1, 1), 'positive control: the read went on (in the lane)')
         self.assertEqual(self.asked, ['https://stellen.example/jobs/fahrer'], 'one AI read of that page in the whole board read')
 
 
