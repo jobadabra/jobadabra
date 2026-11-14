@@ -367,11 +367,11 @@ jobs:
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; comment_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR"
           ids="$(echo "$PEOPLE" | jq -c '[.[].id]')"
           gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
-          python3 tools/persona-search/pair.py row dl "$ids" "$newer" 0 old.json "$GITHUB_RUN_ID" "$run_url" "$comment_url" > /dev/null
+          python3 tools/persona-search/pair.py row dl "$ids" "$newer" 0 old.json "$GITHUB_RUN_ID" "$run_url" "$comment_url" table.md > /dev/null
           rerun="$(jq -c .rerun row.json)"
           if [ "$(jq -r .noop row.json)" != true ]; then jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null; fi
           if [ "$rerun" != '[]' ] && ! gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2 -f check_id="$CHECK_ID"; then
-            python3 tools/persona-search/pair.py row dl "$ids" "$newer" 1 old.json "$GITHUB_RUN_ID" "$run_url" "$comment_url" > /dev/null   # the same old row, with the second run marked as not started
+            python3 tools/persona-search/pair.py row dl "$ids" "$newer" 1 old.json "$GITHUB_RUN_ID" "$run_url" "$comment_url" table.md > /dev/null   # the same old row, with the second run marked as not started
             rerun='[]'
             jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null
           fi

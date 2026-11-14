@@ -283,7 +283,7 @@ def main(argv):
         if found:
             print(json.dumps(found))
         return 0
-    if command == 'row' and len(argv) == 10:   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
+    if command == 'row' and len(argv) in (10, 11):   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
         rows = sides(argv[2])
         ran = sorted(set(json.loads(argv[3])), key=str)
         done = measured(rows)
@@ -291,6 +291,9 @@ def main(argv):
         event = {'kind': 'ended', 'run_id': argv[7], 'run_url': argv[8], 'comment_url': argv[9], 'done': done, 'ran': ran, 'seen': set(rows), 'spreads': {person: usual(person) for person in done},
                  'rows': rows, 'newer': argv[4] == '1', 'rerun_failed': argv[5] == '1'}
         out = pair_row.next_row(old, event)
+        # Why (14 Nov 2026, owner on #4187: "I don't see the actual run"): the row's own page is where "Details" lands, so the before/after table is in its summary too (the optional 11th argument: the comment's markdown).
+        if len(argv) == 11 and not out['noop'] and Path(argv[10]).exists() and 'output' in out['api']:
+            out['api']['output']['summary'] += '\n\n' + Path(argv[10]).read_text(encoding='utf-8').replace('<!-- search-pair -->', '').strip()
         out['rerun'] = [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in out['rerun']]   # the dispatch's own form: night people as numbers, profiles as ids
         Path('row.json').write_text(json.dumps(out), encoding='utf-8')
         print(out['api'].get('output', {}).get('title', out.get('why', '')))

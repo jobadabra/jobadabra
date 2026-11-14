@@ -178,6 +178,19 @@ class TheRowsStatesHaveOneWriter(unittest.TestCase):
         self.assertIn('c04 15 → 14', out['api']['output']['summary'])
         self.assertIn('b10 2 → 9', out['api']['output']['title'])
 
+class TheRowsPageLinksTheRun(unittest.TestCase):
+    """Owner on #4187, 14 Nov 2026: "I don't see the actual run". GitHub ignores details_url for a check run the github-actions app creates (read back: its own page), so the summary is the link."""
+    URL = 'https://github.com/o/r/actions/runs/43601353056'
+
+    def test_the_summary_opens_with_a_link_to_the_run_for_every_event_that_names_it(self):
+        started = pair_row.next_row({}, {'kind': 'started', 'run_id': '1', 'run_url': self.URL, 'started': '13:50', 'now': '2026-11-14T13:50:00Z', 'people': [3], 'claim': False})
+        self.assertEqual(started['api']['output']['summary'].splitlines()[0], f'[Open the search run]({self.URL})')
+        old = {'id': 7, 'external_id': started['api']['external_id'], 'summary': started['api']['output']['summary']}
+        died = pair_row.next_row(old, {'kind': 'died', 'run_id': '1', 'run_url': self.URL, 'ended': 'cancelled', 'newer': True})
+        text = died['api']['output']['summary']
+        self.assertEqual(text.splitlines()[0], f'[Open the search run]({self.URL})')
+        self.assertEqual(text.count('[Open the search run]('), 1, 'a link already first is replaced, never doubled')
+
 
 if __name__ == '__main__':
     unittest.main()
