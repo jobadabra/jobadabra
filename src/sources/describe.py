@@ -184,6 +184,13 @@ def _keep_refused(hosts):
         pass
 
 
+def _write_read(db, job_id, text, route):
+    """Write a read posting's text on its job, and where its Apply goes when the page named it: one that names none never clears a known route
+    (ea's "LinkedIn account" chip reads it: spec 2026-11-13-linkedin-easy-apply-design.md)."""
+    db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
+    if route:
+        db.execute('UPDATE jobs SET apply_route=? WHERE id=?', (route, job_id))
+
 def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
     """Fill in up to `limit` open jobs (seen in the last `days`) that have no description, from any posting page (page_text), 4 at a time.
     A site that refuses is not asked again for a week; it and sign-in sites are said as "readable in your browser". A site that asks us to
@@ -245,9 +252,7 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
         elif kind == 'gone':   # the posting was taken down: the job expired, not unscored
             db.execute("UPDATE jobs SET state='expired' WHERE id=?", (job_id,))
         elif kind == 'filled':
-            db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
-            if route:   # only a route the page named; one that names none never clears it (ea's "LinkedIn account" chip: spec 2026-11-13-linkedin-easy-apply-design.md)
-                db.execute('UPDATE jobs SET apply_route=? WHERE id=?', (route, job_id))
+            _write_read(db, job_id, text, route)
     filled, gone, failed, empty, later = (seen[kind] for kind in ('filled', 'gone', 'failed', 'empty', 'later'))
     db.commit()
     if fetcher is fetch:
