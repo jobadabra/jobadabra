@@ -8,7 +8,7 @@ ANSWERED = re.compile(r'^relay: .* status 200 .* engine ([a-z-]+)', re.M)
 ANY_ANSWER = re.compile(r'^relay: .* status 200 ', re.M)
 UNANSWERED = re.compile(r'^relay: .* status (?!200 )(\S+) .*?(?: why (.+))?$', re.M)   # refused (why …) or never reached (status error, no why)
 SHORT_CALL = re.compile(r'^relay: small total \d+ broker (\d+) .* status 200 ', re.M)
-HUNG_SHORT_MS = 30000   # Why (14 Nov 2026, owner via sa: "Drop the build, fix the measure"; #4100 pair 1 had a 62.9 s title call): a short (small-tier) call over 30 s hung, so the side did not measure the code
+HUNG_SHORT_MS = 45000   # Why (14 Nov 2026, owner: "45 s (Recommended)" at "Where should the line be?", via sa; was 30 s from "Drop the build, fix the measure", #4100 pair 1 had a 62.9 s title call): a short (small-tier) call over 45 s hung, so the side did not measure the code. Wide BEFORE, 30 searches: short-call maxima sit on a ladder of 5-s steps (15.5, 20.5, 25.5, 30.5, 35.5 s), five at 30.5 s, so 30 s cut inside the ladder (11 of 30 out); 45 s drops 2 (55.3 s, 62.7 s); the excluded searches found as many or more right jobs than their sibling in 7 of 9 pairs
 
 
 def engines_in(text):

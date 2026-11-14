@@ -107,12 +107,13 @@ class RefusedCallsAreNotCountedTest(unittest.TestCase):
         self.assertEqual(why(side(wait_p90_ms=31000)), 'a side waited over 20 s at the broker', 'positive control: the old reason stays for a slow broker')
 
     def test_a_hung_short_call_is_not_counted_plays_pair_1_of_4100(self):
-        """Owner via sa, 14 Nov 2026 ("Drop the build, fix the measure"): #4100 pair 1 had a 62.9 s title call (a short, small-tier call); 30.0 s is the line, over it hung."""
+        """Owner via sa, 14 Nov 2026 ("Drop the build, fix the measure"): #4100 pair 1 had a 62.9 s title call (a short, small-tier call); 45.0 s is the line (owner, "45 s (Recommended)"; was 30 s), over it hung; the 5-s ladder's 30.5 s counts."""
         hung = 'relay: small total 63000 broker 62900 waited 100 in-flight 2 prompt-chars 900 kind title start 1794611186489 status 200 sent yes tools 0 out-tokens 20 engine codex\n'
-        edge = hung.replace('broker 62900', 'broker 30000')
+        edge = hung.replace('broker 62900', 'broker 45000')
+        ladder = hung.replace('broker 62900', 'broker 30500')   # the wide BEFORE had five searches at 30.5 s
         mid = hung.replace('relay: small', 'relay: mid')   # a long (mid-tier) call may take this long
         with tempfile.TemporaryDirectory() as tmp:
-            for name, line, counted in (('hung', hung, False), ('edge', edge, True), ('mid', mid, True)):
+            for name, line, counted in (('hung', hung, False), ('edge', edge, True), ('ladder', ladder, True), ('mid', mid, True)):
                 out = folder(tmp, name, 0, 0, 5, ai=('codex / gpt-6-luna',))
                 (out / 'run.log').write_text('AI: codex / gpt-6-luna\n' + ANSWERED.replace('engine claude', 'engine codex') * 30 + line)
                 got = profiles.row('c04', out)
@@ -121,7 +122,7 @@ class RefusedCallsAreNotCountedTest(unittest.TestCase):
                 self.assertEqual(json.loads((out / 'side.json').read_text())['valid'], counted, name)
             self.assertEqual(profiles.row('c04', Path(tmp) / 'hung')['not_measured'], 'not measured (a short AI call took 62.9 s)')
             side = {'valid': False, 'shared': True, 'wait_p90_ms': 300, 'failed': 0, 'engines': ['codex'], 'short_call_max_ms': 62900}
-            self.assertEqual(pair_row.why_not_counted({'p1': {'main': [{'valid': True, 'shared': True}], 'pr': [side]}}), 'a side had a short AI call over 30 s')
+            self.assertEqual(pair_row.why_not_counted({'p1': {'main': [{'valid': True, 'shared': True}], 'pr': [side]}}), 'a side had a short AI call over 45 s')
 
 
 if __name__ == '__main__':

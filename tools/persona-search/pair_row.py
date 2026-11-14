@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-from engine_calls import HUNG_SHORT_MS  # beside this file; the one 30 s line of a hung short call
+from engine_calls import HUNG_SHORT_MS  # beside this file; the one line (45 s) of a hung short call
 
 BAND_FLOOR = 7   # right jobs a person may lose before a pair is red, whatever their own spread is (the same-minute noise floor, see band)
 # Why (13 Nov 2026, sa): run 43498213279 (c04 + c10, the same code both sides, the same boards) gave 8 vs 15 right jobs for c04; a 1-job band would red honest PRs and the red would mean
@@ -48,7 +48,7 @@ def why_not_counted(rows):
     if any(len(r.get('engines') or []) > 1 for r in counted_in):
         reasons.append('a side was answered by two AIs')
     if any((r.get('short_call_max_ms') or 0) > HUNG_SHORT_MS for r in counted_in):
-        reasons.append('a side had a short AI call over 30 s')
+        reasons.append(f'a side had a short AI call over {HUNG_SHORT_MS // 1000} s')
     # Why (13 Nov 2026): a side not valid for refused calls or two AIs is not "slow"; the wait is the reason only when neither is.
     if any(r.get('wait_p90_ms') is not None and not r.get('failed') and len(r.get('engines') or []) <= 1 and (r.get('short_call_max_ms') or 0) <= HUNG_SHORT_MS for r in counted_in):
         reasons.append('a side waited over 20 s at the broker')
