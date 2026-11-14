@@ -126,7 +126,8 @@
     }
 
     // Draw the ranked remaining fields and return the knockout count for tip selection.
-    function renderRemaining({pageMark, moved, shown, state: {left, busy, over}}) {
+    function renderRemaining({pageMark, moved, shown, state: {busy, over}}) {
+      const left = shown.length;   // Why (14 Nov 2026, Gitar on #4397): the list shows every empty answer that blocks Ready, optional ones Claude wrote included, so its count is the list's, not the pill's
       // What's left for you, once the filling is over: before and during it, nearly every field is still to be filled
       // by the extension or Claude, not by you (the ring and the bar show the progress meanwhile).
       $('.left h4').textContent = t('panel.remaining',left === 1 ? 'Remaining field' : 'Remaining fields',{count:left});

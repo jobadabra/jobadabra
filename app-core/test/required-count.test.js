@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
-import '../../extension/required-count.js';
+globalThis.window = globalThis;   // a content script's world
+await import('../../extension/required-count.js');
 import { PANEL_FILES } from '../../extension/panel-files.js';
 
 // [label, type, required, filled, reason]
@@ -43,7 +44,7 @@ const CANONICAL = [
 const trace = CANONICAL.map(([label, type, required, filled, reason]) => ({ label, type, required: !!required, outcome: filled ? 'filled' : 'left', reason }));
 // The panel reads the same page as entries: {required, filled, el.type}; every control is there, optional ones too.
 const entries = trace.map((row) => ({ required: row.required, filled: row.outcome === 'filled', ai: row.reason.startsWith('Claude'), el: { type: row.type } }));
-const panelCount = () => globalThis.__jobadabraRequiredCount(entries.map((entry) => ({ required: entry.required, filled: entry.filled, type: entry.el.type })));
+const panelCount = () => window.__jobadabraRequiredCount(entries.map((entry) => ({ required: entry.required, filled: entry.filled, type: entry.el.type })));
 
 test('the panel counts every required question the page marks, consents and own-words included, the upload slot aside', () => {
   assert.deepEqual(panelCount(), { required: 18, filled: 9, left: 9 });
@@ -58,5 +59,7 @@ test('optional fields Claude filled are never counted as required', () => {
 
 test('the panel loads the shared count before review.js and review.js reads it', () => {
   assert.ok(PANEL_FILES.indexOf('required-count.js') >= 0 && PANEL_FILES.indexOf('required-count.js') < PANEL_FILES.indexOf('review.js'));
-  assert.match(fs.readFileSync(new URL('../../extension/review.js', import.meta.url), 'utf8'), /__jobadabraRequiredCount/);
+  const review = fs.readFileSync(new URL('../../extension/review.js', import.meta.url), 'utf8');
+  assert.match(review, /__jobadabraRequiredCount/);
+  assert.match(review, /\['PanelI18n', 'RequiredCount'/, 'a partial injection is named, not thrown (the helper guard lists it)');
 });

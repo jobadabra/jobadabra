@@ -11,7 +11,7 @@
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   const displayStep = text => window.__jobadabraPanelI18n.step(text);
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) gives way to the new one.
-  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips', 'TopLayer'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
+  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'RequiredCount', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips', 'TopLayer'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
   window.__jobadabraReviewAlive = () => !!chrome.runtime?.id;
   let askedPassword = 0;
   const send = message => (chrome.runtime?.id ? chrome.runtime.sendMessage(message) : Promise.reject(new Error('reloaded')));
