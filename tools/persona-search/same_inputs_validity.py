@@ -13,8 +13,9 @@ GAP = 3   # clock-rule drops that may differ between the sides before the pair i
 
 
 def text_of(line):
-    """The error text a Technical line carries after TEXT_MARK, or None when the line has none (a build without the capture)."""
-    _, mark, text = line.partition(TEXT_MARK)
+    """The error text a Technical line carries after the LAST TEXT_MARK (detail writes it last; a marker inside the facts' provider text is not the start), or None when the line has none.
+    Why (14 Nov 2026, Gitar on #4326): the first marker could sit in a provider's `said "..."` text and hand a real fault the clock-rule words."""
+    _, mark, text = line.rpartition(TEXT_MARK)
     return text.strip() if mark and text.strip() else None
 
 
