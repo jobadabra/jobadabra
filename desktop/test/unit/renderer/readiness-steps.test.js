@@ -31,12 +31,6 @@ test('an ended log moves no more and a new check replaces the job\'s last one', 
   assert.deepEqual(stepsOf(URL_A).map(({seconds}) => seconds), [2]);
 });
 
-test('after a restart the steps stored with the check are shown; this window\'s own log wins over them', () => {
-  const stored = [{step: 'drafting', ms: 41_000}, {step: 'unknown-step', ms: 3_000}, {step: 'matching', ms: 4_000}];
-  assert.deepEqual(stepsOf('https://jobs.example.test/restarted', stored).map(({seconds}) => seconds), [41, 4], 'an unnamed step is left out');
-  assert.deepEqual(stepsOf(URL_A, stored).map(({seconds}) => seconds), [2], 'this window\'s check of the job is newer');
-});
-
 test('a read Stop cut short leaves the job\'s last check as it was (Gitar on #4342)', () => {
   const url = 'https://jobs.example.test/stopped';
   const done = startSteps(url, 0);

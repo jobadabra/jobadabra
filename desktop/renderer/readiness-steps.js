@@ -1,6 +1,6 @@
 // The steps of one Apply readiness check of a job, each with its own seconds, kept per job for the drawer: the one owner of that log (jobs-triage.js writes it, the drawer reads it).
 // Why (14 Nov 2026, #4325, owner: "I should have * Getting started * Reading the form ... Each of them with seconds of how much it took. and then I should see the end result, the outcome";
-// chose "Plain steps + seconds (Recommended)"; asked via AskUserQuestion, "Yes, store it (Recommended)": the log survives a restart). Timed here for the live list; the app times its own copy and stores it with the check (lib/readiness-step-log.js).
+// chose "Plain steps + seconds (Recommended)"; asked via AskUserQuestion). Timed here, kept for this window's session; keeping it across a restart ("Yes, store it") is the next PR.
 import {t} from '../i18n/index.js';
 
 /** Each step the app or the dialog names -> its words' key (helperTail). The read's later steps (judging, planning) read as "Reading the form", so they join that line. */
@@ -44,8 +44,7 @@ export function addStep(url, step, ms) {
 export const stepText = (words, seconds) => `✓ ${words} · ${t('helperTail.triageStepSeconds', {count: seconds})}`;
 
 /**
- * A job's last check as lines: [{words, seconds}] in order. This window's log first, else `stored` (the steps kept with the stored check, so they survive a restart); a step this app does not name is
- * left out. [] when there is neither.
+ * A job's last check in this window as lines: [{words, seconds}] in order; a step this app does not name is left out. [] when this window has not checked the job.
  */
-export const stepsOf = (url, stored = []) => (kept.get(url) || (Array.isArray(stored) ? stored : [])).filter(item => STEP_KEYS[item?.step])
+export const stepsOf = url => (kept.get(url) || []).filter(item => STEP_KEYS[item?.step])
   .map(({step, ms}) => ({words: t(`helperTail.${STEP_KEYS[step]}`), seconds: Math.round(Math.max(0, Number(ms) || 0) / 1000)}));
