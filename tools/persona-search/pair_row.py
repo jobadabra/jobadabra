@@ -168,7 +168,7 @@ def _place(old_state, old_people, state, people, status, conclusion, title, summ
     return _out(state, people, status, title, summary, conclusion=conclusion, new=old_state is None or old_state in FINISHED)
 
 
-def next_row(old, event):
+def _next_row(old, event):
     """The row after `event`, given its `old` value ({external_id, summary} of the head's row, or {} for none): {noop, state, api, rerun, new}. Events (kind):
     opened {verdict: waiting|nothing|unnamed, people, title, summary} · carried {people, conclusion, title, summary} · started {run_id, run_url, started, now, people, claim} · searching {run_id, started}
     · ended {run_id, run_url, comment_url, done, ran, seen, spreads, rows, newer, rerun_failed} · died {run_id, run_url, ended, newer}. The table above says which moves exist; any other is a noop."""
@@ -212,6 +212,23 @@ def next_row(old, event):
         return _out('rerunning' if d['rerun'] else 'unproven', people_was, 'in_progress', title, text, rerun=d['rerun'])
     final = {'neutral': 'superseded', 'failure': 'counted', 'success': 'counted'}[d['conclusion']]
     return _out(final, people_was, 'completed', title, text, conclusion=d['conclusion'])
+
+
+LINK = '[Open the search run]('
+
+
+def next_row(old, event):
+    """_next_row's row, with a link to the run as the summary's FIRST line whenever the event names the run.
+    Why (14 Nov 2026, owner on #4187: "I don't see the actual run"; sa measured it): GitHub ignores `details_url` for a check run the github-actions app creates, so "Details" opens the row's own page, which had no link to the run;
+    the summary is the one text that page shows. A link already first is replaced, never doubled."""
+    out = _next_row(old, event)
+    if out['noop'] or not event.get('run_url') or 'output' not in out['api']:
+        return out
+    rest = out['api']['output']['summary']
+    if rest.startswith(LINK):
+        rest = rest.split('\n\n', 1)[1] if '\n\n' in rest else ''
+    out['api']['output']['summary'] = f"{LINK}{event['run_url']})" + (f'\n\n{rest}' if rest else '')
+    return out
 
 
 def main(argv):

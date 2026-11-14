@@ -8,8 +8,10 @@ tools/persona-search/gate-personas.json, and the profiles, search-profiles.json)
   pair.py table <results> <pr> <main sha> <pr sha> -> the PR comment's markdown on stdout
   pair.py pending < body                         -> the people of the body's "→ pending" Moves lines as a dispatch list ([1, "b02"]), nothing when none (tools/ship-search-hold.sh)
   pair.py row <results> <people> <attempt> <newer 0|1> -> row.json: the "Search before/after" check run's conclusion, title and summary, and the people to run once more (pair_row.py)
+  pair.py head <state> <measured> <now> <compare.json> -> "<moved> <newer>" (0|1 each): whether the PR's head moved since the pair measured, and whether it moved in a way these numbers no longer stand for (head_verdict)
   pair.py settle <results> <view.json> <attempt> <people> -> settle.json: the body with the numbers written, the title (hold lifted or kept), the people to run again, the verdict
 """
+import importlib.util
 import json
 import math
 import os
@@ -247,6 +249,28 @@ def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
     return {'body': body, 'title': title, 'lift': lift, 'verdict': verdict}
 
 
+def search_changed(files):
+    """True when any file is one Find jobs reads, keeps, scores or orders: tools/pr-body-check.py's SEARCH_FILES, the one list ship and the body check use. """
+    spec = importlib.util.spec_from_file_location('pr_body_check', HERE.parent / 'pr-body-check.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return any(module.SEARCH_FILES.match(name) for name in files)
+
+
+def head_verdict(state, measured, now, compare):
+    """(moved, newer) for the pair that measured `measured` while the PR's head is `now`: `compare` is `{status, count, files}` for measured...now ({} when it could not be read): files lists every new name AND every renamed file's old name, so a search file moved out of a search path still counts.
+    A move that changed no file the search reads leaves the numbers true (moved, not newer). Everything else is newer, so a doubt never writes numbers for code nobody measured:
+    a compare that is not a plain "ahead" (a rebase, a force push), an empty file list (nothing to prove it), a list cut at 300 files, a search file in it. A merged PR has no head to follow."""
+    if state == 'MERGED' or now == measured:
+        return False, False
+    if not now:
+        return True, True   # an unreadable head is a doubt, not "unchanged" (Gitar on #4195)
+    files = list(compare.get('files') or [])
+    count = compare.get('count', len(files))   # the compare's own file count: `files` also lists each renamed file's old name (Gitar on #4195), so its length is not the count
+    known = compare.get('status') == 'ahead' and 0 < count < 300
+    return True, not known or search_changed(files)
+
+
 def main(argv):
     """The command line above."""
     command = argv[1] if len(argv) > 1 else ''
@@ -265,12 +289,16 @@ def main(argv):
     if command == 'table' and len(argv) == 6:
         print(table(argv[2], argv[3], argv[4], argv[5]))
         return 0
+    if command == 'head' and len(argv) == 6:   # head <state> <measured sha> <now sha> <compare.json> -> "<moved 0|1> <newer 0|1>", what search-pair.yml's comment job reads
+        moved, newer = head_verdict(argv[2], argv[3], argv[4], json.loads(Path(argv[5]).read_text(encoding='utf-8') or '{}'))
+        print(f'{int(moved)} {int(newer)}')
+        return 0
     if command == 'pending' and len(argv) == 2:
         found = pending(sys.stdin.read())
         if found:
             print(json.dumps(found))
         return 0
-    if command == 'row' and len(argv) == 10:   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
+    if command == 'row' and len(argv) in (10, 11):   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
         rows = sides(argv[2])
         ran = sorted(set(json.loads(argv[3])), key=str)
         done = measured(rows)
@@ -278,6 +306,9 @@ def main(argv):
         event = {'kind': 'ended', 'run_id': argv[7], 'run_url': argv[8], 'comment_url': argv[9], 'done': done, 'ran': ran, 'seen': set(rows), 'spreads': {person: usual(person) for person in done},
                  'rows': rows, 'newer': argv[4] == '1', 'rerun_failed': argv[5] == '1'}
         out = pair_row.next_row(old, event)
+        # Why (14 Nov 2026, owner on #4187: "I don't see the actual run"): the row's own page is where "Details" lands, so the before/after table is in its summary too (the optional 11th argument: the comment's markdown).
+        if len(argv) == 11 and not out['noop'] and Path(argv[10]).exists() and 'output' in out['api']:
+            out['api']['output']['summary'] += '\n\n' + Path(argv[10]).read_text(encoding='utf-8').replace('<!-- search-pair -->', '').strip()
         out['rerun'] = [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in out['rerun']]   # the dispatch's own form: night people as numbers, profiles as ids
         Path('row.json').write_text(json.dumps(out), encoding='utf-8')
         print(out['api'].get('output', {}).get('title', out.get('why', '')))
