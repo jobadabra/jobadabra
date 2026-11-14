@@ -65,19 +65,13 @@ class MovesLine(unittest.TestCase):
                      'Moves: b02 right jobs 3 → 5 (1 run a side, same minute, usual difference unknown)'):
             self.assertIsNotNone(check.moves_gap('## x\n' + line, ['src/sources/feeds.py']), line)
 
-    def test_a_pending_number_holds_the_pr_as_a_dont_merge_draft(self):
-        """Why (13 Nov 2026, owner via sa: "anything not a draft is safe to merge"): a ready PR whose number is still pending could be merged before its pair ended."""
+    def test_a_pending_number_is_a_complete_line_on_a_ready_pr(self):
+        """Why (14 Nov 2026, owner: "Each PR should have a search pair, which is either a yes, either a no" · "I'm tired of having PRs with DONT Merge"; supersedes #3963 of 13 Nov): the pair's row, not a draft
+        title, holds a PR whose number is pending (tools/pr_verdict_pair_gate.py), so the line itself is all the description check reads."""
         body = '## x\nMoves: p1 right jobs 0 → pending (1 run a side, same minute, usual difference 2)\n'
-        self.assertIsNone(check.moves_gap(body, ['src/sources/feeds.py']))   # the line itself is complete
-        self.assertIsNone(check.pending_gap(body, '[rs] DONT MERGE Read boards', 'true'))
-        for title, draft in (('[rs] Read boards', 'true'), ('[rs] DONT MERGE Read boards', 'false'), ('[rs] Read boards', 'false')):
-            self.assertIn('DONT MERGE', check.pending_gap(body, title, draft) or '', (title, draft))
-        self.assertIsNone(check.pending_gap(body, '[rs] Read boards', None))   # a local run (no PR_DRAFT): ship sets the hold itself
-        self.assertIsNone(check.pending_gap(body.replace('pending', '4'), '[rs] Read boards', 'false'))
-        self.assertIsNone(check.pending_gap(body, '', 'true'))   # a bot's PR: the gate passes no title, the draft holds it
-        self.assertIsNotNone(check.pending_gap(body, '', 'false'))
-        for done in ('Moves: nothing (the run → pending later)\n', 'Moves: p1 right jobs 0 → 4 (1 run a side, same minute, usual difference 2; next → pending)\n'):
-            self.assertIsNone(check.pending_gap('## x\n' + done, '[rs] Read boards', 'false'), done)   # a word in the note is not the number
+        self.assertIsNone(check.moves_gap(body, ['src/sources/feeds.py']))
+        self.assertIsNotNone(check.moves_gap(body.replace('(1 run a side, same minute, usual difference 2)', '(soon)'), ['src/sources/feeds.py']))   # a pending number still names its runs and its difference
+        self.assertFalse(hasattr(check, 'pending_gap'), 'one rule for a pending number: the pair row')
 
     def test_the_command_line_reads_the_diff_against_base(self):
         """--base wires the check to git: a branch that edits src/press/run.py exits 1 without the line and 0 with it; no --base (the other repos' calls) never asks."""

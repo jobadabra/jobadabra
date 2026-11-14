@@ -45,7 +45,6 @@ class SearchHoldTest(unittest.TestCase):
         self.assertIn('- Moves: p4 right jobs 20 → 35', out['body'])
         self.assertEqual(pair.pending(out['body']), [])
         self.assertIsNone(check.moves_gap(out['body'], ['src/sources/feeds.py']))
-        self.assertIsNone(check.pending_gap(out['body'], out['title'], 'false'))   # ready and not a draft: no pending number left
 
     def test_a_loss_beyond_the_usual_difference_keeps_the_hold(self):
         out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(20, 6, 2), p4=(20, 20, None)), ['p1', 'p4'], 1)   # a spread of 2 is under the floor of 7: lost 14 is beyond it
