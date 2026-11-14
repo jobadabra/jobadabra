@@ -28,7 +28,7 @@ MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatc
 # The files that write a person's search words before any search (the strategy draft): a PR touching one drafts per side and runs 2 searches a side for each person,
 # since one draft a side cannot tell the change from the draft's own luck (13 Nov 2026: Sofia's board words were English in one draft and Bulgarian in the next, same code).
 DRAFT_PRODUCERS = re.compile(r'^(desktop/lib/strategy(-draft[^/]*)?\.js|src/ai/board_ideas\.py|src/sources/(boards|board_terms)\.py)$')   # the proposal's files too: a PR that changes what boards are proposed is measured with a proposal per side
-VALID_P90_MS = 20000   # sa's rules (13 Nov 2026): a side whose broker wait p90 is over ~20 s, with one refused AI call (the day cap, 503: its `waited na` hides from p90), a short AI call over 30 s or two AIs is not valid, shown but not counted
+VALID_P90_MS = 20000   # sa's rules (13 Nov 2026): a side whose broker wait p90 is over ~20 s, with one refused AI call (the day cap, 503: its `waited na` hides from p90), a short AI call over engine_calls.HUNG_SHORT_MS or two AIs is not valid, shown but not counted
 
 
 def _profiles():
