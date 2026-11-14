@@ -230,8 +230,10 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
+          # Why (14 Nov 2026, sa for the owner's rule "never retry a 401 or 403"): the again job is a new fresh install the same night, so its --beside could ask a board
+          #   that just refused try 1's headless browser once more; the second try reads without --beside (its row says as_app: no).
           # --beside (owner, 13 Nov 2026, the same answer): each press as the app runs a person's own press, with the job boards that refuse plain reading read beside it in Jobadabra's own headless Chrome (tools/persona-search/beside.mjs)
-          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '2' }}" --fresh --engine api --tag gate ${{ steps.render.outcome == 'success' && steps.render_browser.outcome == 'success' && '--beside' || '' }} ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '2' }}" --fresh --engine api --tag gate ${{ github.job != 'again' && steps.render.outcome == 'success' && steps.render_browser.outcome == 'success' && '--beside' || '' }} ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json --urls
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
