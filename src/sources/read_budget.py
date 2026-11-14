@@ -19,6 +19,8 @@ from ..press import budget, rank, resume
 READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
 READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
 READ_GRACE = budget.value('read_budget.READ_GRACE')      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
+PASS_MIN = budget.value('read_budget.PASS_MIN')    # the last judging pass starts at least this long before the run's end (pass_at)
+PASS_MAX = budget.value('read_budget.PASS_MAX')    # and at most this long before it
 BETWEEN_S = budget.value('read_budget.BETWEEN_S')        # how often a read's loop looks at what its open reads ended meanwhile (as_done `between`)
 LEFT = object()      # result(): the site was still being read at the cut
 LEFT_DAYS = 7        # a kept list older than this is dropped (a search moved on)
@@ -50,6 +52,18 @@ def run_end():
     if time_budget.DEADLINE is None or time_budget.BEGAN is None:
         return None
     return time_budget.end() - time_budget.part(time_budget.TAIL)
+
+
+def pass_at():
+    """The proposed last judging start: run_end less one measured place round and title round, bounded by scaled PASS_MIN/PASS_MAX.
+    None without a budget; this reads the existing clock and never changes its deadline. Part 3c hand-over calls it; part 4 activation
+    uses it to stop new lane reads. Current read cuts remain unchanged until activation."""
+    end = run_end()
+    if end is None:
+        return None
+    paces = time_budget._paces()
+    need = paces.get('place_rounds', time_budget.PACE['place_rounds']) + paces.get('title_rounds', time_budget.PACE['title_rounds'])
+    return end - min(max(need, time_budget.part(PASS_MIN)), time_budget.part(PASS_MAX))
 
 
 def deadline(now=None):

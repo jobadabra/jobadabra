@@ -3,8 +3,9 @@
 Design (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, build it (Recommended)"; "All checked, 60 scored, 10 min (Recommended)"):
 - A job a reader gave is listed (the AI said its title is the person's kind and its place is theirs), not for the person (the AI said no: the
   title and place stores remember it), or WAITING: the AI has not answered for its title or its place yet (job_stage 'never_asked').
-- One owner of waiting: this table. Only a search adds to it (aggregators.kept, the one place a reader's jobs get their stage); only the queue
-  takes from it (judge). Nothing else reads it.
+- One owner of waiting: this table. Only a search adds to it (aggregators.kept, the one place a reader's jobs get their stage); the queue
+  takes from it (judge). The listed helper prepares settlement by the search's last judging pass; part 3c hand-over adds that caller.
+  Nothing else reads it.
 - The queue asks the titles first, then the places of the ones whose title fits (a location that names no town: from its posting), and lists what both say yes to.
   A job is never listed on a guess.
 - Bounded: the newest KEPT rows of the current search, for DAYS days; a row whose title the AI answered and whose place stays open, for TRIES queue runs.
@@ -58,9 +59,31 @@ def keep(db, name, jobs, now, search=None, places=None):
                            (job['url'], name, key, json.dumps(job, ensure_ascii=False, default=str), stamp))
             db.execute('DELETE FROM waiting_jobs WHERE url NOT IN (SELECT url FROM waiting_jobs ORDER BY seen_at DESC, rowid DESC LIMIT ?)', (KEPT,))
         print(f'{SAID}{len(jobs)} job(s) of {name}', flush=True)   # the app starts the queue on this line (desktop/lib/pipeline-tasks.js waitsOf)
-        return len(jobs)
-    print(f'Warning: {len(jobs)} job(s) of {name} were not kept waiting ({caught.reason})', flush=True)
-    return 0
+    if caught:
+        print(f'Warning: {len(jobs)} job(s) of {name} were not kept waiting ({caught.reason})', flush=True)
+        return 0
+    from . import job_stage
+    if job_stage.listing():
+        # Why (#4187, #4345): no duplicate Stage line; a diagnostic failure cannot turn committed rows into a failed keep.
+        with stage.guard('waiting job diagnostics'):
+            for job in jobs:
+                print(f"Waiting: {name} {job['url']}\n", end='', flush=True)
+    return len(jobs)
+
+
+def listed(db, urls):
+    """Remove waiting rows for settled URLs (listed, or refused by an answer); part 3c hand-over calls this after keeping its jobs.
+    Database failures are reported and roll back the deletion, leaving rows for the queue rather than losing them."""
+    from ..press import stage
+    urls = [url for url in urls if url]
+    if not urls:
+        return
+    with stage.guard('waiting jobs settled') as caught:
+        db.execute(TABLE)
+        with db:
+            db.executemany('DELETE FROM waiting_jobs WHERE url = ?', [(url,) for url in urls])
+    if caught:
+        print(f'Warning: {len(urls)} listed job(s) still wait for the queue ({caught.reason})', flush=True)
 
 
 def held(db, search):
