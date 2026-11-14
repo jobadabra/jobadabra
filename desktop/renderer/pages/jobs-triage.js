@@ -9,7 +9,7 @@ import {listReady} from './jobs-state.js';
 import {heldAfterList} from '../apply-readiness-read.js';
 import {readsQuestions} from '../apply-triage-mode.js';
 import {shared} from './shared.js';
-import {STEP_KEYS, addStep, endSteps, moveStep, startSteps} from '../readiness-steps.js';
+import {STEP_KEYS, addStep, endSteps, keptSteps, moveStep, startSteps, stepText} from '../readiness-steps.js';
 
 // The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
 const reads = new Map();
@@ -68,7 +68,7 @@ const clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Ma
 /** One finished step of the job in flight: "✓ Reading the form · 5 s". */
 export function stepLine(words, seconds) {
   const li = document.createElement('li');
-  li.textContent = `✓ ${words} · ${t('helperTail.triageStepSeconds', {count: seconds})}`;
+  li.textContent = stepText(words, seconds);
   return li;
 }
 
@@ -113,8 +113,9 @@ async function matchChecked(jobs, match, rows) {
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null, startedAt: Date.now()});
   paint();
-  const found = await match(asked).catch(() => ({}));   // a failed match leaves every form as it was read, never a guess
-  for (const {url} of asked) addStep(url, 'matching', Date.now() - state.startedAt);   // the one match served every form: each job's log gets its seconds
+  const found = await match(asked).catch(() => null);   // a failed match leaves every form as it was read, never a guess
+  const took = Date.now() - state.startedAt;
+  for (const {url} of asked) if (found?.[url]) addStep(url, 'matching', took);   // Why (14 Nov 2026, Gitar on #4342): only a form the match answered gets a finished "Matching" step
   for (const {url} of asked) {
     if (!found?.[url]) continue;
     setRead(url, {...readOf(url), match: found[url]});
@@ -141,7 +142,7 @@ export async function runTriage(jobs, read, match = null) {
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
-      endSteps(state.log, Date.now());
+      endSteps(state.log, Date.now(), {keep: !!result});   // Why (14 Nov 2026, Gitar on #4342): a read Stop cut short leaves the job's last check as it was
       if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { if (!result.stored) rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;
@@ -152,6 +153,7 @@ export async function runTriage(jobs, read, match = null) {
       paint();
     }
     if (match && !cancelled) await matchChecked(jobs, match, rows);   // Stop ends the check where it is: no match runs, so the simple forms read so far say "answers not checked" (apply-triage-mode.js), never "can apply automatically"
+    for (const url of rows.keys()) if (readOf(url) && keptSteps(url).length) await Promise.resolve(wired.keep(url, keptSteps(url))).catch(() => false);   // each read job's log is kept with its stored check (a job with no stored check keeps none)
   } finally {
     clearInterval(ticker);
     Object.assign(state, {running: false, stopping: false, matching: false, job: null, log: null});
@@ -162,7 +164,7 @@ export async function runTriage(jobs, read, match = null) {
 
 // The default read reads nothing (a window with no hidden browser behind it): the person is told so.
 const notYetRead = async () => null;
-let wired = {read: notYetRead, match: null, rerender: () => {}, toast: () => {}};   // what wireTriage was given, so one job is checked and told the same way
+let wired = {read: notYetRead, match: null, keep: () => false, rerender: () => {}, toast: () => {}};   // what wireTriage was given, so one job is checked and told the same way
 
 /** Says how a check ended, in the same words for the batch and for one job: `done` read, `failed` could not be read, of `total`. Why (7 Nov 2026, owner: three statuses with a sub-status; coordinator's "Checked 7 of 10, 3 couldn't be read"): a read that could not be made is said, never silently counted away. */
 function say(toast, done, failed, total) {
@@ -188,10 +190,10 @@ export async function checkJob(job) {
 }
 
 /** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended, `onStep(fn)` hands the read's steps to the dialog. Takes the callbacks; a missing dialog wires nothing. */
-export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
+export function wireTriage({read = notYetRead, match = null, keep = () => false, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
-  wired = {read, match, rerender, toast};
+  wired = {read, match, keep, rerender, toast};
   onStep(heardStep);
   $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
   $('triage-close').addEventListener('click', () => dialog.close());
