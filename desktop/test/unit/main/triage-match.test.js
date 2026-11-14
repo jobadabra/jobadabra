@@ -23,7 +23,7 @@ test('what blocks a form: a Your details fact with no value, a reusable question
   });
   const labels = ['Mobile number', 'When can you start?', 'Do you speak French?', 'Years with Kubernetes?', 'Why this company?', 'I accept the privacy terms', 'Your gender'];
   assert.deepEqual(missingOf(labels, verdicts, FACTS), {
-    missing: [{kind: 'detail', label: 'Notice period'}, {kind: 'answer', label: 'Do you speak French?'}, {kind: 'answer', label: 'Your gender'}], unjudged: 0, unnamed: 0});
+    missing: [{kind: 'detail', label: 'Notice period', asked: 'When can you start?'}, {kind: 'answer', label: 'Do you speak French?', asked: 'Do you speak French?'}, {kind: 'answer', label: 'Your gender', asked: 'Your gender'}], unjudged: 0, unnamed: 0});
 });
 
 test('a question with no verdict is counted as unjudged, never guessed as saved or missing', () => {
@@ -33,7 +33,7 @@ test('a question with no verdict is counted as unjudged, never guessed as saved 
 
 test('the same missing detail asked twice by one form is listed once', () => {
   const verdicts = judged({'Start date': {reuse: 'details', fact: 'Notice period', sensitive: false}, 'Earliest start': {reuse: 'details', fact: 'Notice period', sensitive: false}});
-  assert.deepEqual(missingOf(['Start date', 'Earliest start'], verdicts, FACTS).missing, [{kind: 'detail', label: 'Notice period'}]);
+  assert.deepEqual(missingOf(['Start date', 'Earliest start'], verdicts, FACTS).missing, [{kind: 'detail', label: 'Notice period', asked: 'Start date'}], 'listed once; the question that asked it is kept so the drawer can queue it');
 });
 
 function storage() {
@@ -51,8 +51,8 @@ test('a whole check is ONE AI call for every new question across its forms, and 
   const kept = storage();
   const found = await matchReads(kept, reads, {ai: {client}, facts: FACTS, answered: []});
   assert.equal(calls.length, 1, 'one call for the whole check');
-  assert.deepEqual(found['https://a.example/1'].missing, [{kind: 'detail', label: 'Notice period'}]);
-  assert.deepEqual(found['https://b.example/2'].missing, [{kind: 'answer', label: 'Do you speak French?'}]);
+  assert.deepEqual(found['https://a.example/1'].missing, [{kind: 'detail', label: 'Notice period', asked: 'Start date'}]);
+  assert.deepEqual(found['https://b.example/2'].missing, [{kind: 'answer', label: 'Do you speak French?', asked: 'Do you speak French?'}]);
   assert.equal('https://c.example/3' in found, false, 'a form with no questions is not matched');
   const again = await matchReads(kept, reads.slice(0, 1), {ai: {client}, facts: FACTS, answered: []});
   assert.equal(calls.length, 1, 'the verdicts are kept (question-verdicts.js): the next check asks the AI nothing for a question judged before');
@@ -86,11 +86,11 @@ test('a required question only the person can answer (an own-words consent, an i
     'Why this company?': {reuse: 'one_job', sensitive: false},
   });
   const asked = ['I confirm I did not use AI to write this application', 'Can you attend an interview in our office on 3 Dec?', 'I accept the privacy terms', 'Why this company?'];
-  assert.deepEqual(missingOf(asked, verdicts, FACTS).missing, [{kind: 'answer', label: asked[0]}, {kind: 'answer', label: asked[1]}]);
+  assert.deepEqual(missingOf(asked, verdicts, FACTS).missing, [{kind: 'answer', label: asked[0], asked: asked[0]}, {kind: 'answer', label: asked[1], asked: asked[1]}]);
   // the real path: the AI's person_only flag survives classify and the kept verdict
   const client = {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({verdicts: [
     {label: asked[0], verdict: 'consent', covered_by: '', value: '', topic: 'no ai', fact: '', asks: '', country: '', sensitive: false, person_only: true},
     {label: asked[2], verdict: 'consent', covered_by: '', value: '', topic: 'privacy', fact: '', asks: '', country: '', sensitive: false, person_only: false}]})}], usage: {}})}};
   const found = await matchReads(storage(), [{url: 'https://a.example/1', questions: [asked[0], asked[2]]}], {ai: {client}, facts: FACTS, answered: []});
-  assert.deepEqual(found['https://a.example/1'].missing, [{kind: 'answer', label: asked[0]}]);
+  assert.deepEqual(found['https://a.example/1'].missing, [{kind: 'answer', label: asked[0], asked: asked[0]}]);
 });

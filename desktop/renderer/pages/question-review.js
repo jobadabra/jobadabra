@@ -33,7 +33,7 @@ export const DRAWERS = {
   learned: {title: t('pagesCommon.learned'), lead: t('pagesAuditThird.a148'), skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: t('pagesExtraLabels.saveChange'),
     done: t('pagesExtraLabels.nothingCheck'), doneText: t('pagesAuditThird.a149')},
 };
-const state = {open: false, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
+const state = {open: false, only: null, onClose: null, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
 const drafts = new Map();
 try { for (const [key, value] of Object.entries(JSON.parse(localStorage.getItem(DRAFTS) || '{}'))) drafts.set(key, String(value)); } catch {}
 const keepDrafts = () => { try { localStorage.setItem(DRAFTS, JSON.stringify(Object.fromEntries(drafts))); } catch {} };
@@ -236,13 +236,17 @@ export function draw() {
 }
 
 // The drawer's list and its set-aside ones (What we learned only); start: a key that names the drawer it is in.
-const listOf = (now, kind) => ({queue: [...(now[kind] || [])], setAside: [...new Map([...(kind === 'learned' ? now.hidden : []), ...(now.dismissed?.[kind] || [])].map(q => [q.key, q])).values()]});
+const listOf = (now, kind, only = null) => ({queue: [...(now[kind] || [])].filter(q => !only || only.has(q.key)), setAside: [...new Map([...(kind === 'learned' ? now.hidden : []), ...(now.dismissed?.[kind] || [])].map(q => [q.key, q])).values()]});
 const drawerOf = (now, key, kind) => (key && (now.learned || []).some(q => q.key === key) ? 'learned' : key && (now.details || []).some(q => q.key === key) ? 'details' : kind);
 
 // Opens a drawer (queue: 'details' | 'learned') on its questions (read once if Jobs has not read them yet). start: a question's key to show first.
-export async function openQuestionReview({force = false, start = '', queue = 'details'} = {}) {
+// only: the keys the drawer holds and nothing else (a job's "Fix all": its own missing details and answers); onClose({away}): called once when it closes (away: another screen took over).
+// Why (14 Nov 2026, #4325, owner: "make it easy for him to fix all the issues"): the job drawer opens this on what that job lacks and reads its stored check again when it closes.
+export async function openQuestionReview({force = false, start = '', queue = 'details', only = null, onClose = null} = {}) {
   claimOverlay('review');
   state.open = true;
+  state.only = only ? new Set(only) : null;
+  state.onClose = onClose;
   $('review-drawer-layer').hidden = false;
   let now = questionsNow();
   // The questions saved last time (Jobs' card shows them from this computer) open the drawer at once; the store's answer replaces them when it arrives.
@@ -258,7 +262,7 @@ export async function openQuestionReview({force = false, start = '', queue = 'de
   }
   state.failed = now.error || '';
   state.kind = drawerOf(now, start, DRAWERS[queue] ? queue : 'details');
-  Object.assign(state, listOf(now, state.kind));
+  Object.assign(state, listOf(now, state.kind, state.only));
   state.fromDetails = now.fromDetails || 0;
   state.consent = now.consent || 0;
   state.aside = null;
@@ -277,7 +281,7 @@ export async function openQuestionReview({force = false, start = '', queue = 'de
 function syncQueue() {
   const now = questionsNow(), keep = current()?.key;
   state.failed = '';
-  Object.assign(state, listOf(now, state.kind));
+  Object.assign(state, listOf(now, state.kind, state.only));
   state.fromDetails = now.fromDetails || 0;
   state.consent = now.consent || 0;
   if (state.aside) state.aside = state.setAside.find(q => q.key === keep) || null;
@@ -285,16 +289,21 @@ function syncQueue() {
   draw();
 }
 
-export function closeQuestionReview() {
+/** Closes the drawer. `{away: true}`: another screen took over (the overlay slot, Profile), so the opener's onClose does not bring its own drawer back. A click or Esc passes no `away`. */
+export function closeQuestionReview(options) {
   if (!state.open) return;
   state.open = false;
   releaseOverlay('review');
   $('review-drawer-layer').hidden = true;
+  const done = state.onClose;
+  state.onClose = null;
+  state.only = null;
+  done?.({away: options?.away === true});
 }
 
 // Profile → What we learned on its Confirmed view (a question's "covered by"; the drawer header's button opens All), searched for a saved answer's name when one is given.
 export async function manageAnswers(query = '', view = 'confirmed') {
-  closeQuestionReview();
+  closeQuestionReview({away: true});
   const [{openView}, {settingsPage}, {profileTab}, answers] = await Promise.all([import('./nav.js'), import('./settings.js'), import('./profile.js'), import('./application-answers.js')]);
   answers.searchAnswers(query, view);
   openView('settings');
@@ -302,7 +311,7 @@ export async function manageAnswers(query = '', view = 'confirmed') {
   profileTab('answers');
 }
 
-registerOverlay('review', {close: closeQuestionReview, open: () => openQuestionReview({queue: state.kind})});   // back to the drawer it was
+registerOverlay('review', {close: () => closeQuestionReview({away: true}), open: () => openQuestionReview({queue: state.kind})});   // back to the drawer it was
 $('review-drawer-backdrop')?.addEventListener('click', closeQuestionReview);
 $('questions-review')?.addEventListener('click', () => openQuestionReview({queue: 'details'}));
 $('learned-review')?.addEventListener('click', () => openQuestionReview({queue: 'learned'}));

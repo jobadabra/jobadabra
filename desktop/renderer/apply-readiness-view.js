@@ -23,14 +23,29 @@ export function menuItemOf(read) {
   return fixable(read) ? {action: 'fix', label: t('pagesReadinessTab.fix')} : {action: 'check', label: t('pagesReadinessTab.checkAgain')};
 }
 
-/** What is missing, in the person's words, each with its kind ('sign-in' | 'account' | 'check' | 'detail'): a sign-in, an account, a check only they can do, then the saved details the form asks for. */
+/**
+ * What is missing, in the person's words, each with its kind ('sign-in' | 'account' | 'check' | 'detail' | 'answer') and the one button it gets (`action`): a sign-in, an account or a check only
+ * the person can pass is done on the posting ({type: 'site'}); a saved detail or a question in their own words is answered in the queue ({type: 'queue', queue: 'details' | 'learned', label}).
+ * Why (14 Nov 2026, #4325, owner: "The apply readiness should give some call to actions, to make it ready"): every to-do says what to press.
+ */
 function todoOf(read) {
-  const out = [];
-  if (read.login === true) out.push({kind: 'sign-in', words: t('pagesReadinessTab.signIn')});
-  else if (read.accountCreation === true) out.push({kind: 'account', words: t('pagesReadinessTab.account')});
-  if (read.captcha === true) out.push({kind: 'check', words: t('pagesReadinessTab.personCheck')});
-  for (const item of read.match?.missing || []) if (item?.label) out.push({kind: 'detail', words: String(item.label)});   // Why (14 Nov 2026, #4325): the match's items are {kind, label} (lib/triage-match.js missingOf), so the label is read, never `name`; each becomes a 'detail' to-do with its own icon
+  const out = [], site = {type: 'site'};
+  if (read.login === true) out.push({kind: 'sign-in', words: t('pagesReadinessTab.signIn'), action: site});
+  else if (read.accountCreation === true) out.push({kind: 'account', words: t('pagesReadinessTab.account'), action: site});
+  if (read.captcha === true) out.push({kind: 'check', words: t('pagesReadinessTab.personCheck'), action: site});
+  for (const item of read.match?.missing || []) {   // Why (14 Nov 2026, #4325): the match's items are {kind, label} (lib/triage-match.js missingOf), so the label is read, never `name`
+    if (!item?.label) continue;
+    const answer = item.kind === 'answer';
+    out.push({kind: answer ? 'answer' : 'detail', words: String(item.label), action: {type: 'queue', queue: answer ? 'learned' : 'details', label: String(item.label)}});
+  }
   return out;
+}
+
+/** The to-dos the queue can close: {count, groups: [{queue: 'details' | 'learned', labels}]}, Your details first, then the questions (the queue opens one after the other). Null when none. */
+export function fixAllOf(todo) {
+  const queued = (todo || []).filter(item => item.action?.type === 'queue');
+  const groups = ['details', 'learned'].map(queue => ({queue, labels: queued.filter(item => item.action.queue === queue).map(item => item.action.label)})).filter(group => group.labels.length);
+  return queued.length ? {count: queued.length, groups} : null;
 }
 
 /**
@@ -55,7 +70,7 @@ export function readinessOf(read) {
   const counts = countsOf(read);
   // Why (14 Nov 2026, Gitar on #4379): "it can be filled" only when the check read and matched every question and found it good; an unreadable, unmatched or not-simple form says its own words.
   const ready = !todo.length && tone === 'good' && counts.answered !== null;
-  return {checked: true, chip: {label, tone}, found: detail, todo, missing: todo.map(item => item.words), counts, ready, blocked: todo.some(item => item.kind !== 'detail'),
+  return {checked: true, chip: {label, tone}, found: detail, todo, missing: todo.map(item => item.words), counts, ready, blocked: todo.some(item => item.action.type === 'site'),
     button: t('pagesReadinessTab.checkAgain')};
 }
 
