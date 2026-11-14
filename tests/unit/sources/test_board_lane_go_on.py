@@ -214,6 +214,43 @@ class TheLaneReadsOnAfterTheFirstJobsStep(unittest.TestCase):
         self.assertIn('Job boards: Stellen: next pages and other words not asked (time is up)', out.getvalue())
 
 
+class TheReadOnIsTheLanesReader(TheLaneReadsOnAfterTheFirstJobsStep):
+    """Gitar, #4208: the read-on's thread judged its titles and places outside the lane's reader (batch_scope), and queued its groups with no views."""
+    def test_the_read_ons_groups_carry_the_lanes_views(self):
+        from src.ai import batch_scope
+        with redirect_stdout(io.StringIO()), batch_scope.concurrent():
+            lane, sliced = self.lane()
+            self.assertTrue(self.until(lambda: sliced and lane.left == 1))
+            lane.step_ended.set()
+            self.assertTrue(lane.done.wait(5))
+        groups = []
+        while not lane.groups.empty():
+            groups.append(lane.groups.get_nowait())
+        self.assertGreater(len(groups), 1, 'positive control: the slice\'s group and the read-on\'s')
+        self.assertEqual([views is None for _, views in groups], [False] * len(groups), 'every group carries the lane reader\'s views')
+
+    test_the_boards_read_ends_with_its_slice_and_the_lane_reads_on_after_the_step = None   # the parent's own tests run once, in their class
+    test_the_steps_last_title_batch_is_not_behind_a_read_on_call = None
+    test_a_failure_on_the_way_on_keeps_the_slices_jobs_and_says_so = None
+    test_a_lane_whose_end_comes_first_reads_nothing_more_and_says_so = None
+
+
+class OnePageOneFetch(unittest.TestCase):
+    def test_a_read_cut_short_is_not_asked_again_in_the_same_board_read(self):
+        """Gitar, #4208: board_pages.once kept only URLError/OSError/ValueError; a page cut short (http.client.IncompleteRead) was asked again."""
+        import http.client
+        asked = []
+
+        def fetch(url):
+            asked.append(url)
+            raise http.client.IncompleteRead(b'<html>')
+        again = board_pages.once(fetch)
+        for _ in range(2):
+            with self.assertRaises(http.client.IncompleteRead):
+                again('https://stellen.example/jobs/fahrer')
+        self.assertEqual(asked, ['https://stellen.example/jobs/fahrer'])
+
+
 class TheSearchEndsTheStepForTheLane(unittest.TestCase):
     def test_a_first_press_lets_its_lane_go_on_after_the_first_jobs_step_whatever_its_end(self):
         """The wait above ends only if the search ends it: after first_jobs.run, outside its try, so a failed step lets the lane go on too
