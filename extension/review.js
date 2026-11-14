@@ -167,7 +167,9 @@
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
     const letterMissing = renderLetter(list, account);
-    const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
+    // Why (14 Nov 2026): "N of M" counts the required questions the page marks (required-count.js, the fill card's count too); ready still waits for every answer Claude wrote that is now empty (shown)
+    const tally = window.__jobadabraRequiredCount(list.map(f => ({required: f.required, filled: f.filled, type: f.el?.type})));
+    const total = tally.required, left = tally.left, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && needed.length > 0 && shown.length === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
     counts = {total, left};   // the stopped note says what the page holds
     const done = total ? Math.round(100 * (total - left) / total) : 0;
     const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total, left, done, account, job, session, letterMissing});
