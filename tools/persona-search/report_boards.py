@@ -7,8 +7,8 @@ Invariants: (1) names, one count and one address template: a board's host, the f
 the site stores not even that); (2) only the fictional people of search-profiles.json (the night's 18 locked people are not in it: skipped, never touched), never a fixture or a test (only on GitHub Actions, or `--dry-run`);
 (3) every board the search READ, listed jobs or not (the press record's sources of kind "job board", the host the press wrote), never a guess from a display name; the Scout measures each one itself
 and its own memory of refusals wins over this report (src/scout_board_candidates.py choose); (4) a failed or refused
-post is a warning, never a red run (the feed is a favour, not part of the measure); (5) one fixed address, honest user agent, no override.
-  python3 tools/persona-search/report_boards.py <folder> [--person <id>] [--run <id>] [--dry-run]
+post is a warning and a line in the run's summary, never a red run (the feed is a favour, not part of the measure); (5) one fixed address, honest user agent, no override.
+  python3 tools/persona-search/report_boards.py <folder> [--person <id>] [--run <id>] [--note <file>]... [--dry-run]
 <folder> is one run's folder (`out/` of search-profiles.yml, `out/<id>--<side>-<k>` of search-pair.yml) or a folder of such folders (a saved artifact).
 Why `local` (13 Nov 2026, owner via sa: "ties are not equal, the search already knows which boards gave it jobs... send that number with the host (a count, fixed shape, validator both ends, capped), the site keeps
 the highest seen, and for_country orders by it first"): discovery run 43520706763 read 4 of 77 reported boards in alphabetical order while Jobeka and Trabajo.org (19 and 16 right jobs for a Madrid electrician) waited. Site half: jobadabra-web #647.
@@ -104,10 +104,8 @@ def country_of(person):
 def collect(path, person=None):
     """{(host, country): {'local': int, 'url': address or None, 'fine': whether the address was read fine}} for a run folder or a folder of run folders (the highest `local` over its folders for a host, the address
     the search read fine, else the first found); a folder with no known person or no readable country adds nothing."""
-    path = Path(path)
-    folders = [path] if (path / 'draw').is_dir() else sorted(draw.parent for draw in path.rglob('draw') if draw.is_dir())
     found = {}
-    for folder in folders:
+    for folder in folders_of(path):
         who = person or person_of(folder)
         country = country_of(who) if who else None
         if country:
@@ -119,6 +117,17 @@ def collect(path, person=None):
                 better = address and (not known['url'] or (fine and not known['fine']))   # an address the search read fine replaces one that gave nothing, whichever folder came first
                 found[(host, country)] = {'local': max(known['local'], local), 'url': address if better else known['url'], 'fine': fine if better else known['fine']}
     return found
+
+
+def folders_of(path):
+    """The run folders under `path` (itself when it holds `draw`)."""
+    path = Path(path)
+    return [path] if (path / 'draw').is_dir() else sorted(draw.parent for draw in path.rglob('draw') if draw.is_dir())
+
+
+def searches(path, person=None):
+    """How many run folders under `path` read at least one job board in a known country: the searches the one share speaks for."""
+    return sum(1 for folder in folders_of(path) if (person or person_of(folder)) and country_of(person or person_of(folder)) and boards_read(folder))
 
 
 def body(found, run):
@@ -134,30 +143,55 @@ def body(found, run):
 
 
 def send(payload, post=None):
-    """POST the share; True when the site took it. Never raises: a refused or failed post is a warning (invariant 4)."""
+    """POST the share; (True, '') when the site took it, else (False, why): 'HTTP 429', 'HTTP 200 expected, got 204', 'URLError'. Never raises: a refused or failed post is a warning (invariant 4)."""
     request = urllib.request.Request(URL, data=json.dumps(payload).encode(), method='POST', headers={'Content-Type': 'application/json', 'User-Agent': USER_AGENT})
     try:
         with (post or urllib.request.urlopen)(request, timeout=20) as answer:
             status = answer.status
     except Exception as error:  # noqa: BLE001
         print(f'Warning: CI boards not sent ({type(error).__name__}: {error})')
-        return False
+        code = getattr(error, 'code', None)
+        return False, f'HTTP {code}' if isinstance(code, int) else type(error).__name__
     if status != 200:
         print(f'Warning: CI boards refused ({status})')
-    return status == 200
+        return False, f'HTTP {status}'
+    return True, ''
+
+
+def status_line(payload, searches, told, why):
+    """The one line a run's summary carries about its share, so a lost report is seen where the run is read (run 43531622998: three 429s, a green run, nothing in the summary)."""
+    boards, plural = len(payload['ci_boards']), '' if searches == 1 else 'es'
+    if told:
+        return f'CI boards told to the Scout: {boards} board(s) from {searches} search{plural}.'
+    return f'⚠ CI boards NOT told to the Scout ({why}): {boards} board(s) from {searches} search{plural}; not retried, the next run tells them (the run stays green).'
+
+
+def write_line(line, notes):
+    """Appends `line` to the files named by --note and, on GitHub Actions, to the step summary; a file that cannot be written is skipped (never red)."""
+    files = list(notes) + ([os.environ['GITHUB_STEP_SUMMARY']] if os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('GITHUB_STEP_SUMMARY') else [])
+    for name in files:
+        try:
+            with open(name, 'a', encoding='utf-8') as out:
+                out.write(f'\n{line}\n')
+        except OSError as error:
+            print(f'Warning: CI boards line not written to {name} ({error})')
 
 
 def main(argv, post=None):
     args = list(argv)
     person = run = None
+    notes = []
     dry = '--dry-run' in args
     args = [a for a in args if a != '--dry-run']
-    for name in ('--person', '--run'):
-        if name in args:
+    for name in ('--person', '--run', '--note'):
+        while name in args:
             at = args.index(name)
             value = args[at + 1]
             del args[at:at + 2]
-            person, run = (value, run) if name == '--person' else (person, value)
+            if name == '--note':
+                notes.append(value)
+            else:
+                person, run = (value, run) if name == '--person' else (person, value)
     if len(args) != 1:
         print(__doc__.split('\n')[-3], file=sys.stderr)
         return 2
@@ -169,7 +203,8 @@ def main(argv, post=None):
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('JOBADABRA_FIXTURE_DIR'):
         print('CI boards: not sent (not a GitHub Actions run)')   # invariant 2: never from a Mac, a test or a fixture
         return 0
-    send(payload, post)
+    told, why = send(payload, post)
+    write_line(status_line(payload, searches(args[0], person), told, why), notes)
     return 0
 
 
