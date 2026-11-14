@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
 # The person this count is for: data on this Mac (what settleStore gives a new install), no Notion, an AI set up, the search ended.
@@ -40,6 +41,13 @@ def keys(db_path):
 def field(url, shown):
     """The `shown` field of one extracted row (gate.py extract): {'shown': bool}, or {} when the list could not be read (keys() None: unknown, never "not shown")."""
     return {} if shown is None else {'shown': url in shown}
+
+
+def host_field(kind, url):
+    """{'host': <the job's link host without www.>} for a job board's job, else {}: which board a job came from, even when its page names the employer (tools/persona-search/board_funnel.py).
+    Why (14 Nov 2026, Gitar on #4196): the company's `via <board name>` is only there when the page names nobody, and the name is not the host. A host, never the link: the judge reads title, company and location only."""
+    host = (urlparse(url or '').hostname or '').removeprefix('www.')
+    return {'host': host} if kind == 'job board' and host else {}
 
 
 def counts(judged):
