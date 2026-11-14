@@ -65,3 +65,27 @@ def hand(turn, found, on_board):
     turn.extend(found)
     if on_board is not None and found:
         on_board(found)
+
+
+def read_on_kept(board, search, more):
+    """A lane board's read-on (found_boards.read_board) ended with `more`: judged as found_boards.read's keep judges a board's jobs (places, then
+    titles), counted in the run and added to the board's memory beside its slice's, then returned (placed) for the lane.
+    Why (Gitar, #4218): kept at its slice, a board whose relevant jobs came from its other words and next pages was remembered as yielding
+    none (board_yield.pick may drop it next run), and the run's counts left the read-on's jobs out."""
+    from .. import run_counts
+    from ..ai import board_ideas
+    from . import board_yield
+    if not more:
+        return more
+    relevant = board_yield.is_relevant(more)
+    with board_ideas.STORE:   # one load-change-save, as board_ideas.keep_board: the slice's keep and board_web write the file beside it
+        data = board_ideas.load()
+        entry = data.get('boards', {}).get(board['host'])
+        if entry is not None:   # the slice's keep wrote it; a board read by no keep (a test's read_board) has none
+            board_yield.record(entry, (entry.get('jobs') or 0) + len(more), (entry.get('relevant') or 0) + len(relevant), 'ok')
+            board_yield.paid(entry, len(relevant), search)
+            board_ideas.save(data)
+    print(f"Job boards found: {board['name']} read on: {len(more)} more job(s), {len(relevant)} relevant", flush=True)
+    run_counts.looked(more)
+    run_counts.matched(relevant)
+    return more
