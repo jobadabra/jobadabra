@@ -72,12 +72,18 @@ async function turnOnWithChrome(wanted) {
   return wanted === 'renew' ? false : watchUntilSignedIn();
 }
 
-async function turnOnKept() {
-  const answer = await window.pilot.linkedinJobsOn().catch(() => null);
-  await refreshLinkedin().catch(() => {});
-  if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
-  else toast(...signInEnded(answer || {reason: 'needs-signin'}, view));   // Gitar on #4354: a refused turn-on says so, as the window way does
-  return !!answer?.ok;
+let turning = null;
+/** Use the kept sign-in: turn the switch on and say so. Presses landing meanwhile share this one turn-on (Gitar on #4387: a double press asked twice and toasted twice). */
+function turnOnKept() {
+  if (turning) return turning;
+  turning = (async () => {
+    const answer = await window.pilot.linkedinJobsOn().catch(() => null);
+    await refreshLinkedin().catch(() => {});
+    if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+    else toast(...signInEnded(answer || {reason: 'needs-signin'}, view));   // Gitar on #4354: a refused turn-on says so, as the window way does
+    return !!answer?.ok;
+  })().finally(() => { turning = null; });
+  return turning;
 }
 
 async function turnOff() {

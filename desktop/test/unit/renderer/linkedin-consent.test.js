@@ -4,6 +4,7 @@ import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {CONSENT, KEY, LINE, askOnPress, linkedinEntries, renewCommandOf, signInEnded, signinLine} from '../../../renderer/linkedin-words.js';
+import {t as words} from '../../../i18n/index.js';
 import {LOOK} from '../../../renderer/suggestions.js';
 import {registerLinkedinHandlers} from '../../../lib/linkedin-handlers.js';
 import {viewOf as easyView} from '../../../lib/easy-apply-switch.js';
@@ -76,8 +77,9 @@ for (const kept of [false, true]) test(`the Chrome way ${kept ? 'with a sign-in 
       keychain.write((await import('../../../lib/linkedin-session.js')).SERVICE, JSON.stringify({li_at: 'older-fake-session'}));   // a sign-in kept with the switch off (the press that made it never turned it on)
       settings.linkedinJobs = {on: false, login: {state: 'kept', at: Date.now()}};
     }
-    let reads = 0, live = true;
-    globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(), linkedinJobsOn: async () => handlers.get('linkedinJobsOn')(),
+    let reads = 0, live = true, onCalls = 0, open = () => {};
+    const gate = new Promise(done => { open = done; });   // holds the turn-on in flight until the second press has landed
+    globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(), linkedinJobsOn: async () => { onCalls++; await gate; return handlers.get('linkedinJobsOn')(); },
       linkedinJobsState: async () => {
         const view = await handlers.get('linkedinJobsState')();
         const step = ++reads > 2 ? 160000 : 2000;   // Chrome never sends a copy: the wait runs out
@@ -91,9 +93,12 @@ for (const kept of [false, true]) test(`the Chrome way ${kept ? 'with a sign-in 
     // Gitar on #4380: a second press while the first wait runs shares that watch: same answer, one message, never a silent false.
     const first = consent.openLinkedinConsent({mode: 'turn-on'});
     await new Promise(done => setImmediate(done));
-    const second = kept ? first : consent.openLinkedinConsent({mode: 'turn-on'});
+    const second = consent.openLinkedinConsent({mode: 'turn-on'});   // Gitar on #4387: also on the kept path, a real second press shares the turn-on
+    await new Promise(done => setImmediate(done));
+    open();
     assert.deepEqual(await Promise.all([first, second]), [kept, kept]);
     if (!kept) assert.equal(toasts.filter(body => /no usable LinkedIn sign-in/.test(body)).length, 1, 'one message for the shared watch');
+    else { assert.equal(onCalls, 1, 'one turn-on for two presses'); assert.equal(toasts.filter(body => body === words('pagesAuditSecond.a127')).length, 1, 'one "on" message for the shared turn-on'); }
     live = false;
     assert.equal(settings.linkedinJobs?.on === true, kept, kept ? 'the kept sign-in turned it on' : 'no copy came');
     if (!kept) assert.match(toasts.at(-1) || '', /Chrome sent no usable LinkedIn sign-in in time/, 'Gitar on #4354: the Chrome way says how it ended');
@@ -188,6 +193,7 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /chrome: !!\(words\.ways && view\.extension\)/, 'the Chrome way can be picked only while the extension is connected');
   assert.match(page, /\$\('linkedin-way-chrome'\)\.disabled = !chrome;/);
+  assert.match(page, /linkedinJobsSignIn\(\{turnOn: renew \? undefined : wanted\}\)/, 'the primary button opens the sign-in window and passes the asking switch');
   assert.match(page, /\$\('linkedin-way-chrome'\)\.checked = chrome;/, 'Chrome is picked first when it can be');
   assert.match(page, /ways && dialog\.returnValue === 'default' && \$\('linkedin-way-chrome'\)\.checked \? 'chrome'/, 'Continue with Chrome picked goes the Chrome way');
 });
@@ -276,7 +282,7 @@ test('the Chrome watch: a wait that ends still waiting says so; a press during t
     release();
     assert.deepEqual(await Promise.all([first, second]), [true, true]);
     assert.equal(onCalls, 1, 'one turn-on');
-    assert.equal(toasts.filter(body => /./.test(body)).length >= 1, true);
+    assert.equal(toasts.filter(body => body === words('pagesAuditSecond.a127')).length, 1, 'one "on" message for the shared watch');
     live = false;
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });
