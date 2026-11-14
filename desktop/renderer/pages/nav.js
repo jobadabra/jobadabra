@@ -30,7 +30,6 @@ import {loadCalendar} from './calendar.js';
 import {loadInterviews} from './interviews.js';
 import {loadEmployers} from './employers.js';
 import {closeJobPanel, openJobPanel} from './job-panel.js';
-import {openReadinessQueue} from './jobs-readiness-queue.js';
 import {leaveView} from './view-leave.js';
 import {usage} from '../usage-signals.js';
 import {REPORT_TABS, loadReports} from './reports.js';
@@ -65,7 +64,6 @@ import {setFilters} from './jobs-filter-menu.js';
 // sessionStorage: survives a reload of this window, not a restart of the app (that opens Focus as before).
 import {remembered} from '../view-memory.js';
 drawerActions.openCredentials = () => openSetting('credentials');   // the drawer's Account / Credentials → Settings → Credentials (job-drawer/drawer-actions.js: the drawer imports no page)
-drawerActions.openQueue = openReadinessQueue;   // the drawer's Apply readiness buttons that open the answers queue (pages/jobs-readiness-queue.js)
 export {remembered} from '../view-memory.js';
 // Back / forward (⌘← ⌘→, ⌘[ ⌘], the mouse's side buttons): every screen opened through here, in order, and the
 // Recent activity panel opened over one (pages/activity.js tells us through panelOpened / panelClosed).

@@ -1,7 +1,7 @@
 // The drawer's Apply readiness buttons that go to the answers queue ("Add it", "Answer it", "Fix all N in the queue"): the job's missing questions are put in the queue first (the main process,
 // lib/queue-job-missing.js), then the queue's own drawer (pages/question-review.js) opens on them; when it closes the job's stored check is read again and the job's drawer comes back on Apply readiness.
 // Why (14 Nov 2026, #4325, owner: "make it easy for him to fix all the issues so that all jobs/forms can be fully automated" · "Either using the answers queue"). The drawer imports no page (arch-check
-// no-circular), so nav.js hands this to job-drawer/drawer-actions.js. Guard: integration/app/screen-apply-readiness-actions.test.js.
+// no-circular), so renderer/app.js (which nothing imports) hands this to job-drawer/drawer-actions.js. Guard: integration/app/screen-apply-readiness-actions.test.js.
 import {keyOf} from '../question-filter.js';
 import {nextPart} from '../job-drawer/drawer-actions.js';
 import {loadQuestions, questionsNow} from './jobs-questions.js';
