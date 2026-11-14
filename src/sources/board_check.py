@@ -9,7 +9,7 @@ field_kind: the same question for THIS search's field, asked before a board the 
 sketch "AI judges the page": a pilot search's web search returned a recruiter, a news site's search page and an empty board as trade boards).
 Tests: tests/unit/sources/test_board_judge.py.
 Both judge the page the board's jobs are listed on: its link filled with the search's first word (its home page only when that page is not
-there), and a list page built by scripts is the read's 'browser' state, never judged (owner via sa, 14 Nov 2026: "let's fix what we learn").
+there), and a list page built by scripts gives no verdict: the read's own state stands (owner via sa, 14 Nov 2026: "let's fix what we learn").
 Case set: 'board-kind' in tools/prompt-cases.json (tools/board-kind-cases.py replays it)."""
 import re
 import socket
@@ -18,7 +18,7 @@ import urllib.error
 import urllib.parse
 from html.parser import HTMLParser
 
-from . import board_paths, board_yield, careers
+from . import board_paths, careers
 from ..press import stage
 
 KINDS = ('job board', 'one employer', 'other')
@@ -138,14 +138,14 @@ def _digests(front, page, term):
 
 
 def kind(board, fetch, term='', ask=None):
-    """(kind, page): kind 'gone', 'job board', 'one employer', 'other'; 'browser' (board_yield.scripted) when the list page is built by
-    scripts; None when unknown (no AI, a refusal, a passing error). The AI is shown the home page and the list page filled with `term` (shown);
+    """(kind, page): kind 'gone', 'job board', 'one employer', 'other'; None when unknown (no AI, a refusal, a passing error, a list page
+    built by scripts or a short one, careers._shell: it says nothing of what the site lists). The AI is shown the home page and the list page filled with `term` (shown);
     page: the home page, else the list page."""
     if careers.READER is None:   # the AI page reader is off (tests, a user who keeps pages from the AI): no check at all
         return None, ''
     page = _list_page(board, fetch, term)
-    if page.strip() and careers._shell(page):
-        return board_yield.scripted(), page
+    if page.strip() and careers._shell(page):   # Why (#4198, Gitar): the read decides what needs a browser; here a frame is no verdict, never a visit
+        return None, page
     front, lost = _front(board, fetch)
     if not front.strip() and not page.strip():
         return lost, front
@@ -160,16 +160,16 @@ def checked(board, entry, result, fetch, word, now=None):
     """The read's (jobs, state, route) after the board check, whose verdict is kept in entry['site_kind'] (with 'site_page', 'gone_days').
     Asked when the read gave nothing (not 'browser') and no verdict or 'gone' is kept; and again when a 'one employer' or 'other' verdict is read,
     which board_yield.pick allows only once its 30-day retry is due: the kept kind then follows the new answer, so a wrong verdict lasts one retry,
-    never for ever (owner via sa, 14 Nov 2026). A list built by scripts is the read's 'browser' state; a verdict that is not a board replaces the jobs.
+    never for ever (owner via sa, 14 Nov 2026); no answer then drops the old verdict, so the next empty read asks again. A verdict that is not a
+    board replaces the jobs.
     word: a function giving the search's first word, called only when the judge is asked (a read that gave jobs does no more work)."""
     again = entry.get('site_kind') in ('one employer', 'other')
     if not again and (result[0] or result[1] == 'browser' or entry.get('site_kind') not in (None, 'gone')):
         return result
     site, page = kind(board, fetch, word())
-    if site == 'browser':   # Why (14 Nov 2026, owner via sa): a list built by scripts is the read's own state, never 'not a board' for 30 days
-        for key in ('site_kind', 'site_page') if again else ():
+    if again and not site:   # Why (14 Nov 2026, owner via sa): a script-built list judged 'other' from its home page must not stay 'other' for ever
+        for key in ('site_kind', 'site_page'):
             entry.pop(key, None)
-        return result if result[0] else ([], site, None)
     if site:
         entry['site_kind'], entry['site_page'] = site, name_of(page, board['host']) if site == 'one employer' else ''
         day = (now or datetime.now(timezone.utc)).date().isoformat()   # gone on two days: a Mac offline for one search keeps its boards
