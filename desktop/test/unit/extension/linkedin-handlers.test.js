@@ -67,7 +67,7 @@ test("#2731 a Find jobs press asks, the extension's look hears it, its copy land
   assert.equal(routes.pending().refresh, false, 'asked once per press');
   settings.saveSettings({linkedinJobs: {on: false}});
   assert.deepEqual(routes.pending(), {revoke: true, refresh: false}, 'off never asks for a copy');
-  assert.deepEqual(routes.refresh({held: false}), {ok: false, error: 'LinkedIn jobs is off'});
+  assert.deepEqual(routes.refresh({held: false}), {ok: false, error: 'No LinkedIn sign-in is kept'});
 });
 
 // Why (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times"): a sign-in turns on only the switch that asked for it, by either way.

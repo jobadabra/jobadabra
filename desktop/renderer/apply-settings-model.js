@@ -65,7 +65,7 @@ export const applyChosen = settings => !!settings?.apply?.chosenAt;
 /** True once the person confirmed Full automation for the mode it is saved in; a change to another mode clears it. */
 export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
 /** True while a LinkedIn sign-in is kept, for either switch (owner, 14 Nov 2026: two switches, one sign-in). A sign-in kept before then has no mark: LinkedIn jobs on meant it was kept. The one rule, read by lib/linkedin-session.js too. */
-export const linkedinSignedIn = settings => settings?.linkedinJobs?.signedIn === true || settings?.linkedinJobs?.on === true;
+export const linkedinSignedIn = settings => settings?.linkedinJobs?.signedIn ?? settings?.linkedinJobs?.on === true;   // an explicit mark wins (Gitar on #4271: a sign-out clears it while LinkedIn jobs stays on)
 /** True when LinkedIn Easy Apply is on: its switch (settings.easyApply) and a kept sign-in. The one rule, read by lib/easy-apply-switch.js too. */
 export const easyApplyOn = settings => settings?.easyApply?.on === true && linkedinSignedIn(settings);
 /**

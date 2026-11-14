@@ -59,10 +59,10 @@ export function saveSession(storage, cookies, {keychain = realKeychain, now = Da
  * `held` false (the extension no longer holds the LinkedIn grants, so it read nothing): the Keychain is left as it is. -> {ok, kept?}; the value is never in the answer.
  */
 export function refreshSession(storage, cookies, {keychain = realKeychain, held = true, now = Date.now} = {}) {
-  if (!state(storage).on) return {ok: false, error: 'LinkedIn jobs is off'};
+  if (!signedIn(storage)) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271: Easy Apply alone keeps one too
   if (!held) return {ok: true, kept: true};
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {keptAt: undefined}); return {ok: true, signedOut: true}; }
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271)
   const before = readSession({keychain})?.li_at;   // compared in memory only: a copy of the same sign-in is no new sign-in
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
   if (before !== clean.li_at) save(storage, {keptAt: new Date(now()).toISOString()});
@@ -75,13 +75,19 @@ export function readSession({keychain = realKeychain} = {}) {
 }
 
 const WANTS = new Set(['jobs', 'easy-apply', 'renew']);
-/** The Chrome way was opened by `wanted` ('jobs' | 'easy-apply' | 'renew'): kept until the extension's copy arrives, so that copy turns on only the switch that asked. Writes only that key. */
-export function noteWanted(storage, wanted) { if (WANTS.has(wanted)) save(storage, {wanted}); }
-/** Who asked for the copy now arriving, then forgotten: 'jobs' when nobody said (the extension's page opened by itself, as before the two switches); 'renew' -> undefined (turns nothing on). */
-export function takeWanted(storage) {
-  const wanted = storage.settings().linkedinJobs?.wanted;
-  if (wanted) save(storage, {wanted: undefined});
-  return wanted === 'renew' ? undefined : (WANTS.has(wanted) ? wanted : 'jobs');
+export const WANTED_MS = 15 * 60000;   // Why (Gitar on #4271): a Chrome way left unfinished must not decide a copy that comes much later; the window's own watch gives up after 2.5 min
+/** The Chrome way was opened by `wanted` ('jobs' | 'easy-apply' | 'renew'): kept (with its time) until the extension's copy arrives, so that copy turns on only the switch that asked. */
+export function noteWanted(storage, wanted, {now = Date.now} = {}) { if (WANTS.has(wanted)) save(storage, {wanted, wantedAt: now()}); }
+/**
+ * Who asked for the copy now arriving, then forgotten. Nobody (or asked over 15 min ago): with a sign-in kept the copy is a refresh and turns nothing on (Gitar on #4271: an Easy Apply-only
+ * person reopening the extension's page never gets LinkedIn jobs); with none kept, 'jobs' (the extension's page has its own consent, as before the two switches). 'renew' -> undefined.
+ */
+export function takeWanted(storage, {now = Date.now} = {}) {
+  const mine = storage.settings().linkedinJobs || {};
+  if (mine.wanted) save(storage, {wanted: undefined, wantedAt: undefined});
+  const fresh = WANTS.has(mine.wanted) && now() - (Number(mine.wantedAt) || 0) <= WANTED_MS;
+  if (!fresh) return signedIn(storage) ? undefined : 'jobs';
+  return mine.wanted === 'renew' ? undefined : mine.wanted;
 }
 
 /** LinkedIn jobs on with the sign-in already kept (it was signed in for Easy Apply): nothing is asked. -> {ok: true} | {ok: false, reason: 'needs-signin'}. */
