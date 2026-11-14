@@ -56,7 +56,7 @@ export function setLabel(repo, pr, wanted, have, run = gh) {
 export function sync(repo, pr, run = gh) {
   let wanted = '';
   for (let round = 1; round <= 4; round++) {
-    const {pr: p, reviews} = readPr(repo, pr, run);
+    const {pr: p, reviews} = readPr(repo, pr, run, {withChecks: false});
     if (p.state !== 'OPEN') return wanted;
     wanted = wantedLabel(reviews, p.head);
     const changed = setLabel(repo, pr, wanted, p.labels, run);
