@@ -12,7 +12,7 @@ export function linkedinRoutes(storage, deps = {}) {
   const note = deps.refresh || realRefresh;
   return {
     session: payload => session.saveSession(storage, payload?.cookies, {...deps, for: session.takeWanted(storage)}),
-    pending: () => { const on = session.state(storage).on; return {revoke: !session.signedIn(storage), refresh: on && note.look()}; },   // the permissions stay while a sign-in is kept for either switch
+    pending: () => { const on = session.state(storage).on; return {revoke: !session.signedIn(storage), refresh: on && note.look()}; },   // a copy is asked only by a Find jobs press (LinkedIn jobs on); a kept one is taken any time (refreshSession)   // the permissions stay while a sign-in is kept for either switch
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
 }

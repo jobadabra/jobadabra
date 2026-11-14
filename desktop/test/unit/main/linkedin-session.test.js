@@ -211,3 +211,31 @@ test('a kept sign-in is stamped, and when LinkedIn ends it one line says how man
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-13T07:00:00.000Z', 'a new sign-in starts the clock again');
   assert.ok(!JSON.stringify(settings.settings()).includes(SECRET) && !JSON.stringify(lines).includes('AQEDAR'), 'no value in the settings or the line');
 });
+
+// Gitar on #4271: the mark and the Keychain item move together; a stale "who asked" note expires; a copy nobody asked for never turns a switch on over a kept sign-in.
+import {noteWanted, signedIn} from '../../../lib/linkedin-session.js';
+test('Chrome signed out: the copy and the mark go together; an explicit "not signed in" beats the older-install fallback', () => {
+  const settings = store({linkedinJobs: {on: true}}), kc = keychain();
+  assert.equal(signedIn(settings), true, 'an older install: LinkedIn jobs on meant kept');
+  saveSession(settings, good(), {keychain: kc, for: 'jobs'});
+  assert.deepEqual(refreshSession(settings, [], {keychain: kc}), {ok: true, signedOut: true});
+  assert.equal(signedIn(settings), false, 'LinkedIn jobs still on, but nothing is kept: a turn-on asks for a sign-in');
+});
+test('a refresh copy is taken while any switch keeps the sign-in (Easy Apply alone too)', () => {
+  const settings = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true}}), kc = keychain();
+  kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+  assert.deepEqual(refreshSession(settings, [cookie('li_at', 'AQEDAR-fresher')], {keychain: kc}), {ok: true});
+  assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresher');
+  assert.equal(refreshSession(store(), good(), {keychain: kc}).ok, false, 'nothing kept: a copy never arrives');
+});
+test('"who asked" expires after 15 minutes; an unasked copy over a kept sign-in turns nothing on', async () => {
+  const {takeWanted} = await import('../../../lib/linkedin-session.js');
+  const t0 = Date.parse('2026-11-14T10:00:00Z');
+  const settings = store();
+  noteWanted(settings, 'easy-apply', {now: () => t0});
+  assert.equal(takeWanted(settings, {now: () => t0 + 14 * 60000}), 'easy-apply');
+  noteWanted(settings, 'easy-apply', {now: () => t0});
+  assert.equal(takeWanted(settings, {now: () => t0 + 16 * 60000}), 'jobs', 'stale: as if nobody asked, and nothing is kept, so the extension page\'s own consent turns LinkedIn jobs on');
+  const kept = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true}});
+  assert.equal(takeWanted(kept, {now: () => t0}), undefined, 'a sign-in is kept: an unasked copy is a refresh, it turns nothing on');
+});
