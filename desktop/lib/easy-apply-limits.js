@@ -26,7 +26,7 @@ function counter(storage, now) {
 
 /**
  * May a send start at `now` (a Date)? -> {go: true} | {wait: 'off'} | {wait: 'paused' | 'cap' | 'gap', until: epoch ms}.
- * Invariant, in this order: the switch (Easy Apply on and LinkedIn jobs on), the shared LinkedIn pause, 15 a local day, 2 min since the last press.
+ * Invariant, in this order: the switch (Easy Apply on, with a LinkedIn sign-in kept), the shared LinkedIn pause, 15 a local day, 2 min since the last press.
  */
 export function turn(storage, now) {
   if (!state(storage).on) return {wait: 'off'};

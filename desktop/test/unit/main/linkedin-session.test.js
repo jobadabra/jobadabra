@@ -228,14 +228,23 @@ test('a refresh copy is taken while any switch keeps the sign-in (Easy Apply alo
   assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresher');
   assert.equal(refreshSession(store(), good(), {keychain: kc}).ok, false, 'nothing kept: a copy never arrives');
 });
-test('"who asked" expires after 15 minutes; an unasked copy over a kept sign-in turns nothing on', async () => {
-  const {takeWanted} = await import('../../../lib/linkedin-session.js');
+test('"who asked" expires after 15 minutes and is cleared only once a copy was kept; nobody asked = nothing turns on', async () => {
+  const {peekWanted, clearWanted, copyIsOld, COPY_AGE_MS} = await import('../../../lib/linkedin-session.js');
   const t0 = Date.parse('2026-11-14T10:00:00Z');
   const settings = store();
   noteWanted(settings, 'easy-apply', {now: () => t0});
-  assert.equal(takeWanted(settings, {now: () => t0 + 14 * 60000}), 'easy-apply');
-  noteWanted(settings, 'easy-apply', {now: () => t0});
-  assert.equal(takeWanted(settings, {now: () => t0 + 16 * 60000}), 'jobs', 'stale: as if nobody asked, and nothing is kept, so the extension page\'s own consent turns LinkedIn jobs on');
-  const kept = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true}});
-  assert.equal(takeWanted(kept, {now: () => t0}), undefined, 'a sign-in is kept: an unasked copy is a refresh, it turns nothing on');
+  assert.equal(peekWanted(settings, {now: () => t0 + 14 * 60000}), 'easy-apply');
+  assert.equal(peekWanted(settings, {now: () => t0 + 14 * 60000}), 'easy-apply', 'a peek does not use it up: a refused copy can be sent again');
+  clearWanted(settings);
+  assert.equal(peekWanted(settings, {now: () => t0}), null);
+  noteWanted(settings, 'jobs', {now: () => t0});
+  assert.equal(peekWanted(settings, {now: () => t0 + 16 * 60000}), null, 'stale: as if nobody asked');
+  // Gitar on #4276: a sign-in kept for Easy Apply alone is refreshed with no Find jobs press: the extension's minute look copies it once it is 12 h old
+  const kept = store({linkedinJobs: {on: false, signedIn: true}}), kc = keychain();
+  saveSession(kept, good(), {keychain: kc, for: 'easy-apply', now: () => t0});
+  assert.equal(copyIsOld(kept, {now: () => t0 + COPY_AGE_MS - 1}), false);
+  assert.equal(copyIsOld(kept, {now: () => t0 + COPY_AGE_MS + 1}), true);
+  refreshSession(kept, undefined, {keychain: kc, held: false, now: () => t0 + COPY_AGE_MS + 1});
+  assert.equal(copyIsOld(kept, {now: () => t0 + COPY_AGE_MS + 2}), false, 'the extension answered (even with nothing): no new ask for 12 h');
+  assert.equal(copyIsOld(store(), {now: () => t0 + 10 * COPY_AGE_MS}), false, 'nothing kept: nothing to refresh');
 });

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {linkedinRoutes, linkedinView, registerLinkedinHandlers} from '../../../lib/linkedin-handlers.js';
-import {SERVICE, readSession} from '../../../lib/linkedin-session.js';
+import {SERVICE, noteWanted, readSession} from '../../../lib/linkedin-session.js';
 import {createRefresh} from '../../../lib/linkedin-refresh.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
@@ -13,6 +13,7 @@ function keychain() { const items = new Map(); return {items, write: (service, v
 test('the consent page\'s POST saves the session, the poll then says keep; off says revoke', () => {
   const settings = store(), kc = keychain(), routes = linkedinRoutes(settings, {keychain: kc});
   assert.deepEqual(routes.pending(), {revoke: true, refresh: false}, 'off: the extension gives its LinkedIn permissions back');
+  noteWanted(settings, 'jobs');   // the person picked the Chrome way to turn LinkedIn jobs on
   assert.deepEqual(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}), {ok: true});
   assert.deepEqual(routes.pending(), {revoke: false, refresh: false});
   assert.ok(kc.items.has(SERVICE));
@@ -28,6 +29,7 @@ test('a POST with nothing usable is refused and the switch stays off', () => {
 test('the window\'s view has the state and the ask, never a cookie value', () => {
   const settings = store(), kc = keychain();
   assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, signedIn: false, ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
+  noteWanted(settings, 'jobs');   // the person picked the Chrome way to turn LinkedIn jobs on
   linkedinRoutes(settings, {keychain: kc}).session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   const view = linkedinView(settings, {keychain: kc});
   assert.deepEqual(view, {on: true, asked: 0, declined: 0, signedIn: true, ask: false, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
@@ -43,6 +45,7 @@ test('registered handlers: demo mode touches no store, off deletes the item, the
   await handlers.get('linkedinJobsAnswer')({}, 'not-now');
   assert.deepEqual((await handlers.get('linkedinJobsState')()).asked, 1);
   assert.equal((await handlers.get('linkedinJobsState')()).declined, 1);
+  noteWanted(settings, 'jobs');   // the person picked the Chrome way to turn LinkedIn jobs on
   routes.get('/extension/linkedin-session')({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   assert.equal((await handlers.get('linkedinJobsState')()).on, true);
   await handlers.get('linkedinJobsOff')();
@@ -57,6 +60,7 @@ test('registered handlers: demo mode touches no store, off deletes the item, the
 
 test("#2731 a Find jobs press asks, the extension's look hears it, its copy lands in the Keychain and the press goes on", async () => {
   const settings = store(), kc = keychain(), note = createRefresh(), routes = linkedinRoutes(settings, {keychain: kc, refresh: note});
+  noteWanted(settings, 'jobs');   // the person picked the Chrome way to turn LinkedIn jobs on
   routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   assert.equal(routes.pending().refresh, false, 'nobody pressed: the look is only a look');
   const pressed = note.ask();   // the look just now made the extension "alive"
@@ -95,4 +99,16 @@ test('two switches, one sign-in: each way signs in for the switch that asked; Li
   assert.deepEqual(await h2.get('linkedinJobsSignIn')({}, {for: 'jobs'}), {ok: true});
   assert.equal((await h2.get('linkedinJobsState')()).on, true, 'asked by LinkedIn jobs: its switch turns on');
   assert.ok(readSession({keychain: kc2}));
+});
+
+// Gitar on #4276: only an asked copy turns a switch on, and the "who asked" note is used up only when the copy was kept.
+test('an unasked copy with nothing kept is refused; a refused copy keeps the note for the next try', () => {
+  const settings = store(), kc = keychain(), routes = linkedinRoutes(settings, {keychain: kc});
+  assert.equal(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}).ok, false, 'nobody asked: nothing kept, nothing on');
+  assert.equal(kc.items.size, 0);
+  noteWanted(settings, 'easy-apply');
+  assert.equal(routes.session({cookies: [{name: 'bcookie', value: 'x', domain: '.linkedin.com'}]}).ok, false, 'an unusable copy');
+  assert.equal(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}).ok, true, 'the next copy still knows Easy Apply asked');
+  assert.equal(settings.settings().linkedinJobs.on, false, 'LinkedIn jobs never turned on');
+  assert.equal(settings.settings().linkedinJobs.wanted, undefined, 'used up now');
 });
