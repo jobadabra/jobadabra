@@ -7,6 +7,7 @@ Example names and fake pages only."""
 import io
 import json
 import tempfile
+import threading
 import time
 import unittest
 import urllib.error
@@ -117,6 +118,37 @@ class TheLaneGoesOn(unittest.TestCase):
             jobs, state, asked, log = self.read(lane=True)
         self.assertEqual((len(jobs), state, len(asked)), (2, 'ok', 2))
         self.assertIn('Warning: Stellen: its read did not go on: RuntimeError: a page the layout could not read', log)
+
+    def test_the_read_on_queues_behind_the_first_jobs_title_sorting(self):
+        """sa, 14 Nov 2026, from pair 1 of #4180 (d01: the first-jobs step closed at 129 s against 81 s): the read that goes on is background
+        work; its AI calls queue at the lane's later level (NORMAL, as the known boards' read), never at the slice boards' FIRST, so with one
+        slot busy a title batch asked together with a read-on link question is served first."""
+        levels = {}
+
+        def fetch(url):
+            levels[url] = slots.level()   # the level this thread's AI calls (link questions, the page reader) queue at
+            return self.fetch(url)
+        fetch.on_round = None
+        with slots.priority(slots.FIRST), redirect_stdout(io.StringIO()), inside_the_lane_with_time_left():
+            found_boards.read_board(BOARD, SEARCH, fetch=fetch, early=True)
+        self.assertEqual(levels['https://stellen.example/jobs/fahrer'], slots.FIRST, 'the slice keeps its level')
+        read_on = levels['https://stellen.example/jobs/busfahrer']
+        self.assertEqual(read_on, slots.NORMAL)
+        one, served = slots.Slots(1), []
+
+        def ask(name, at):
+            with slots.priority(at), one:
+                served.append(name)
+        with one:   # the one slot busy; the read-on call asks first, the title batch after it
+            waiting = []
+            for name, at in (('read on', read_on), ('title batch', slots.TITLES)):
+                waiting.append(threading.Thread(target=ask, args=(name, at)))
+                waiting[-1].start()
+                while one.waiting() < len(waiting):   # wait for the state (both queued), never a fixed time
+                    time.sleep(0.001)
+        for thread in waiting:
+            thread.join(5)
+        self.assertEqual(served, ['title batch', 'read on'])
 
     def test_a_round_whose_page_links_no_next_page_says_so(self):
         """c12 Graz's board: a scripted "load more" button and no link to page 2; its round line said nothing about the next pages."""
