@@ -6,6 +6,7 @@ import {registerEasyApplyHandlers} from '../../../lib/easy-apply-handlers.js';
 import {state, turnOff, turnOn, viewOf} from '../../../lib/easy-apply-switch.js';
 import * as linkedin from '../../../lib/linkedin-session.js';
 import {noteStop} from '../../../lib/easy-apply-limits.js';
+import {linkedinRoutes} from '../../../lib/linkedin-handlers.js';
 import {easyApplyOn} from '../../../renderer/apply-settings-model.js';
 
 const NOW = new Date('2026-11-13T18:00:00.000Z');
@@ -146,4 +147,20 @@ test('Easy Apply off deletes the sign-in when LinkedIn jobs is off; keeps it whi
   assert.equal(second.mine.easyApply.on, false, 'the second stop turned it off');
   assert.equal(removed.length, 1, 'and with LinkedIn jobs off the sign-in item went with it');
   assert.equal(second.mine.linkedinJobs.login, undefined, 'and its mark');
+});
+
+// Owner, 14 Nov 2026, "One 'in use' rule" (Gitar's 3rd review of 5a, #4395): Easy Apply alone uses the sign-in, so it is refreshed and its read verdicts count, like LinkedIn jobs'.
+test('one in-use rule: an Easy-Apply-only sign-in takes a copy, is asked to refresh and gets read verdicts; nothing in use, none of it', () => {
+  const only = () => store({...keptOnly(), easyApply: {on: true, warnedAt: NOW.toISOString()}});
+  const idle = () => store(keptOnly({login: {state: 'none', at: 0}}));
+  const asked = storage => linkedinRoutes(storage, {refresh: {look: () => true, delivered: () => {}}}).pending();
+  assert.equal(linkedin.inUse(only()), true);
+  assert.deepEqual(asked(only()), {revoke: false, refresh: true}, 'the extension keeps its grants and is asked for a fresh copy');
+  assert.deepEqual(asked(idle()), {revoke: true, refresh: false}, 'nothing in use: grants given up, no ask');
+  const used = only(), unused = idle();
+  assert.deepEqual(linkedin.noteRun(used, {state: 'signed-out', at: '2026-11-14T10:00:00.000Z'}, {log: () => {}}), {event: 'needs-you', why: 'signed-out'}, 'LinkedIn ended it: needs you');
+  assert.equal(linkedin.signinView(used).state, 'needs-you');
+  assert.deepEqual(linkedin.noteRun(unused, {state: 'signed-out', at: '2026-11-14T10:00:00.000Z'}, {log: () => {}}), {event: null, why: ''}, 'nothing in use: no verdict');
+  const jobs = store(linkedinOn({login: {state: 'kept', at: 1}}));
+  assert.equal(linkedin.inUse(jobs), true, 'LinkedIn jobs on alone still counts');
 });

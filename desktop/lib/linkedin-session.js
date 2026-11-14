@@ -84,9 +84,13 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
-const easyOn = storage => easyApplyOn(storage.settings());   // Easy Apply uses the sign-in too (owner, 14 Nov 2026: one sign-in, two switches); the one rule, so a saved yes with no sign-in behind it holds nothing (Gitar on #4391)
+/**
+ * The ONE answer to "is the kept sign-in in use?": LinkedIn jobs is on, or Easy Apply is (its switch and a kept sign-in, so a saved yes with no sign-in behind it uses nothing). Taking a copy, refreshing it,
+ * its read verdict and the clean-up all ask this, never their own condition (owner, 14 Nov 2026: one sign-in, two switches; "One 'in use' rule" after Gitar's 3rd review of 5a, #4391 #4393 #4395).
+ */
+export const inUse = storage => state(storage).on || easyApplyOn(storage.settings());
 /** True when a copy from the extension is taken, and so the extension keeps its LinkedIn grants: a Chrome way waits for it, a sign-in is kept, or LinkedIn jobs is on (a refresh, also after a Chrome sign-out). One rule, no second name (Gitar on #4380). */
-export const takesCopy = (storage, deps = {}) => state(storage).on || loginOf(storage, deps).state !== 'none';   // Easy Apply on means a kept sign-in, which this already holds
+export const takesCopy = (storage, deps = {}) => inUse(storage) || loginOf(storage, deps).state !== 'none';
 /**
  * The Chrome way was opened with LinkedIn jobs off: the sign-in waits for its copy (WANTED_MS). A sign-in already kept with its item there stays as it is: the press turns its switch on
  * with it (owner, 14 Nov 2026: "he should never login 2 times"; Gitar on #4350, #4365: nothing is deleted, so an expired wait leaves no orphan and no working sign-in is lost).
@@ -111,7 +115,7 @@ export function forgetUnused(storage, {keychain = realKeychain, now = Date.now} 
  * for the start-up clean-up and for the moment Easy Apply goes off (Gitar on #4393), so a waiting Chrome way is never cut short by it.
  */
 export function releaseUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
-  if (state(storage).on || easyOn(storage) || !storage.settings().linkedinJobs?.login || loginOf(storage, {now}).state === 'waiting') return;
+  if (inUse(storage) || !storage.settings().linkedinJobs?.login || loginOf(storage, {now}).state === 'waiting') return;
   keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {login: undefined, keptAt: undefined});
 }
@@ -130,7 +134,7 @@ export function turnOn(storage, {keychain = realKeychain} = {}) {
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; keptAt and the sign-in state cleared too, 14 Nov 2026; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
   // since the guest read runs while it is off (lib/linkedin-guest-on.js); a new yes starts with no old result, but LinkedIn's wait still holds.
-  if (easyOn(storage)) { save(storage, {on: false, last: undefined, noticedAt: undefined}); return {ok: true}; }   // the sign-in and its mark stay for Easy Apply
+  if (easyApplyOn(storage.settings())) { save(storage, {on: false, last: undefined, noticedAt: undefined}); return {ok: true}; }   // the sign-in and its mark stay for Easy Apply
   keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {on: false, login: undefined, last: undefined, signin: undefined, noticedAt: undefined, keptAt: undefined});   // a waiting Chrome way ends with `login` (Gitar on #4340)
   return {ok: true};
@@ -158,7 +162,7 @@ export function nextSignin(prev, verdict) {
  * -> {event, why}: 'needs-you' (this press ended in Needs you: raise the notice, again at every such press), 'renewed' (Needs you, then a read that worked), or null; always null while the switch is off.
  */
 export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}, {log = appLog} = {}) {
-  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = state(storage).on;
+  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = inUse(storage);   // Gitar on #4395: an Easy-Apply-only sign-in has verdicts too
   const ended = live && ENDED_BY_LINKEDIN.has(String(verdict)) ? endedAfter(storage, at) : null;
   save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live ? {signin: next} : {}), ...(ended ? {keptAt: undefined} : {})});
   if (ended) log('linkedin-jobs', 'sign-in ended by LinkedIn', {why: String(verdict), hours: ended.hours});
