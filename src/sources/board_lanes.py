@@ -23,7 +23,7 @@ LOOK_S = 1   # how often a board waiting for a lane looks for a quiet one (a wai
 
 
 class Lanes:
-    """`n` lanes for one read's boards, keyed by board (a host); clock() gives seconds (time.monotonic); say(key, now) logs a freed board."""
+    """`n` lanes for one read's boards, keyed by board (a host); clock() gives seconds (time.monotonic); say(key) logs a freed board."""
     def __init__(self, n, quiet_s=None, clock=time.monotonic, say=None):
         self.n, self.quiet_s, self.clock, self.say = max(1, n), QUIET_S if quiet_s is None else quiet_s, clock, say
         self.cond, self.reading, self.freed, self.line = threading.Condition(), {}, [], collections.deque()
@@ -76,23 +76,17 @@ class Lanes:
             self.freed.extend(quiet)
             self.cond.notify_all()
             for key in quiet:
-                self.say and self.say(key, now)
+                self.say and self.say(key)
         return quiet
 
 
-def said(key, now):
+def said(key):
     """The log line of a freed board (found_boards.read's say)."""
     print(f"Job boards: {key} sent nothing for {QUIET_S} s; its lane went to the next board (#4255)", flush=True)
 
 
 _CLAIMED = {'lane': None, 'hosts': {}}   # {host: the read that took it} while one search's boards' lane (boards_first.Beside) is open
 _CLAIM_LOCK = threading.Lock()
-
-
-def bare_host(host):
-    """A board's host as one read knows it: lowercase, without "www." (delucru.md and www.DeLucru.md are one board)."""
-    host = (host or '').strip().lower()
-    return host[4:] if host.startswith('www.') else host
 
 
 def open_search(lane):
@@ -114,4 +108,4 @@ def claim(host, read):
     with _CLAIM_LOCK:
         if _CLAIMED['lane'] is None:
             return True
-        return _CLAIMED['hosts'].setdefault(bare_host(host), read) is read
+        return _CLAIMED['hosts'].setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)

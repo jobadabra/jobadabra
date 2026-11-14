@@ -40,7 +40,7 @@ class AQuietBoardGivesItsLane(unittest.TestCase):
                       mock.patch.object(board_ideas, 'save'), mock.patch.object(found_boards, '_dead', return_value=set()),
                       mock.patch.object(found_boards.board_employers, 'note'), mock.patch('builtins.print'),
                       mock.patch.object(board_lanes, 'QUIET_S', 0.3), mock.patch.object(board_lanes, 'LOOK_S', 0.05),
-                      mock.patch.object(board_lanes, 'said', side_effect=lambda key, now: self.said.append(key)),
+                      mock.patch.object(board_lanes, 'said', side_effect=self.said.append),
                       mock.patch.object(found_boards.board_yield, 'pick', side_effect=lambda boards, *a, **k: list(boards))):
             patch.start()
             self.addCleanup(patch.stop)
@@ -93,7 +93,7 @@ class OneHostOneRead(unittest.TestCase):
             read.append(b['search_url'])
             return [{'title': 'Developer', 'url': f"https://{b['host']}/job/{len(read)}"}], 'ok', None
         pack = {**board(1), 'name': 'delucru.md', 'host': 'delucru.md', 'search_url': 'https://delucru.md/jobs/{role}'}
-        web = {**pack, 'name': 'DeLucru.md', 'host': 'www.DeLucru.md', 'search_url': 'https://www.delucru.md/jobs/it-software'}
+        web = {**pack, 'name': 'DeLucru.md', 'search_url': 'https://www.delucru.md/jobs/it-software'}   # the same host (board_ideas._host), its own name and page
         with mock.patch.object(found_boards, 'read_board', read_board):
             first = found_boards.read(SEARCH, [pack], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
             second = found_boards.read(SEARCH, [web, board(2)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
@@ -103,7 +103,7 @@ class OneHostOneRead(unittest.TestCase):
 
     def test_a_new_search_reads_the_board_again(self):
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'))
-        self.assertFalse(board_lanes.claim('www.delucru.md', 'read 2'))
+        self.assertFalse(board_lanes.claim('delucru.md', 'read 2'))
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'), 'the read that took it keeps it (its own items of one host)')
         board_lanes.open_search('the next search')
         self.assertTrue(board_lanes.claim('delucru.md', 'read 2'), 'the next search starts with no host taken')
