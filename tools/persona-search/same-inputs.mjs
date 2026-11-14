@@ -75,7 +75,10 @@ const drafted = await run(dirs.a, draft, 'si-draft', ['--presses', '0', '--fresh
 if (drafted.code !== 0 || !fs.existsSync(path.join(draft, 'draw/draft.json'))) { console.error(`no draft: see ${draft}/run.out`); process.exit(1); }
 const install = side => path.join(tmp, `jp-persona-draw-si-${side}`);
 fs.cpSync(install('draft'), path.join(work, 'draftdata'), {recursive: true});   // the sides' starting install: a replay of one side starts from it
-for (const side of ['a', 'b']) { fs.rmSync(install(side), {recursive: true, force: true}); fs.cpSync(install('draft'), install(side), {recursive: true}); }
+for (const side of ['a', 'b']) {
+  fs.rmSync(install(side), {recursive: true, force: true}); fs.cpSync(install('draft'), install(side), {recursive: true});
+  for (const file of ['install_id', 'site_tokens.json']) fs.rmSync(path.join(install(side), 'data', file), {force: true});   // run.mjs lends each side its own pooled install id and tokens, never one shared id (#4266 review)
+}
 console.log(`${id}: A and B search at the same second (pages ${share ? 'shared' : 'not shared'}), ${new Date().toISOString().slice(11, 19)}Z`);
 const searched = await Promise.all(['a', 'b'].map(side => {
   const out = path.join(work, side); fs.mkdirSync(out, {recursive: true}); prepare(out);
@@ -86,5 +89,9 @@ for (const [i, side] of ['a', 'b'].entries()) {
   execFileSync('python3', ['-c', 'import sys; sys.path.insert(0, "tools/persona-search"); import gate; gate.extract(sys.argv[1], sys.argv[2], include_urls=True)', path.join(install(side), 'data/jobs.sqlite'), path.join(out, 'jobs.json')], {cwd: ROOT, stdio: 'inherit'});
   if (keep) fs.cpSync(path.join(install(side), 'data'), path.join(out, 'store'), {recursive: true});
   console.log(`${id}: side ${side.toUpperCase()}: exit ${searched[i].code}, ${searched[i].seconds} s, ${out}`);
+}
+for (const name of share && fs.existsSync(path.join(work, 'shared')) ? fs.readdirSync(path.join(work, 'shared')).filter(f => f.startsWith('log-')) : []) {   // what each side's shared layer did, before the folder goes: a wait that ran to its limit breaks "the same seconds"
+  const lines = fs.readFileSync(path.join(work, 'shared', name), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
+  console.log(`${id}: ${name}: ${lines.filter(l => l.kind === 'live_after_wait').length} asks went live after waiting for the other side, ${lines.filter(l => l.kind === 'exit').map(l => l.url).pop() || 'no exit line (the run was cut)'}`);
 }
 console.log(`RESULT ${work}`);

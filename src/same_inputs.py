@@ -121,7 +121,10 @@ def _urlopen(real):
                 _count('missing')
                 _log('missing', url, 0)
                 raise urllib.error.URLError(f'not in the shared folder: {url}')
-            meta, body = json.load(open(base + '.json', encoding='utf-8')), open(base + '.body', 'rb').read()
+            with open(base + '.json', encoding='utf-8') as file:
+                meta = json.load(file)
+            with open(base + '.body', 'rb') as file:
+                body = file.read()
             time.sleep(meta.get('seconds', 0) * SCALE)
             _count('replayed')
             return _served(url, meta, body)
@@ -136,7 +139,8 @@ def _urlopen(real):
             return real(request, data, timeout, *args, **kwargs) if timeout is not None else real(request, data, *args, **kwargs)
         _count('shared')
         _log('shared', url, time.monotonic() - asked)
-        return _served(url, record, open(base + '.body', 'rb').read())
+        with open(base + '.body', 'rb') as file:
+            return _served(url, record, file.read())
     urlopen.same_inputs = True
     return urlopen
 
@@ -152,7 +156,8 @@ class _Messages:
             if not os.path.exists(base + '.json'):
                 _count('ai_missing')
                 raise RuntimeError('not in the shared folder: an AI request')
-            record = json.load(open(base + '.json', encoding='utf-8'))
+            with open(base + '.json', encoding='utf-8') as file:
+                record = json.load(file)
             time.sleep(record['seconds'] * SCALE)
             _count('ai_replayed')
             if record.get('error'):
