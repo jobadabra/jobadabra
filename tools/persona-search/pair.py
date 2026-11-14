@@ -8,8 +8,10 @@ tools/persona-search/gate-personas.json, and the profiles, search-profiles.json)
   pair.py table <results> <pr> <main sha> <pr sha> -> the PR comment's markdown on stdout
   pair.py pending < body                         -> the people of the body's "→ pending" Moves lines as a dispatch list ([1, "b02"]), nothing when none (tools/ship-search-hold.sh)
   pair.py row <results> <people> <attempt> <newer 0|1> -> row.json: the "Search before/after" check run's conclusion, title and summary, and the people to run once more (pair_row.py)
+  pair.py reach <files.txt>                      -> 1 when a listed file is one the search reads (tools/pr-body-check.py SEARCH_FILES), else 0; the word TRUNCATED counts as read
   pair.py settle <results> <view.json> <attempt> <people> -> settle.json: the body with the numbers written, the title (hold lifted or kept), the people to run again, the verdict
 """
+import importlib.util
 import json
 import math
 import os
@@ -247,6 +249,14 @@ def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
     return {'body': body, 'title': title, 'lift': lift, 'verdict': verdict}
 
 
+def search_changed(files):
+    """True when any file is one Find jobs reads, keeps, scores or orders: tools/pr-body-check.py's SEARCH_FILES, the one list ship and the body check use. 'TRUNCATED' (a compare cut at 300 files) counts as changed."""
+    spec = importlib.util.spec_from_file_location('pr_body_check', HERE.parent / 'pr-body-check.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return any(name == 'TRUNCATED' or module.SEARCH_FILES.match(name) for name in files)
+
+
 def main(argv):
     """The command line above."""
     command = argv[1] if len(argv) > 1 else ''
@@ -264,6 +274,9 @@ def main(argv):
         return 0
     if command == 'table' and len(argv) == 6:
         print(table(argv[2], argv[3], argv[4], argv[5]))
+        return 0
+    if command == 'reach' and len(argv) == 3:
+        print(1 if search_changed(Path(argv[2]).read_text(encoding='utf-8').split()) else 0)
         return 0
     if command == 'pending' and len(argv) == 2:
         found = pending(sys.stdin.read())
