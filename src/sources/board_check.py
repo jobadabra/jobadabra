@@ -7,41 +7,52 @@ that is not a board, hands 'one employer' to the scout with its website (board_e
 (board_yield.pick). Tests: tests/unit/sources/test_board_check.py.
 field_kind: the same question for THIS search's field, asked before a board the web search found joins the list (owner's yes, 26 Oct 2026, discovery
 sketch "AI judges the page": a pilot search's web search returned a recruiter, a news site's search page and an empty board as trade boards).
-Tests: tests/unit/sources/test_board_judge.py."""
+Tests: tests/unit/sources/test_board_judge.py.
+Both judge the page the board's jobs are listed on: its link filled with the search's first word (its home page only when that page is not
+there), and a list page built by scripts is the read's 'browser' state, never judged (owner via sa, 14 Nov 2026: "let's fix what we learn").
+Case set: 'board-kind' in tools/prompt-cases.json (tools/board-kind-cases.py replays it)."""
 import re
 import socket
+from datetime import datetime, timezone
 import urllib.error
 import urllib.parse
 from html.parser import HTMLParser
 
-from . import careers
+from . import board_paths, board_yield, careers
 from ..press import stage
 
 KINDS = ('job board', 'one employer', 'other')
 NOT_A_BOARD = ('gone', 'one employer', 'other')   # what is read in place of a board, not as one
 TOPIC = 'job site kind'
-INSTRUCTIONS = ("Say what this website is, from its name, description and the texts of its links. 'job board': it lists job offers "
-                "from many different employers (a job portal, a job search site, a staffing agency's list of its clients' jobs). 'one "
-                "employer': it is one company's or organisation's own site, even with a careers page. 'other': anything else (a directory, "
-                "news, a parked or empty domain).")
+INSTRUCTIONS = ("Say what this website is, from its home page and the page its job offers are listed on (each: name, description and "
+                "the texts of its links). 'job board': it lists job offers from many different employers (a job portal, a job search site, a staffing agency's list of its clients' jobs, the job "
+                "section of a classifieds or marketplace site, a public or municipal employment service's vacancy list). 'one employer': it "
+                "is one company's or organisation's own site, even with a careers page. 'other': anything else (a directory, news, a "
+                "parked or empty domain).")
 LINKS = 40   # link texts sent at most
+CHROME = ('nav', 'header', 'footer', 'aside')   # the site's own menus, sent after the page's own links
 
 
 class _Digest(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.title, self.meta, self.links, self._in = '', {}, [], None
+        self.title, self.meta, self.links, self.menus, self._in, self._chrome = '', {}, [], set(), None, 0
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag == 'meta' and (attrs.get('name') or attrs.get('property')) in ('description', 'og:site_name', 'og:description'):
             self.meta.setdefault(attrs.get('name') or attrs.get('property'), (attrs.get('content') or '').strip())
+        self._chrome += tag in CHROME
         if tag in ('title', 'a'):
             self._in = tag
             if tag == 'a':
                 self.links.append('')
+                if self._chrome:
+                    self.menus.add(len(self.links) - 1)
 
     def handle_endtag(self, tag):
+        if tag in CHROME and self._chrome:
+            self._chrome -= 1
         if tag == self._in:
             self._in = None
 
@@ -60,9 +71,11 @@ def _read(page):
 
 
 def digest(page):
-    """The page's name, description and link texts, as the AI is asked about it."""
+    """The page's name, description and link texts, as the AI is asked about it: the page's own links first, the site's menus (CHROME) after."""
     found = _read(page)
-    links = list(dict.fromkeys(text for text in (' '.join(link.split()) for link in found.links) if 1 < len(text) < 60))[:LINKS]
+    # Why (14 Nov 2026, xa): a classifieds search page's first 40 links were its category menus; its ads came after them and never reached the AI
+    ordered = sorted(range(len(found.links)), key=lambda at: at in found.menus)
+    links = list(dict.fromkeys(text for text in (' '.join(found.links[at].split()) for at in ordered) if 1 < len(text) < 60))[:LINKS]
     return '\n'.join(part for part in (f"Name: {' '.join(found.title.split())}", f"Site: {found.meta.get('og:site_name', '')}",
                                        f"Description: {found.meta.get('description') or found.meta.get('og:description', '')}",
                                        'Links: ' + ' | '.join(links)) if part.split(': ', 1)[1])
@@ -80,57 +93,119 @@ def home(board):
     return f'{parts.scheme}://{parts.netloc}/'
 
 
-def kind(board, fetch, ask=None):
-    """(kind, home page): kind 'gone', 'job board', 'one employer', 'other', or None when unknown (no AI, a refusal, a passing error)."""
+def _quiet(fetch, address):
+    """The page at address, or '' when it is not there, refused or failed (the caller then falls back or leaves the board as it is)."""
+    try:
+        return str(fetch(address) or '')
+    except Exception:  # noqa: BLE001 — a refusal or a passing error: no page, the caller's fallback stands
+        return ''
+
+
+def listed(board, term):
+    """The page the board's jobs are listed on: its link filled with `term` (a link without {role} is that page itself)."""
+    return board_paths.forms(board['search_url'], term)[0]
+
+
+def shown(front, listing, term):
+    """What the AI is shown of a site: the digest of its home page and of the page its jobs are listed on, either alone when the other is not there.
+    Why (14 Nov 2026, xa, try 2): the home page alone hid a classifieds site's job section; the list page alone hid that a magazine's search
+    showing job ads is a magazine with a job market, and an English word on a local classifieds site listed goods."""
+    return '\n'.join(part for part in (f'Home page:\n{front}' if front else '', f"Its list for '{term}':\n{listing}" if listing else '') if part)
+
+
+def _list_page(board, fetch, term):
+    """The list page filled with `term` when it is not the home page itself, else ''."""
+    address = listed(board, term)
+    return _quiet(fetch, address) if address != home(board) else ''
+
+
+def _front(board, fetch):
+    """(home page, None), or ('', 'gone') when the site has no address or no home page, ('', None) on a refusal or a passing error."""
+    try:
+        return str(fetch(home(board)) or ''), None
+    except urllib.error.HTTPError as error:
+        return '', ('gone' if error.code in (404, 410) else None)
+    except urllib.error.URLError as error:
+        return '', ('gone' if isinstance(error.reason, socket.gaierror) else None)
+    except ValueError:   # careers.get_text: the host has no public address
+        return '', 'gone'
+    except Exception:  # noqa: BLE001 — a refusal or a passing error: the read's own answer stands
+        return '', None
+
+
+def _digests(front, page, term):
+    return shown(digest(front) if front.strip() else '', digest(page) if page.strip() else '', term)
+
+
+def kind(board, fetch, term='', ask=None):
+    """(kind, page): kind 'gone', 'job board', 'one employer', 'other'; 'browser' (board_yield.scripted) when the list page is built by
+    scripts; None when unknown (no AI, a refusal, a passing error). The AI is shown the home page and the list page filled with `term` (shown);
+    page: the home page, else the list page."""
     if careers.READER is None:   # the AI page reader is off (tests, a user who keeps pages from the AI): no check at all
         return None, ''
-    address = home(board)
-    try:
-        page = str(fetch(address) or '')
-    except urllib.error.HTTPError as error:
-        return ('gone' if error.code in (404, 410) else None), ''
-    except urllib.error.URLError as error:
-        return ('gone' if isinstance(error.reason, socket.gaierror) else None), ''
-    except ValueError:   # careers.get_text: the host has no public address
-        return 'gone', ''
-    except Exception:  # noqa: BLE001 — a refusal or a passing error: the read's own answer stands
-        return None, ''
-    if not page.strip():
-        return None, page
+    page = _list_page(board, fetch, term)
+    if page.strip() and careers._shell(page):
+        return board_yield.scripted(), page
+    front, lost = _front(board, fetch)
+    if not front.strip() and not page.strip():
+        return lost, front
     if ask is None:
         from ..ai import decide
         ask = decide.one
-    answer = ask(TOPIC, urllib.parse.urlsplit(address).hostname, digest(page), KINDS, INSTRUCTIONS)
-    return (answer if answer in KINDS else None), page
+    answer = ask(TOPIC, urllib.parse.urlsplit(home(board)).hostname, _digests(front, page, term), KINDS, INSTRUCTIONS)
+    return (answer if answer in KINDS else None), front if front.strip() else page
+
+
+def checked(board, entry, result, fetch, word, now=None):
+    """The read's (jobs, state, route) after the board check, whose verdict is kept in entry['site_kind'] (with 'site_page', 'gone_days').
+    Asked when the read gave nothing (not 'browser') and no verdict or 'gone' is kept; and again when a 'one employer' or 'other' verdict is read,
+    which board_yield.pick allows only once its 30-day retry is due: the kept kind then follows the new answer, so a wrong verdict lasts one retry,
+    never for ever (owner via sa, 14 Nov 2026). A list built by scripts is the read's 'browser' state; a verdict that is not a board replaces the jobs.
+    word: a function giving the search's first word, called only when the judge is asked (a read that gave jobs does no more work)."""
+    again = entry.get('site_kind') in ('one employer', 'other')
+    if not again and (result[0] or result[1] == 'browser' or entry.get('site_kind') not in (None, 'gone')):
+        return result
+    site, page = kind(board, fetch, word())
+    if site == 'browser':   # Why (14 Nov 2026, owner via sa): a list built by scripts is the read's own state, never 'not a board' for 30 days
+        for key in ('site_kind', 'site_page') if again else ():
+            entry.pop(key, None)
+        return result if result[0] else ([], site, None)
+    if site:
+        entry['site_kind'], entry['site_page'] = site, name_of(page, board['host']) if site == 'one employer' else ''
+        day = (now or datetime.now(timezone.utc)).date().isoformat()   # gone on two days: a Mac offline for one search keeps its boards
+        entry['gone_days'] = sorted({*entry.get('gone_days', []), day})[-2:] if site == 'gone' else []
+    return ([], site, None) if site in NOT_A_BOARD else result
 
 
 FIELD_KINDS = ('field board', 'job board', 'one employer', 'other')
 FIELD_TOPIC = 'job site kind for a field'
-FIELD_INSTRUCTIONS = ("Say what this website is for the person looking for work given first, from its name, description and the texts of its "
-                      "links. 'field board': it lists job offers from many employers in that person's field (a job board of the field, a "
+FIELD_INSTRUCTIONS = ("Say what this website is for the person looking for work given first, from its home page and the page its job "
+                      "offers are listed on (each: name, description and the texts of its links). 'field board': it lists job offers from many employers in that person's field (a job board of the field, a "
                       "recruiter's list of many clients' jobs in it, the job section of the field's trade press or association). 'job board': it "
-                      "lists job offers from many employers of any field (a general job portal). 'one employer': it is one company's or "
+                      "lists job offers from many employers of any field (a general job portal, the job section of a classifieds or marketplace "
+                      "site, a public or municipal employment service's vacancy list). 'one employer': it is one company's or "
                       "organisation's own site, even with a careers page. 'other': anything else (news without job offers, a directory, a shop, "
                       "a parked or empty domain).")
 
 
 def field_kind(board, fetch, roles, ask=None):
-    """'field board', 'job board', 'one employer' or 'other' for the page this board was found as (its home page when it is a search template),
-    for someone looking for work as `roles`; None when unknown (the page reader off, no page, no AI answer): the board then stands as found."""
+    """'field board', 'job board', 'one employer' or 'other' for this board, for someone looking for work as `roles`, from its home page and the
+    page it was found as (a search template: the page it gives for the first role; shown); None when unknown (the page reader off, no page, a list
+    built by scripts, no AI answer): the board then stands as found, its read and check come later."""
     if careers.READER is None:
         return None
-    address = home(board) if '{' in board['search_url'] else board['search_url']
-    try:
-        page = str(fetch(address) or '')
-    except Exception:  # noqa: BLE001 — a refusal or a passing error: the board stands, its read and check come later
+    term = roles[0] if roles else ''
+    page = _list_page(board, fetch, term)
+    if page.strip() and careers._shell(page):   # a list built by scripts says nothing of what it lists: its read tells
         return None
-    if not page.strip():
+    front = _quiet(fetch, home(board))
+    if not front.strip() and not page.strip():
         return None
     if ask is None:
         from ..ai import decide
         ask = decide.one
-    text = f"Looking for work as: {', '.join(roles)}\n{digest(page)}"
-    answer = ask(FIELD_TOPIC, urllib.parse.urlsplit(address).hostname, text, FIELD_KINDS, FIELD_INSTRUCTIONS)
+    text = f"Looking for work as: {', '.join(roles)}\n" + _digests(front, page, term)
+    answer = ask(FIELD_TOPIC, urllib.parse.urlsplit(home(board)).hostname, text, FIELD_KINDS, FIELD_INSTRUCTIONS)
     return answer if answer in FIELD_KINDS else None
 
 
@@ -146,10 +221,7 @@ def lists_country(board, fetch, country_name, ask=None):
     no AI answer). The central scout counts a board's place-less jobs in a country only on 'this country' (src/scout_boards.py; owner,
     26 Oct 2026, "AI names the board's country"). Tests: tests/unit/sources/test_board_country.py."""
     address = home(board) if '{' in board['search_url'] else board['search_url']
-    try:
-        page = str(fetch(address) or '')
-    except Exception:  # noqa: BLE001 — a refusal or a passing error: unknown
-        return None
+    page = _quiet(fetch, address)   # a refusal or a passing error: unknown
     if not page.strip():
         return None
     if ask is None:
