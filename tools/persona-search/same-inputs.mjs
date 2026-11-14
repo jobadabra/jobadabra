@@ -1,11 +1,13 @@
 // By-hand same-inputs pair: one fictional person, two code versions search at the same second on this Mac and read the same pages and get the same AI answers (src/same_inputs.py).
-//   node tools/persona-search/same-inputs.mjs <profile id> --a <ref|folder> --b <ref|folder> [--no-share] [--no-ai] [--presses 2] [--keep]
+//   node tools/persona-search/same-inputs.mjs <profile id> --a <ref|folder> (--b <ref|folder> | --control) [--no-share] [--no-ai] [--presses 2] [--keep]
 //   A = before, B = after (main twice is an A/A: the noise). A ref gets its own throwaway worktree under <os temp>/jp-same-inputs/trees/<sha> (made once); a folder is used as it is and must already hold
 //   src/same_inputs.py (a worktree made after this tool landed does). A ref from before it landed gets the module copied into its throwaway tree only, never into a checkout you work in.
+//   --control: B is A's ref again (two trees, one code): the person's own same-code spread, read by same_inputs_report.py <pair work> <id> --control <this work>.
 //   --no-share: nothing shared (the baseline), --no-ai: pages only, --presses 2: a second search on the same install (the link answers are cached), --keep: leave <work>/shared and the stores.
 // Then python3 tools/persona-search/same_inputs_report.py <work> <profile id> prints LISTED / READ / RIGHT (both / only A / only B) with the blind judge run once over both lists.
 // Safety: fictional people only (search-profiles.json); the Claude plan only (every API key and base URL removed); EURES and LinkedIn guest off; the engine's data folder is a throwaway
 // under the OS temp folder (run.mjs) and src/same_inputs.py refuses any other; the shared folder is deleted at the end. How to read it: skill same-inputs-search-pair.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,9 +18,9 @@ const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const args = process.argv.slice(2), id = args[0];
 const option = flag => (args.includes(flag) ? args[args.indexOf(flag) + 1] : null);
 const profiles = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/persona-search/search-profiles.json'), 'utf8')).profiles;
-const [refA, refB, presses] = [option('--a'), option('--b'), option('--presses') || '1'];
+const [refA, presses] = [option('--a'), option('--presses') || '1'], refB = args.includes('--control') ? refA : option('--b');
 if (!profiles.some(p => p.id === id) || !refA || !refB || !['1', '2'].includes(presses)) {
-  console.error(`usage: node tools/persona-search/same-inputs.mjs <${profiles.map(p => p.id).join('|')}> --a <ref|folder> --b <ref|folder> [--no-share] [--no-ai] [--presses 1|2] [--keep]`);
+  console.error(`usage: node tools/persona-search/same-inputs.mjs <${profiles.map(p => p.id).join('|')}> --a <ref|folder> (--b <ref|folder> | --control) [--no-share] [--no-ai] [--presses 1|2] [--keep]`);
   process.exit(2);
 }
 const tmp = fs.realpathSync(os.tmpdir()), base = path.join(tmp, 'jp-same-inputs');
@@ -90,6 +92,12 @@ for (const [i, side] of ['a', 'b'].entries()) {
   execFileSync('python3', ['-c', 'import sys; sys.path.insert(0, "tools/persona-search"); import gate; gate.extract(sys.argv[1], sys.argv[2], include_urls=True)', path.join(install(side), 'data/jobs.sqlite'), path.join(out, 'jobs.json')], {cwd: ROOT, stdio: 'inherit'});
   if (keep) fs.cpSync(path.join(install(side), 'data'), path.join(out, 'store'), {recursive: true});
   console.log(`${id}: side ${side.toUpperCase()}: exit ${searched[i].code}, ${searched[i].seconds} s, ${out}`);
+}
+const sideOf = dir => crypto.createHash('sha1').update(path.join(dir, 'src')).digest('hex').slice(0, 8);   // src/same_inputs.py SIDE: one id per checkout, how a log is told to its side
+fs.writeFileSync(path.join(work, 'sides.json'), JSON.stringify({a: sideOf(dirs.a), b: sideOf(dirs.b)}));
+if (share && fs.existsSync(path.join(work, 'shared'))) {   // the shared layer's logs outlive its folder: the report counts each side's page reads from them
+  fs.mkdirSync(path.join(work, 'logs'), {recursive: true});
+  for (const name of fs.readdirSync(path.join(work, 'shared')).filter(f => f.startsWith('log-'))) fs.copyFileSync(path.join(work, 'shared', name), path.join(work, 'logs', name));
 }
 for (const name of share && fs.existsSync(path.join(work, 'shared')) ? fs.readdirSync(path.join(work, 'shared')).filter(f => f.startsWith('log-')) : []) {   // what each side's shared layer did, before the folder goes: a wait that ran to its limit breaks "the same seconds"
   const lines = fs.readFileSync(path.join(work, 'shared', name), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));

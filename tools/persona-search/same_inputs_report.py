@@ -1,5 +1,5 @@
 """Read a same-inputs pair (tools/persona-search/same-inputs.mjs): LISTED / READ / RIGHT in three cells (both / only A / only B), the blind judge run once over both lists, and the log counts.
-Usage: python3 tools/persona-search/same_inputs_report.py <work folder the runner printed> <profile id> [--no-judge]
+Usage: python3 tools/persona-search/same_inputs_report.py <work folder the runner printed> <profile id> [--no-judge] [--control <work folder of an A/A run (same-inputs.mjs --control) of the same person>]
 The judge is the locked one (gate_judge.judge: role AND place, 3 answers, majority) asked through the Claude plan's own Claude Code (engine `cli`): no API key, no broker, never the production account.
 Why (14 Nov 2026, owner via sa): one judge pass over the union of both lists, so a job both sides list is judged once and the two sides' RIGHT cells compare like with like."""
 import json
@@ -61,6 +61,14 @@ for s in SIDES:
     lines[s] = [line for text in texts for line in text.splitlines()]
 result = same_inputs_validity.classify(lines)
 c = result['counts']
+sides = json.load(open(os.path.join(work, 'sides.json'))) if os.path.exists(os.path.join(work, 'sides.json')) else None   # same-inputs.mjs writes it; an older folder has none
+reads = same_inputs_validity.reads_by_side(same_inputs_validity.read_logs(os.path.join(work, 'logs')), sides) if sides else None
+flags = same_inputs_validity.page_flags(reads, lines) if reads else []
+if result['verdict'].startswith('valid') and flags:
+    result['verdict'], result['why'] = 'NOT VALID', ' (the two searches did not read the same pages: ' + '; '.join(flags) + ')'
+elif reads is None:
+    result['why'] += ' (page reads not recorded for this folder: not checked)'
+print(f'{pid}: layer: src/same_inputs.py (the merged one; a throwaway layer is not this tool)' if sides else f'{pid}: layer: not recorded for this folder')   # Why (14 Nov 2026, sa): a throwaway-layer run was read as this tool
 print(f'{pid}: {result["verdict"]}{result["why"]}: failed calls (AI, web search, feed reads) '
       + ', '.join(f'{s.upper()} {c[s]["failed"]} (clock rule {c[s]["clock"]}, other {c[s]["other"]}, no text {c[s]["notext"]})' for s in SIDES))
 for s, line in result['shown']:
@@ -79,6 +87,13 @@ if '--no-judge' not in sys.argv:
         for s, o in (('a', 'b'), ('b', 'a')):
             for k in sorted(R[s] - R[o]):
                 print(f'  right only {s.upper()}: {k[0][:50]} | {k[1][:24]} | {k[2][:24]}')
+        counts = {'pid': pid, 'right': [len(R['a']), len(R['b'])], 'listed': [len(K['a']), len(K['b'])]}
+        json.dump(counts, open(os.path.join(work, 'spread.json'), 'w'))   # a control pair's own difference is the person's same-code spread: `--control <this folder>` on a pair reads it
+        if '--control' in sys.argv:
+            control = json.load(open(os.path.join(sys.argv[sys.argv.index('--control') + 1], 'spread.json')))
+            for name in ('right', 'listed'):
+                spread, difference = control[name][0] - control[name][1], counts[name][1] - counts[name][0]
+                print(f'{pid}: {name.upper()} difference B - A {difference:+d} is {same_inputs_validity.against_spread(difference, spread)} the same-code spread of {control["pid"]} ({control[name][0]} against {control[name][1]} with the same code both sides)')
 for s in SIDES:
     for d, _, files in os.walk(os.path.join(work, s)):
         if 'run-1.log' in files:
