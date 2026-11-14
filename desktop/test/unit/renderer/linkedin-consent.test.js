@@ -3,7 +3,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CONSENT, KEY, LINE, askOnPress, linkedinEntries, renewCommandOf, signinLine} from '../../../renderer/linkedin-words.js';
+import {CONSENT, KEY, LINE, askOnPress, linkedinEntries, renewCommandOf, signInEnded, signinLine} from '../../../renderer/linkedin-words.js';
 import {LOOK} from '../../../renderer/suggestions.js';
 
 const off = {loaded: true, on: false, asked: 0, declined: 0, ask: true, hasSession: false};
@@ -139,4 +139,12 @@ test('a renewal never says "LinkedIn jobs is on" and never waits for the switch 
   assert.match(page, /if \(!renew\) watchUntilOn\(\)/, 'the Chrome path does not wait for an "on" that is already true');
   assert.match(page, /turnOnWithChrome\(mode === 'renew'\)/);
   assert.match(page, /signInHere\(mode === 'renew'\)/);
+});
+
+// Gitar on #4374: a kept sign-in whose turn-on was refused is told as that, never as a cancel.
+test('a refused turn-on after a kept sign-in has its own words', () => {
+  const [title, body] = signInEnded({ok: false, kept: true, reason: 'needs-signin'});
+  assert.notEqual(body, signInEnded({reason: 'cancelled'})[1]);
+  assert.match(body, /sign-in is kept/);
+  assert.ok(title);
 });

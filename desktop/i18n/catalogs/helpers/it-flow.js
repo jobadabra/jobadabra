@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra conserva l’accesso LinkedIn nel portachiavi di sistema. Questo computer non ha ancora un archivio adatto. Nulla è stato aperto.",
   "linkedinStayedOff": "Ricerca LinkedIn rimasta disattiva",
   "linkedinNotKept": "Hai effettuato l’accesso, ma Jobadabra non ha potuto conservarlo.",
+  "linkedinKeptNotOn": "Hai effettuato l’accesso e l’accesso è conservato, ma LinkedIn jobs non è riuscito ad attivarsi. Premi di nuovo Attiva.",
   "linkedinPopupEnded": "Google o Apple potrebbero non consentire l’accesso in questa finestra.",
   "linkedinChromeWay": "Accedi con Chrome: riapri l’accesso LinkedIn e scegli Usa il mio accesso LinkedIn di Chrome.",
   "linkedinChromeMissing": "Accedi con Chrome: collega l’estensione in Impostazioni → Connessioni → Estensione Chrome, poi scegli Usa il mio accesso LinkedIn di Chrome.",

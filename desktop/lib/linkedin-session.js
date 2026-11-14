@@ -33,13 +33,17 @@ export function cleanCookies(list) {
   return kept.li_at ? Object.fromEntries(COOKIE_NAMES.filter(name => kept[name]).map(name => [name, kept[name]])) : null;
 }
 
-/** Store the copied session in the Keychain and turn the switch on. -> {ok: true} | {ok: false, error}; the value is never in the answer. */
+/**
+ * Store the copied session in the Keychain. It turns no switch on (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times"): the press that asked
+ * does, through turnOn, in the same call (the window handler, the Chrome route in lib/linkedin-handlers.js), so a sign-in can serve Easy Apply without LinkedIn jobs later (plan 4/5).
+ * -> {ok: true} | {ok: false, error}; the value is never in the answer.
+ */
 export function saveSession(storage, cookies, {keychain = realKeychain, now = Date.now} = {}) {
   const clean = cleanCookies(cookies);
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
-  const before = state(storage).on ? readSession({keychain})?.li_at : undefined;   // in memory only: the same sign-in saved again keeps its clock (Gitar on #4247)
+  const before = readSession({keychain})?.li_at;   // in memory only: the same sign-in saved again keeps its clock, switch on or off (Gitar on #4247)
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {on: true, ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026): a saved copy is no verdict, so `signin` stays, only its keep time is stamped: the next read that works after Needs you is what says "renewed"
+  save(storage, {...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; no switch written, owner 14 Nov 2026): a saved copy is no verdict, so `signin` stays, only its keep time is stamped: the next read that works after Needs you is what says "renewed"
   return {ok: true};
 }
 
@@ -71,6 +75,13 @@ export const openSignin = (storage, {now = Date.now} = {}) => save(storage, {sig
 export const signinOpen = (storage, {now = Date.now} = {}) => now() - (Number(storage.settings().linkedinJobs?.signinOpenAt) || 0) <= WANTED_MS;
 /** The copy was kept (by the Chrome way or the window): the open Chrome way is done. */
 export const closeSignin = storage => save(storage, {signinOpenAt: undefined});
+
+/** LinkedIn jobs on, with the sign-in the press just kept: nothing is asked. -> {ok: true} | {ok: false, reason: 'needs-signin'} (Gitar on #4334: the Keychain item must be there). */
+export function turnOn(storage, {keychain = realKeychain} = {}) {
+  if (!readSession({keychain})) return {ok: false, reason: 'needs-signin'};
+  save(storage, {on: true});
+  return {ok: true};
+}
 
 /** Switch off: the Keychain item goes, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
