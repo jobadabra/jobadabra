@@ -148,6 +148,22 @@ class LayoutYieldTests(unittest.TestCase):
             found_boards.read_board({**BOARD, 'layout': ROOT}, SEARCH, fetch=counting)
         self.assertEqual(len(fetched), len(set(fetched)), 'no address fetched twice')
 
+    def test_a_failed_job_page_is_asked_once_for_the_layout_read_and_the_check(self):
+        """Gitar on #4154: a fetch that raises is kept too, so the usual-read check does not ask a failing host again."""
+        fetched = []
+        listing = _listing(36, 38)
+
+        def failing(url):
+            fetched.append(url)
+            if url.endswith('/python-developer-3') or url.endswith('/section-2'):
+                raise OSError('timeout')
+            return _page(url, listing)
+        with redirect_stdout(io.StringIO()):
+            jobs, _, _ = found_boards.read_board({**BOARD, 'layout': ROOT}, SEARCH, fetch=failing)
+        self.assertEqual(len(fetched), len(set(fetched)), 'no address asked twice, a failed one included')
+        self.assertIn('/python-developer-3', ' '.join(fetched))
+        self.assertEqual(len(jobs), 37, 'the page that failed is that job page only')
+
     # ---- (a) learn time: board discovery keeps a layout only if it reads what the usual read found
 
     def learned(self, listing):
@@ -161,6 +177,14 @@ class LayoutYieldTests(unittest.TestCase):
         self.assertEqual(len(jobs), 20)
         self.assertNotIn('layout', notes, 'a root layout has no structure to tell a job from a link: it must give 80% jobs')
         self.assertEqual(notes['why'], 'its one shape names links that are not jobs')
+
+    def test_navigation_named_like_a_job_does_not_count_as_that_job(self):
+        """Gitar on #4154: a link counts as a job by its own address; a title is only the way back for a job whose address is not among the named links."""
+        navs = ''.join('<a href="/section-%d">Python Developer 0</a>' % n for n in range(8))
+        cards = ''.join(f'<div class="card"><a href="/python-developer-{n}">Python Developer {n}</a></div>' for n in range(20))
+        jobs, notes = self.learned(f'<html><body>{navs}{cards}{FOOTER}</body></html>')
+        self.assertEqual(len(jobs), 20)
+        self.assertNotIn('layout', notes, '8 of the 28 links are not jobs, whatever they are called')
 
     def test_a_root_layout_whose_links_are_all_jobs_is_learned(self):
         jobs, notes = self.learned(_listing(0, 20))

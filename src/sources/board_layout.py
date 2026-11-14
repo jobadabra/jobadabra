@@ -12,13 +12,35 @@ second such page (a failed fetch is that page's failure and is not counted). At 
 page the layout was learned from, and a layout with no structure (an empty prefix: any link under the root) must give MATCH_SHARE jobs. Both numbers are page_recipes'.
 Tests: tests/unit/sources/test_board_layouts.py (the replay), test_board_layout_yield.py (the yield), test_scout_board_layouts.py (board discovery learns it).
 """
-import functools
+import threading
 
 from . import careers, page_recipes
 
 # Why (14 Nov 2026, Gitar on #4143): one sparse page, or the posting judge's run-to-run difference, must not retire a layout that works on the board's other pages: a page where the usual read
 # finds more is read the usual way (that page alone pays), and the layout is retired on a repeat. 2 is "a repeat", the smallest count that is not one page's luck, not a tuned threshold.
 SHORTFALLS = 2
+
+
+def _once(fetch):
+    """`fetch` asked once per address, its answer or its failure kept: the usual-read check after a layout read re-asks nothing, a failed address included.
+    Why (14 Nov 2026, Gitar on #4154): functools.lru_cache keeps no call that raised, so a timeout or a 429 on a job page was requested again by the check, on a host already struggling."""
+    seen, lock = {}, threading.Lock()
+
+    def get(address):
+        with lock:
+            hit = seen.get(address)
+        if hit is None:
+            try:
+                hit = (fetch(address), None)
+            except Exception as error:   # kept and raised again to every asker: the caller's own guard decides what a failed page means
+                hit = (None, error)
+            with lock:
+                hit = seen.setdefault(address, hit)
+        if hit[1] is not None:
+            raise hit[1]
+        return hit[0]
+    return get
+
 
 class Layout:
     """One board read's layout: `read` gives a listing page's jobs as the usual read does, with no link question while the layout holds."""
@@ -60,7 +82,7 @@ class Layout:
         """The jobs of the job pages the layout named: its own when at least 1 page in MAX_FACTOR gave a posting, else the usual read's when it found more.
         Both reads share one cache of fetched pages, so the check costs the usual read's own fetches only. The layout is retired for the rest of this read
         on the SHORTFALLS-th page where the usual read found more (board discovery then notes it stale and learns a new one from these jobs)."""
-        page = functools.lru_cache(maxsize=None)(fetch)
+        page = _once(fetch)
         stats = {}
         jobs = careers.read_page_from(markup, url, page, part, linked=links, stats=stats)
         if stats['gave'] * page_recipes.MAX_FACTOR >= stats['read']:   # no page read (all failed) is no low yield; at the learn-time bound it holds
@@ -110,7 +132,11 @@ def _reads_the_jobs(recipe, markup, url, found):
     if not named:
         return True
     norm = lambda address: address.split('#')[0].rstrip('/')   # the same on both sides: a found job's url may carry a fragment or a slash the link does not
-    urls, titles = {norm(job['url']) for job in found}, {job['title'].lower() for job in found}
+    urls = {norm(job['url']) for job in found}
+    # Why (14 Nov 2026, Gitar on #4154): a title is only the way back to a job whose address is not among the links named (a redirect, a tracking part); a link whose own address is a job's
+    # must not lend its title to another link ("Apply", "View job"), or navigation named like a job would count as one.
+    linked = {norm(link) for _, link in named}
+    titles = {job['title'].lower() for job in found if norm(job['url']) not in linked}
     jobs = sum(1 for title, link in named if norm(link) in urls or title.lower() in titles)
     bare = recipe['kind'] == 'links' and recipe['prefix'] == '' and recipe.get('depth', 1) == 1
     return jobs >= page_recipes.MATCH_SHARE * len(named) if bare else jobs * page_recipes.MAX_FACTOR >= len(named)
