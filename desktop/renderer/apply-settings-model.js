@@ -68,8 +68,8 @@ export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
 export const SIGNIN_WAIT_MS = 150000;
 /** True while a LinkedIn sign-in is kept, for either switch (owner, 14 Nov 2026: two switches, one sign-in). A sign-in kept before then has no mark: LinkedIn jobs on meant it was kept. The one rule, read by lib/linkedin-session.js too. */
 export const linkedinSignedIn = settings => (settings?.linkedinJobs?.login ? settings.linkedinJobs.login.state === 'kept' : settings?.linkedinJobs?.on === true);   // one state (lib/linkedin-session.js loginOf); an older install: on meant kept
-/** True when LinkedIn Easy Apply is on: its switch and LinkedIn jobs, which keeps the one sign-in it uses (settings.easyApply, settings.linkedinJobs). The one rule, read by lib/easy-apply-switch.js too. */
-export const easyApplyOn = settings => settings?.easyApply?.on === true && settings?.linkedinJobs?.on === true;
+/** True when LinkedIn Easy Apply is on: its own switch and a kept sign-in, whichever switch kept it (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times"). The one rule, read by lib/easy-apply-switch.js too. */
+export const easyApplyOn = settings => settings?.easyApply?.on === true && linkedinSignedIn(settings);
 /**
  * True when the Full automation confirmation must also carry the LinkedIn line: Easy Apply is on and the saved confirmation has no "LinkedIn may send" yes yet.
  * Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"; D1 "Follow the Apply mode (Recommended)"): LinkedIn sends only after its own yes,
