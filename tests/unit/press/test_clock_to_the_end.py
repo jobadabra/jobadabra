@@ -1,4 +1,6 @@
 """Clock mode and partial place answers for split search part 2, without the board-pass implementation."""
+import contextlib
+import io
 import pathlib
 import tempfile
 import threading
@@ -65,6 +67,15 @@ class EndClock(unittest.TestCase):
             else:
                 serve()
             self.assertEqual(landed, [not enabled])
+
+    def test_map_lookup_keeps_the_default_log_quiet(self):
+        from tests.unit.ai.test_geo import Client
+        output = io.StringIO()
+        time_budget.start(0)
+        with contextlib.redirect_stdout(output):
+            found = geo._ask(Client(), ['fictional town'])
+        self.assertEqual(found['fictional town']['kind'], 'unknown')
+        self.assertEqual(output.getvalue(), '')
 
     def test_stage_end_and_untimed_runs_keep_their_limits(self):
         time_budget.start(180, now=1000, stage=60)
