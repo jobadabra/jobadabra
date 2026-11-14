@@ -70,6 +70,8 @@ test('every sign-in door asks how to sign in, Chrome first; Manage asks nothing 
   assert.match(CONSENT['manage-easy-apply'].lead, /Easy Apply uses the same sign-in, so it stops too/);
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /mode === 'manage' && view\.easyApply \? CONSENT\['manage-easy-apply'\]/, 'Manage names Easy Apply only while it is on');
+  const opener = page.slice(page.indexOf('export async function openLinkedinConsent'), page.indexOf('const shown = showConsent', page.indexOf('export async function openLinkedinConsent')));
+  assert.match(opener, /await refreshLinkedin\(\)/, 'Gitar on #4263: Easy Apply turned on or off since the last read still picks the right Manage words');
   const easy = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
   assert.match(easy, /openLinkedinConsent\(\{mode: 'easy-apply'\}\)/, 'Easy Apply\'s door opens its own words');
 });
