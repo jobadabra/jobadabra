@@ -177,7 +177,17 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
     # the row first: a dispatch that fails then moves it, a PR never has none (Gitar on #4044/#4077)
     row_id = write_row(gh, repo, sha, pair_row, old, events[action]()) or str(old.get('id') or '')
     if action == 'start':
+        # Why (Gitar on #4228, try 3 on the cap): two verdicts of different heads of one PR can both read starts=3 before either dispatches (the verdict's group is per commit). Read the count again after the
+        #   row is written and before the dispatch: a rival whose run is already listed closes the gap. Residual, stated: a rival dispatched in the same second is not listed yet, so the bound is CAP[0],
+        #   plus at most one under that race (2 AI searches per person). Closing it needs one serial starter job per PR: parked, impact low (a cost overshoot of one pair, no wrong verdict).
+        again, _ = pairs_of(gh, repo, number, now)
+        if again >= CAP[0]:
+            why = f'{again} pairs started in {CAP[1]} h'
+            write_row(gh, repo, sha, pair_row, row_on(gh, repo, sha), events['capped']())
+            return 'capped'
         try:   # search-pair.yml's start job claims this row by its id (check_id), so one row exists per head
+            # No --ref, on purpose (Gitar on #4228): this job runs in the default branch's context (workflow_run), so its checkout, pair.py/pair_row.py and this dispatch are all main's; a PR that edits
+            #   search-pair.yml or pair_row.py is measured by main's copies and its own changes apply after the merge.
             gh('workflow', 'run', 'search-pair.yml', '-R', repo, '-f', f'pr={number}', '-f', f'people={json.dumps(people)}', '-f', f'check_id={row_id}')
         except Exception as error:   # gh printed its own words; the row says what to run
             write_row(gh, repo, sha, pair_row, row_on(gh, repo, sha), {'kind': 'opened', 'verdict': 'unnamed', 'people': people, 'title': f'{FAILED}: the dispatch failed; start it by hand',
