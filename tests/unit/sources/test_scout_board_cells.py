@@ -188,6 +188,26 @@ class FactRule(unittest.TestCase):
         cells.record(self.db, 'es', [self.FAMILY], [], TODAY, again=cells.stale(self.db, TODAY)['es'][:1])
         self.assertEqual(cells.pick(self.db, TODAY)[0], 'nl', 'the big one waits its REREAD_DAYS: the small old one is next')
 
+    def test_the_pass_says_what_is_due_what_it_reads_in_order_with_the_counts_and_what_waits(self):
+        """14 Nov 2026, es discovery 43544069411: a pass that re-read nothing printed nothing about the re-reads. After share() cut them to the pass's places, the line lists what the pass reads (the 53 before the 4, each with the count
+        that ranked it) and how many wait; 0 due says 0 (Gitar on #4169: the cut was not visible)."""
+        fact(self.db, 'small.example', 'es', [self.FAMILY], TODAY - timedelta(days=9), right=4, rule=None)
+        fact(self.db, 'airline.example', 'es', [self.FAMILY], TODAY - timedelta(days=1), right=53, rule=None)
+        fact(self.db, 'older.example', 'es', [self.FAMILY], TODAY - timedelta(days=12), right=4, rule=None)
+        again = cells.stale(self.db, TODAY)['es']
+        taken, _ = cells.share(again, [{'host': 'reported.example'}] * 2, 4)   # two places of four: the 53 and the oldest 4
+        self.assertEqual(cells.due_line('es', again, taken), 'Board pass: re-reads due in es: 3; read now: airline.example (53), older.example (4); waiting: 1')
+        self.assertEqual(cells.due_line('nl', [], []), 'Board pass: re-reads due in nl: 0')
+
+    def test_a_board_pass_prints_the_due_line_itself_after_the_places_are_shared(self):
+        """The line is printed by scout_boards.run (it knows the real cut), not by a caller before it."""
+        fact(self.db, 'airline.example', 'es', [self.FAMILY], TODAY - timedelta(days=1), right=53, rule=None)
+        lines = []
+        again = cells.stale(self.db, TODAY)['es']
+        scout_boards.run(self.db, named='es', families=[self.FAMILY], again=again, out=lines.append, ideas=lambda asked: [], google=lambda *a: [], read_board=lambda *a, **k: {'jobs': []},
+                         words=lambda db, country, families: {self.FAMILY: ['electricista']}, reported=[])
+        self.assertIn('Board pass: re-reads due in es: 1; read now: airline.example (53); waiting: 0', lines)
+
     def test_facts_at_an_older_rule_are_counted_in_one_line(self):
         fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
         fact(self.db, 'new.example', 'es', [self.FAMILY])
