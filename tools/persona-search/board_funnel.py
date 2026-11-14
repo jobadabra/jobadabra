@@ -24,7 +24,7 @@ NAMED = (('pack', re.compile(r'^First jobs: reading (.+?), the job boards that g
 EMPLOYERS = re.compile(r'^Employers: read (\d+) of (\d+) sites')
 EMPLOYER_JOBS = re.compile(r'Reading employer job sites: (\d+) of (\d+)(?: · (\d+) jobs listed)?')
 RELAY = re.compile(r'^relay: .* kind (\w+) start (\d+) ')
-NEEDS = (('pages per round', '#4180'), ('how many link-less jobs the save merged', 'a line from the save; xc counts it by replay'), ('place asked, title judged, read-but-never-staged per board', "xb's 1/2"))   # TODO(AI): drop each when its PR is merged and parsed (14 Nov 2026)
+NEEDS = (('pages per round', "ab's board-read PR"), ('place asked, title judged, read-but-never-staged per board', "xb's board-pass PR"), ('how many link-less jobs the save merged', 'a line from the save; xc counts it by replay'))   # TODO(AI): drop each when its PR is merged and parsed (14 Nov 2026); named by owner, not number: a reopened PR changes its number
 
 
 def norm(text):
@@ -52,7 +52,7 @@ def board_round(rows, host_of_name, hit, sec):
     row['rounds'] += 1
     row['jobs'] += int(hit['jobs'] or 0)
     row['refused'] += hit['jobs'] is None
-    row['first'] = min(row['first'] if row['first'] is not None else sec, sec - int(hit['d']))
+    row['first'] = min(row['first'] if row['first'] is not None else sec, max(0, sec - int(hit['d'])))
 
 
 def job_stage(rows, stage):
