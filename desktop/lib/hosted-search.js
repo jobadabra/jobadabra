@@ -26,7 +26,8 @@ export const TWIN_NO_WRITE = 'The live-test twin never changes Always on on our 
 // Why (14 Nov 2026, lg; owner: "Fix it here"): the twin runs on a copy of the owner's folder with the owner's install key, so its start pushed the owner's
 // profile and schedule to our servers (13:03Z). On Always on's routes it only reads, and may press Test (the owner's own press: "use twin", 14 Nov 2026);
 // config, schedule and data writes are refused before any request. Ready to send's routes stay as they were (the owner's yes of 17 Oct, docs/live-test.md).
-const twinMayNot = (route, method) => isTwin() && method !== 'GET' && route.startsWith('/api/hosted/') && route !== '/api/hosted/test';
+const ALWAYS_ON = /^\/api\/hosted\//;   // every Always on route, written as a pattern so a new write route is covered too
+const twinMayNot = (route, method) => isTwin() && method !== 'GET' && ALWAYS_ON.test(route) && route !== '/api/hosted/test';
 /** One call to the site with the install key. -> {ok, ...answer} or {ok: false, status?, error}. Invariant: a twin sends no Always on write but Test. */
 export async function call(storage, route, {method = 'GET', body, fetcher = globalThis.fetch, key: given, headers = {}} = {}) {
   const key = given || keyOf(storage);   // `key`: one minted for an install that runs on its own engine (lib/ready-site.js)
