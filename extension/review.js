@@ -167,17 +167,17 @@
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
     const letterMissing = renderLetter(list, account);
-    // Why (14 Nov 2026): "N of M" counts the required questions the page marks (required-count.js, the fill card's count too); ready still waits for every answer Claude wrote that is now empty (shown)
+    // Why (14 Nov 2026): the "N of M" shown counts the required questions the page marks (required-count.js); `ready` keeps waiting for every answer Claude wrote that is now empty (needed/shown)
     const tally = window.__jobadabraRequiredCount(list.map(f => ({required: f.required, filled: f.filled, type: f.el?.type})));
-    const total = tally.required, left = tally.left, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && needed.length > 0 && shown.length === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
-    counts = {total, left};   // the stopped note says what the page holds
-    const done = total ? Math.round(100 * (total - left) / total) : 0;
-    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total, left, done, account, job, session, letterMissing});
+    const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
+    counts = {total: tally.required, left: tally.left};   // the stopped note says what the page holds
+    const done = tally.required ? Math.round(100 * (tally.required - tally.left) / tally.required) : 0;
+    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total: tally.required, left: tally.left, done, account, job, session, letterMissing});
     // A fill running (this panel's, Claude's, the popup's) or over: a field filled after it is yours.
     const busy = filling || (session?.live && session.status === 'running') || $('.fill').classList.contains('is-busy');
     jp.classList.toggle('busy', busy);   // the Stop beside the minimised pill shows while a fill runs
     const over = filledOnce || ['done', 'input'].includes(session?.status);
-    return {state: {list, left, total, busy, over, account}, pageMark, ready, needsYou, done, readyWords};
+    return {state: {list, left: tally.left, total: tally.required, busy, over, account}, pageMark, ready, needsYou, done, readyWords};
   }
 
   // Keep the original preferred tip and request it only when tips are enabled.
