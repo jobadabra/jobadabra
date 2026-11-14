@@ -15,8 +15,8 @@ const jarAfter = [   // what the browser holds after a read: LinkedIn rotated li
   {name: 'li_at', domain: '.www.linkedin.com', path: '/', secure: true}, {name: 'JSESSIONID', domain: '.www.linkedin.com', path: '/', secure: true}, {name: 'bcookie', domain: '.linkedin.com', path: '/', secure: true},
   {name: 'lidc', domain: 'www.linkedin.com', path: '/jobs', secure: false}, {name: 'session', domain: '.notlinkedin.com', path: '/', secure: true}, {name: 'x', domain: 'x.example', path: '/', secure: true}];
 
-function rig({on = true, session = SESSION, ready = true, searches = SEARCHES, paused = '', results = [], status = {}, startError = null, runError = null, aborted = false} = {}) {
-  const mine = {linkedinJobs: {on, ...(paused ? {pauseUntil: paused} : {})}};
+function rig({on = true, login = null, session = SESSION, ready = true, searches = SEARCHES, paused = '', results = [], status = {}, startError = null, runError = null, aborted = false} = {}) {
+  const mine = {linkedinJobs: {on, ...(login ? {login} : {}), ...(paused ? {pauseUntil: paused} : {})}};
   const storage = {settings: () => mine, saveSettings: patch => Object.assign(mine, patch)};
   const calls = [], lines = [], opened = [], tabs = new Set(), listeners = [];
   let nextTab = 0;
@@ -70,6 +70,15 @@ test('on without a copied session: says what to do and starts nothing', async ()
   assert.equal(result.state, 'no-session');
   assert.match(r.lines.join('\n'), new RegExp(`sign in to LinkedIn in Chrome \\(⌘K → ${linkedinWords.en.renewLabel}\\), then press Find jobs`, 'i'));
   assert.equal(r.calls.includes('start'), false);
+});
+
+// Owner, 14 Nov 2026: "Lost sign-in, means they are not active anymore": the switch stays on, but with no sign-in kept nothing is opened (even if a copy were still in the Keychain).
+test('on with its sign-in lost: inactive, starts nothing, the switch stays on', async () => {
+  const r = rig({login: {state: 'none', at: 0}});
+  const result = await linkedinStep(r.args);
+  assert.equal(result.state, 'no-session');
+  assert.equal(r.calls.includes('start'), false);
+  assert.equal(r.mine.linkedinJobs.on, true, 'a lost sign-in turns nothing off');
 });
 
 test('the background browser is not downloaded: says so, starts nothing', async () => {

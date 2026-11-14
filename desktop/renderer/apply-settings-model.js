@@ -71,6 +71,13 @@ export const linkedinSignedIn = settings => (settings?.linkedinJobs?.login ? set
 /** True when LinkedIn Easy Apply is on: its own switch and a kept sign-in, whichever switch kept it (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times"). The one rule, read by lib/easy-apply-switch.js too. */
 export const easyApplyOn = settings => settings?.easyApply?.on === true && linkedinSignedIn(settings);
 /**
+ * True for a switch that is saved on while no sign-in is kept: it stays on but is inactive until the sign-in is renewed (owner, 14 Nov 2026: "Lost sign-in, means they are not active anymore ... Renew sign in bring the one on back to on and active";
+ * a switch that was off stays off). No stored flag: it is the saved switch AND the one sign-in state, so a renewal brings it back with nothing else to undo. Read by lib/linkedin-session.js and lib/easy-apply-switch.js too.
+ */
+export const linkedinLost = settings => settings?.linkedinJobs?.on === true && !linkedinSignedIn(settings);
+/** True when Easy Apply is saved on and no sign-in is kept: on but inactive until renewed. Same rule as `linkedinLost`; reads `settings.easyApply.on` and the one sign-in state; false for a switch that was off. */
+export const easyApplyLost = settings => settings?.easyApply?.on === true && !linkedinSignedIn(settings);
+/**
  * True when the Full automation confirmation must also carry the LinkedIn line: Easy Apply is on and the saved confirmation has no "LinkedIn may send" yes yet.
  * Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"; D1 "Follow the Apply mode (Recommended)"): LinkedIn sends only after its own yes,
  * asked in the same confirmation, so Easy Apply turned on after Full automation was confirmed asks again.

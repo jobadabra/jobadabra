@@ -4,13 +4,13 @@
 // Design (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times. Once logged in, then we should share it for the other"; asked via
 // AskUserQuestion: "Yes, this design (Recommended)", then "Simplify, then reopen (Recommended)", then "One sign-in state (Recommended)" after Gitar's 3rd round on #4358): this module owns
 // LinkedIn jobs' switch (`on`) and the ONE sign-in state (`login`, the Keychain item beside it). States: none (nothing kept) → waiting (a Chrome way opened while off; WANTED_MS, then none
-// again) → kept (a copy kept: the window, the Chrome way, or a refresh). A Chrome sign-out deletes the item and writes none while the switch stays on, as before; "lost" (inactive on screen) is 5/5.
+// again) → kept (a copy kept: the window, the Chrome way, or a refresh). A Chrome sign-out deletes the item and writes none while the switch stays on, as before; "lost" is not a stored state: a switch saved on with no sign-in kept is on but inactive (`linkedinLost`, `active` below), and a renewal brings it back (6/6).
 // A sign-in turns no switch on: the press that asked turns its own switch on once `kept`. Switching off deletes the sign-in (none) unless Easy Apply is on: it uses the same sign-in
 // (lib/easy-apply-switch.js), which goes when both are off. Settings: settings.linkedinJobs = {on, login: {state, at}, asked, declined, …} (not settings.linkedin: that is the profile import's,
 // lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
-import {easyApplyOn, linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
+import {easyApplyOn, linkedinLost, linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
 
 export const SERVICE = realKeychain.TWIN_LINKEDIN_SESSION;   // one owner of the item's name: lib/keychain.js (Gitar on #4246)
 export const ACCOUNT = 'linkedin-jobs';
@@ -50,6 +50,8 @@ export function loginOf(storage, {now = Date.now} = {}) {
 const moveLogin = (storage, state, {now = Date.now} = {}) => save(storage, {login: {state, at: now()}});   // 'none' is written, not dropped: with no `login` an older install reads from `on`
 /** True while a sign-in is kept (renderer/apply-settings-model.js linkedinSignedIn, the one rule). */
 export const signedIn = storage => linkedinSignedIn(storage.settings());
+/** True while LinkedIn jobs is on AND a sign-in is kept: the one reading the headless read starts from. A lost sign-in leaves the switch on but inactive (renderer/apply-settings-model.js linkedinLost). */
+export const active = storage => state(storage).on && !linkedinLost(storage.settings());
 
 /**
  * Store the copied session in the Keychain. It turns no switch on: the press that asked turns its own switch on once the sign-in is kept (the window's lib/linkedin-handlers.js,
@@ -75,7 +77,7 @@ export function refreshSession(storage, cookies, {keychain = realKeychain, held 
   if (!takesCopy(storage, {now})) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271, #4358: kept, or the switch on after a Chrome sign-out (a Chrome sign-in again brings it back)
   if (!held) return {ok: true, kept: true};
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); moveLogin(storage, 'none', {now}); save(storage, {keptAt: undefined}); return {ok: true, signedOut: true}; }   // the switch stays as it is, as on main; its "lost, inactive" look is 5/5 (owner, 14 Nov 2026: "Split the PR in two")
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); moveLogin(storage, 'none', {now}); save(storage, {keptAt: undefined}); return {ok: true, signedOut: true}; }   // the switch stays as it is, as on main; its "lost, inactive" look is derived, never stored (`active`, 6/6; owner, 14 Nov 2026: "Split the PR in two")
   return saveSession(storage, cookies, {keychain, now});
 }
 

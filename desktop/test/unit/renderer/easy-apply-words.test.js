@@ -26,8 +26,8 @@ test('a press: manage while on, LinkedIn jobs first without its sign-in, the war
 test('the Connections row: only where offered, and it says why it is off', () => {
   assert.equal(rowOf(view({offered: false})).shown, false, 'packaged build: no row until sending lands');
   assert.equal(rowOf({loaded: false}).shown, false, 'not read yet: no row');
-  assert.deepEqual(rowOf(view()), {shown: true, on: false, words: 'Off'});
-  assert.deepEqual(rowOf(view({signedIn: false})), {shown: true, on: false, words: 'Needs a LinkedIn sign-in'});
+  assert.deepEqual(rowOf(view()), {shown: true, on: false, lost: false, words: 'Off'});
+  assert.deepEqual(rowOf(view({signedIn: false})), {shown: true, on: false, lost: false, words: 'Needs a LinkedIn sign-in'});
   assert.equal(rowOf(view({on: true})).on, true);
 });
 
@@ -42,4 +42,16 @@ test('⌘K: "Turn on" while off, "Turn off" while on, none where not offered', (
 test('both doors open the same flow: the Connections row and ⌘K', () => {
   assert.match(readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8'), /openEasyApply/);
   assert.match(readScreenSource(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8'), /addEasyApplyCommand\(add\)/);
+});
+
+// Owner, 14 Nov 2026: a lost sign-in leaves the saved switch on but inactive ("Needs sign-in"), its press is Renew, and a renewal brings it back; the one that was off stays off.
+test('a lost sign-in: the row is inactive and says so, ⌘K offers Renew, a press goes to the sign-in first', () => {
+  const lost = view({on: false, lost: true, signedIn: false});
+  assert.equal(rowOf(lost).on, false);
+  assert.equal(rowOf(lost).lost, true);
+  assert.match(rowOf(lost).words, /no sign-in kept/);
+  assert.equal(commandOf(lost, () => {}).label, 'Renew LinkedIn sign-in');
+  assert.equal(nextStep(lost), 'linkedin-first');
+  assert.equal(rowOf(view({signedIn: false})).lost, false, 'a switch that was off stays off, not lost');
+  assert.equal(commandOf(view(), () => {}).label, 'Turn on LinkedIn Easy Apply');
 });

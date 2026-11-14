@@ -11,9 +11,9 @@ export {view};
 
 /** Read the switch from the app; tells the pages ('easy-apply-changed') when what they draw changed. */
 export async function refreshEasyApply() {
-  const before = `${view.on}:${view.signedIn}:${view.offered}`;
+  const before = `${view.on}:${view.lost}:${view.signedIn}:${view.offered}`;
   Object.assign(view, await window.pilot.easyApplyState(), {loaded: true});
-  if (before !== `${view.on}:${view.signedIn}:${view.offered}`) window.dispatchEvent(new Event('easy-apply-changed'));
+  if (before !== `${view.on}:${view.lost}:${view.signedIn}:${view.offered}`) window.dispatchEvent(new Event('easy-apply-changed'));
   return view;
 }
 
@@ -32,9 +32,11 @@ export async function openEasyApply() {
   await refreshEasyApply();
   let step = nextStep(view);
   if (step === 'linkedin-first') {
+    const renewing = view.lost;   // owner, 14 Nov 2026: a renewed sign-in brings the saved switch back on and active; nothing is asked again
     await openLinkedinConsent({mode: 'easy-apply'});
     await refreshLinkedin().catch(() => {});
     await refreshEasyApply();
+    if (renewing) return;
     step = nextStep(view);
     if (step === 'linkedin-first') return;   // Not now, or the sign-in still finishing in Chrome: the person presses Turn on again once it is kept
   }
