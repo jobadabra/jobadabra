@@ -71,10 +71,9 @@ class Layout:
 
 def _names_jobs(recipe, markup, url, found):
     """Whether a recipe with no structure (links, prefix '', depth 1: every one-segment link of the page) names at least MATCH_SHARE jobs among the first MAX_JOB_PAGES links the read would fetch;
-    any other recipe has structure that tells job links apart and passes. Addresses are compared normalized on both sides (a found job's url may carry a fragment or a slash the link does not)."""
+    any other recipe has structure that tells job links apart and passes. A link stands for a job as `page_recipes.standing` counts it, the same counter `_fits` uses; a layout that names no link
+    cannot be checked and is refused."""
     if recipe['kind'] != 'links' or recipe['prefix'] != '' or recipe.get('depth', 1) != 1:
         return True
-    named = list(dict.fromkeys(link for _, link in page_recipes.replay(recipe, markup, url) if link))[:careers.MAX_JOB_PAGES]
-    norm = lambda address: address.split('#')[0].rstrip('/')
-    jobs = {norm(job['url']) for job in found}
-    return not named or sum(1 for link in named if norm(link) in jobs) >= page_recipes.MATCH_SHARE * len(named)
+    named = list(dict.fromkeys((title, link) for title, link in page_recipes.replay(recipe, markup, url) if link))[:careers.MAX_JOB_PAGES]
+    return bool(named) and page_recipes.standing(named, [job['title'] for job in found], [job['url'] for job in found]) >= page_recipes.MATCH_SHARE * len(named)

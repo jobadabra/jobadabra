@@ -137,6 +137,24 @@ class LayoutLearnTests(unittest.TestCase):
         jobs, said = self.read(BOARD, self.jobeka())
         self.assertEqual((len(jobs), said), (20, []))
 
+    def test_a_posting_whose_own_address_differs_from_its_link_still_counts_by_its_title(self):
+        """Gitar on #4167: a job's address is the posting's own (JSON-LD `url`), not always the link it was read through; `_fits` also counts a title match, so does the share."""
+        from src.sources import board_layout
+        page = _listing(0, 20)
+        found = [{'url': f'https://other.example/p/{n}', 'title': f'Python Developer {n}'} for n in range(20)]
+        self.assertTrue(board_layout._names_jobs(ROOT, page, 'https://jobs.example/search?q=developer', found))
+        self.assertFalse(board_layout._names_jobs(ROOT, page, 'https://jobs.example/search?q=developer', [{'url': 'https://other.example/x', 'title': 'Cook'}]))
+
+    def test_addresses_are_compared_without_a_fragment_or_a_trailing_slash(self):
+        from src.sources import board_layout
+        found = [{'url': f'https://jobs.example/python-developer-{n}/#apply', 'title': f'Role {n}'} for n in range(20)]
+        self.assertTrue(board_layout._names_jobs(ROOT, _listing(0, 20), 'https://jobs.example/search?q=developer', found))
+
+    def test_a_layout_that_names_no_link_is_refused(self):
+        from src.sources import board_layout
+        found = [{'url': 'https://jobs.example/python-developer-1', 'title': 'Python Developer 1'}]
+        self.assertFalse(board_layout._names_jobs(ROOT, '<html><body><p>No links</p></body></html>', 'https://jobs.example/search?q=developer', found))
+
 
 if __name__ == '__main__':
     unittest.main()
