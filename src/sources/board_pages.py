@@ -6,6 +6,7 @@ site's robots.txt is not consulted (owner, 6 + 26 Oct 2026), with a pause betwee
 keeps what was read. Called by found_boards.read_board for the full read only (the first-jobs slice stays at page 1; inside the boards' lane the
 same read goes on to them after its slice: held, once). Tests: tests/unit/sources/test_board_pages.py, tests/unit/sources/test_board_lane_go_on.py."""
 import html
+import http.client
 import re
 import time
 import urllib.error
@@ -76,7 +77,7 @@ def once(fetch):
         if url not in pages:
             try:
                 pages[url] = fetch(url, *args, **kwargs)
-            except (urllib.error.URLError, OSError, ValueError) as error:   # a page refused, missing or timed out is not asked twice in one read
+            except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as error:   # refused, missing, timed out or cut short: not asked twice in one read (Gitar, #4208: a read cut short is no OSError)
                 pages[url] = error
         if isinstance(pages[url], BaseException):
             raise pages[url]

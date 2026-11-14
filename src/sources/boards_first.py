@@ -93,13 +93,15 @@ class Beside:
     def _read_on(self, read_on, name):
         # Why (sa, 14 Nov 2026, pairs 1-2 of #4180): at NORMAL, the known boards' level, never the slice's FIRST, and only after the first-jobs
         # step (its title batches waited 21 s behind read-on calls already in a slot; a level cannot take a slot back)
+        from ..ai import batch_scope
         from . import read_budget
         try:
             self.step_ended.wait(read_budget.seconds_left(read_budget.lane_end()))
             if read_budget.past_cut():
                 print(f'Job boards: {name}: next pages and other words not asked (time is up)', flush=True)
                 return
-            with stage.guard('found boards: read on') as caught:   # a failure keeps what its rounds handed
+            # the lane's reader, as its source threads (_read): its title and place answers and its groups' views are the lane's (Gitar, #4208)
+            with batch_scope.reader(self.NAME), stage.guard('found boards: read on') as caught:   # a failure keeps what its rounds handed
                 self._hand_new(read_on(self._hand_new))
             if caught:
                 print(f'Warning: {name}: its read did not go on: {caught.reason}: {caught.error}', flush=True)
