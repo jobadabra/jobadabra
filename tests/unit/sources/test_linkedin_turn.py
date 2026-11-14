@@ -169,13 +169,13 @@ class TurnTest(unittest.TestCase):
         self.assertIsInstance(got, linkedin_guest.Later)
         self.assertEqual(linkedin_guest.PACE.stopped, 'limited')
 
-    def test_a_refused_turn_is_not_a_read_so_the_next_cloud_run_asks_again_and_a_429_still_rests(self):
+    def test_every_cloud_run_asks_linkedin_the_mac_keeps_its_6_h_rest_and_after_a_429_the_sites_pause_answers(self):
         """Always on, 14 Nov 2026: run_4b38d7e4e614a395 (13:08Z) got the site's "no" and sent LinkedIn nothing, yet LinkedIn was marked read; run_1d768eb072bbfaf0
-        (13:18Z), on the first run's data, rested it 6 h and asked the site nothing. A read that sent LinkedIn nothing waits for the next search; one that sent a
-        request rests as before (a 429 is never asked again)."""
+        (13:18Z), on the first run's data, rested it 6 h and asked the site nothing. An Always on run has no engine rest for LinkedIn (owner, 14 Nov 2026, asked via
+        AskUserQuestion: "Cloud only, Mac keeps 6 h (Recommended)"): the site's caps pace it, and after a 429 its own day pause answers. The Mac keeps the approved 6 h."""
         db = sqlite3.connect(':memory:', check_same_thread=False)
         search = {'role_keywords': ['SRE'], 'locations': {'top_tier': ['Geneva']}}
-        readers = [(linkedin_guest.NAME, linkedin_guest.read)]
+        readers = [(linkedin_guest.NAME, linkedin_guest.read), ('A free API', lambda search: [{'id': '1'}])]
 
         def press(answers, linkedin=lambda url: CARDS):
             """One run's free-API lane and scan, as daily_search starts them; -> whether LinkedIn was due, and LinkedIn's requests."""
@@ -184,18 +184,23 @@ class TurnTest(unittest.TestCase):
             with mock.patch.object(linkedin_turn, '_open', site.open), mock.patch.object(linkedin_guest, '_opener', linkedin_site), \
                     mock.patch.object(aggregators, 'kept', lambda db, name, found, now=None, shown=None: found):
                 lane = api_lane.start(db, search, readers=readers)
-                if lane is None:
-                    return False, linkedin_site.requests
-                self.addCleanup(lane.close)
-                aggregators.scan(db, search, readers=readers, lane=lane)
-            return True, linkedin_site.requests
+                due = sorted(lane.reads) if lane else []
+                if lane is not None:
+                    self.addCleanup(lane.close)
+                    aggregators.scan(db, search, readers=readers, lane=lane)
+            return due, len(linkedin_site.requests)
 
-        self.assertEqual(press([{'answer': 'no', 'why': 'LinkedIn in Always on is a trial on one install for now'}]), (True, []))
-        self.assertIsNone(aggregators.read_lately(db, linkedin_guest.NAME, search=search), 'nothing was sent: not a read')
-        due, sent = press([{'answer': 'go', 'lease': 'lt_1'}], linkedin=lambda url: 429)
-        self.assertEqual((due, len(sent)), (True, 1), 'the next run asks the site again and reads')
-        self.assertIsNotNone(aggregators.read_lately(db, linkedin_guest.NAME, search=search), 'a sent request is a read: it rests')
-        self.assertEqual(press([{'answer': 'go', 'lease': 'lt_2'}]), (False, []), 'after the 429 nothing is asked in the rest')
+        self.assertEqual(press([{'answer': 'no', 'why': 'LinkedIn in Always on is a trial on one install for now'}]), (['A free API', 'LinkedIn'], 0))
+        self.assertEqual(press([{'answer': 'go', 'lease': 'lt_1'}]), (['LinkedIn'], 1), 'the next run asks LinkedIn again and reads; the free API rests 6 h')
+        self.assertEqual(press([{'answer': 'go', 'lease': 'lt_2'}], linkedin=lambda url: 429), (['LinkedIn'], 1), 'a run after a read reads again: no 6 h rest')
+        self.assertEqual(press([{'answer': 'no', 'why': 'LinkedIn asked us to slow down: paused a day'}]), (['LinkedIn'], 0),
+                         "after the 429 the site's own day pause answers no: nothing is sent")
+        mac = {key: value for key, value in CLOUD.items() if key != linkedin_turn.TURN}
+        with mock.patch.dict('os.environ', mac, clear=True):
+            with db:
+                db.execute('DELETE FROM aggregator_runs')   # a Mac's own jobs file: the cloud runs' reads are not on it
+            self.assertEqual(press([]), (['A free API', 'LinkedIn'], 2), 'the Mac: no turn, LinkedIn read (pages 1 and 2)')
+            self.assertEqual(press([]), ([], 0), 'the Mac keeps its 6 h rest (the caps approved 13 Nov)')
 
     def test_a_stop_in_force_still_rests_and_a_cached_answer_is_an_answer(self):
         """Gitar on #4184: a 429 LinkedIn gave earlier in this process (a job page, an earlier read) holds the next read before any request; that read
