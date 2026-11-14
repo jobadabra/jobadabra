@@ -88,5 +88,22 @@ class BoardLanes(unittest.TestCase):
         self.assertEqual(took, [True])
         self.assertIn('second.example', self.lanes.reading)
 
+    def test_a_board_listed_earlier_takes_the_lane_before_one_whose_thread_asked_first(self):
+        """Gitar on #4284: the line kept the order threads arrived in; a known board whose thread started late waited behind boards listed after it."""
+        self.lanes.take('first.example')
+        took = []
+        with mock.patch.object(board_lanes, 'LOOK_S', 30):
+            late = threading.Thread(target=lambda: took.append(('listed 5th', self.lanes.take('fifth.example', wait=10, rank=5))), daemon=True)
+            late.start()
+            for _ in range(1000):
+                if self.lanes.line:
+                    break
+                time.sleep(0.002)
+            self.clock.now = 25   # first.example went quiet: its lane is free
+            self.assertTrue(self.lanes.take('second.example', wait=0, rank=1), 'the board listed 2nd goes before the one listed 5th')
+            self.lanes.give_back('second.example')
+            late.join(5)
+        self.assertEqual(took, [('listed 5th', True)])
+
 if __name__ == '__main__':
     unittest.main()

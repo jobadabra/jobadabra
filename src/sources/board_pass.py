@@ -97,17 +97,15 @@ def listable(done):
     """The jobs of `done.answered` the last hand-over may keep again: never one whose place names no town and whose posting is not read yet
     ('vague': feeds.wanted_location keeps it open until then); it waits for the queue, which reads its posting.
     Why (xc, 14 Nov 2026, ot's c15 Valencia pair on 01870a59): the pass listed 28 more jobs, 0 right by the blind judge; all 28 said only "Spain"."""
-    from . import feeds
-    return [job for job in done.answered if feeds.place_of(job) != 'vague']
+    return [job for job in done.answered if done.verdict(job)[0] != 'vague']
 
 
 def settled(done, listed):
     """The urls of `done.answered` the queue owes nothing (their waiting rows leave, waiting_jobs.listed): listed (`listed`: their urls), or
     refused by an answer: a title the AI said no to, or a place outside when the pass ended (a cut pass's "out" may still turn "vague",
     a posting to read, in the vague-location round). Why (Gitar on #4219): a row left for any answer, though its job was never listed."""
-    from . import feeds
-    return [job['url'] for job in done.answered if job.get('url') in listed or feeds.judged_title(job.get('title') or '') is False
-            or (done.got is None and feeds.place_of(job) == 'out')]
+    return [job['url'] for job in done.answered if job.get('url') in listed or done.verdict(job)[1] is False
+            or (done.got is None and done.verdict(job)[0] == 'out')]
 
 
 def _titles(waiting):
@@ -149,15 +147,29 @@ class Done:
 
     def __init__(self, answered, at, places, titles, why, got=None, owed=()):
         self.answered, self.at, self.places, self.titles, self.why, self.got, self.owed = answered, at, places, titles, why, got, list(owed)
+        self.seen = None
+
+    def freeze(self):
+        """Read each job's place and title answer once, now: the hand-over, the queue's rows and the owed line all use this one read.
+        Why (Gitar on #4284): a cut pass's threads still write the stores; reading them three times let a job be neither listed nor settled."""
+        from . import feeds
+        self.seen = {id(job): (feeds.place_of(job), feeds.judged_title(job.get('title') or '')) for job in [*self.answered, *self.owed]}
+        return self
+
+    def verdict(self, job):
+        """(place, title) of `job`: the frozen read (freeze), else the stores now."""
+        if self.seen is not None and id(job) in self.seen:
+            return self.seen[id(job)]
+        from . import feeds
+        return feeds.place_of(job), feeds.judged_title(job.get('title') or '')
 
     def accounted(self, listed):
         """Every job the pass owed an answer, once: `Board pass: owed N · listed L · refused R · waiting W (posting not read V · no answer by the
         deadline D)` (`listed`: the urls kept). Invariant: N = L + R + W, so a board job read before the pass is never silently unjudged.
         Why (sa, 14 Nov 2026, design (b)): 61 CI funnels showed >= 1,101 board jobs never judged, with no reason said."""
-        from . import feeds
         counts = Counter()
         for job in self.owed:
-            place, title = feeds.place_of(job), feeds.judged_title(job.get('title') or '')
+            place, title = self.verdict(job)
             counts['listed' if job.get('url') in listed else 'refused' if title is False or (place == 'out' and self.got is None)
                    else 'posting not read' if place == 'vague' else 'no answer by the deadline'] += 1
         waiting = counts['posting not read'] + counts['no answer by the deadline']

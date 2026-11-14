@@ -7,12 +7,13 @@ Design: one Lanes per found_boards.read; its states, owned here only: a board is
 quiet (reading, nothing sent for QUIET_S: its lane is given to the next board, the board is named in `freed`), ended (gave its lane back, once).
 A quiet board's thread is not stopped (Python cannot): if it ends before the search's cut its jobs are kept as any board's. No watcher thread and
 no timer: a board waiting for a lane looks for quiet ones each time it would wait. At most `n` boards read at once besides the quiet ones.
-One host, one read (claim, the search's map: its clock opens it): the search's reads (the first-jobs slice's boards, the known boards' and the web search's groups) run side
-by side, each with its own lanes; a host one of them took is not read again by another in the same search (d03, 14 Nov 2026: delucru.md
-from the pack and DeLucru.md from the web search were read as two boards with two different search pages, and the two sides of an identical
-search listed different jobs).
+A host that refused (401/403, a bot check, a sign-in page: the read's 'browser' state) is put in the search's refused set (its clock's, Run.clock)
+and no read of the same search asks it again, on any of its pages (CLAUDE.md: never retry a 401 or 403). Nothing else is kept between reads: two
+pages of one host are both read (d03, 14 Nov 2026: delucru.md's pack page and its web search page gave different jobs), and the full read goes on
+from the pages a lane board fetched (found_boards._early).
 Tests: tests/unit/sources/test_board_lanes.py, tests/unit/sources/test_board_lane_read.py."""
-import collections
+import bisect
+import itertools
 import threading
 import time
 
@@ -20,25 +21,26 @@ import time
 # questions took 14 s between two requests), so a board that keeps asking within 20 s keeps its lane (sa: a request every 15 s is not quiet).
 QUIET_S = 20
 LOOK_S = 1   # how often a board waiting for a lane looks for a quiet one (a wait's slice, never a schedule)
-NO_LANE, TAKEN = ((), 'no lane', None), ((), 'taken', None)   # a board's result when it was not read; () shares nothing between searches (Gitar, #4273)
+NO_LANE, REFUSED = ((), 'no lane', None), ((), 'refused before', None)   # a board's result when it was not read; () shares nothing between searches (Gitar, #4273)
 
 
 class Lanes:
     """`n` lanes for one read's boards, keyed by board (a host); clock() gives seconds (time.monotonic); say(key) logs a freed board."""
     def __init__(self, n, quiet_s=None, clock=time.monotonic, say=None):
         self.n, self.quiet_s, self.clock, self.say = max(1, n), QUIET_S if quiet_s is None else quiet_s, clock, say
-        self.cond, self.reading, self.freed, self.line = threading.Condition(), {}, [], collections.deque()
+        self.cond, self.reading, self.freed, self.line, self.seq = threading.Condition(), {}, [], [], itertools.count()
 
-    def take(self, key, wait=None):
+    def take(self, key, wait=None, rank=0):
         """True once `key` holds a lane (its read may start); False when none came within `wait` s (None: as long as it takes). Boards take
-        lanes in the order they asked (the list's order: known boards first), never in the order their threads wake."""
-        until, me = None if wait is None else self.clock() + wait, object()
+        lanes by `rank` (their place in the read's list: known boards first), then in the order they asked; never in the order threads wake.
+        Why (Gitar on #4284): a line kept in arrival order let a board whose thread started late wait behind boards listed after it."""
+        until, me = None if wait is None else self.clock() + wait, (rank, next(self.seq))
         with self.cond:
-            self.line.append(me)
+            bisect.insort(self.line, me)
             try:
-                while self.line[0] is not me or len(self.reading) >= self.n:
+                while self.line[0] != me or len(self.reading) >= self.n:
                     self._free_quiet()
-                    if self.line[0] is me and len(self.reading) < self.n:
+                    if self.line[0] == me and len(self.reading) < self.n:
                         break
                     left = None if until is None else until - self.clock()
                     if left is not None and left <= 0:
@@ -86,34 +88,20 @@ def said(key):
     print(f"Job boards: {key} sent nothing for {QUIET_S} s; its lane went to the next board (#4255)", flush=True)
 
 
-def claim(host, read):
-    """True when `read` (any object naming one found_boards.read call) may read `host`: no other read of this search took it. The claims are the
-    search's, opened by its clock's start (src/press/clock.py, Run.clock; contract C1: no module state on the search path); no search clock (the scout,
-    tests): every read is its own. dict.setdefault is one step under the GIL: two reads asking at once get one owner."""
+def read_in_lane(lanes, host, wait, read, rank=0):
+    """The one way a board of a search is read, first or spare: skip a host that refused earlier in the search (REFUSED), take a lane of
+    `lanes` within `wait` s by `rank` (NO_LANE: none came, nothing was asked), `read(host)`, give the lane back; a 'browser' answer (401/403,
+    a check, a sign-in page) puts the host in the search's refused set, so no read of the search asks it again (CLAUDE.md)."""
     from .. import time_budget
-    hosts = time_budget.CLOCK.board_hosts
-    return True if hosts is None else hosts.setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)
-
-
-def release(host, read):
-    """`read` gives `host` back: it got no lane and read nothing, so another read of the search may read it (Gitar, #4268)."""
-    from .. import time_budget
-    hosts = time_budget.CLOCK.board_hosts
-    if hosts is not None and hosts.get(host) is read:
-        del hosts[host]
-
-
-def read_in_lane(lanes, host, wait, read):
-    """The one way a board of a search is read, first or spare (Design, #4273): claim `host`, take a lane of `lanes` within `wait` s, `read(host)`,
-    give the lane back. TAKEN: another read of the search has the host. NO_LANE: no lane came, nothing was asked, so the claim is given back
-    (Gitar, #4268: a kept claim left the host read by no one). A host that was asked stays claimed, read or refused: a 403 or a check is never
-    asked again in the search (CLAUDE.md)."""
-    if not claim(host, lanes):
-        return TAKEN
-    if not lanes.take(host, wait=wait):
-        release(host, lanes)
+    refused = time_budget.CLOCK.refused_hosts   # the search's (src/press/clock.py start); None: no search clock, nothing kept
+    if refused is not None and host in refused:
+        return REFUSED
+    if not lanes.take(host, wait=wait, rank=rank):
         return NO_LANE
     try:
-        return read(host)
+        result = read(host)
     finally:
         lanes.give_back(host)
+    if refused is not None and result[1] == 'browser':
+        refused.add(host)
+    return result

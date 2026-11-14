@@ -172,13 +172,11 @@ FIXES = (
         'a repeat Find jobs run starts the job boards first and reads the employer sites beside them; every board is read in one queue '
         'from second 0 (no second full read after the first pages)',
         ('tests/unit/sources/test_boards_first.py::test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read',
-         'tests/unit/sources/test_boards_early.py::test_the_full_board_read_starts_at_second_0_beside_the_boards_first_pages',
-         'tests/unit/sources/test_board_lane_read.py::test_the_web_searchs_name_of_a_pack_board_is_not_read_again'),
+         'tests/unit/sources/test_boards_early.py::test_the_full_board_read_starts_at_second_0_beside_the_boards_first_pages'),
         owner='Both: no waits + background (Recommended)',
         notes=('one board (Nurse Jobs Ireland) read 55-165 s in front of the employer sites',
                'the option kept "the boards still start first" (L10): they start first, the employer sites no longer wait for them',
-               'changed 14 Nov 2026 (xc, asked via AskUserQuestion through sa): "Yes, one queue (Recommended)": the full read starts at second 0 and a '
-               'board one read took is not read by another (#4255 design)')),
+               'changed 14 Nov 2026 (xc, asked via AskUserQuestion through sa): "Yes, one queue (Recommended)": the full read starts at second 0')),
     Fix('L37', '8 Nov 2026 (ps E2b)', 'each Find jobs run saves what every step left for the next one, as counts the planner reads',
         ('tests/unit/press/test_resume.py::test_a_stage_that_says_time_is_up_saves_its_count_under_its_stage_name',
          'tests/unit/press/test_resume.py::test_a_first_runs_three_processes_a_step_one_never_started_keeps_its_date',

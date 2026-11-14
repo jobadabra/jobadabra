@@ -33,8 +33,8 @@ def board(n):
 
 
 def new_search():
-    """A search's claims, as its clock's start opens them (src/press/clock.py), without the rest of a start."""
-    time_budget.CLOCK.board_hosts = {}
+    """A search's refused set, as its clock's start opens it (src/press/clock.py), without the rest of a start."""
+    time_budget.CLOCK.refused_hosts = set()
 
 
 class AQuietBoardGivesItsLane(unittest.TestCase):
@@ -77,14 +77,15 @@ class AQuietBoardGivesItsLane(unittest.TestCase):
 
 
 
-class OneHostOneRead(unittest.TestCase):
-    """d03 Chisinau (14 Nov 2026, run 155622): the pack's delucru.md and the web search's DeLucru.md were read as two boards, side by side, with
-    two different search pages; one search read jobs the other never fetched. Two early reads of one search share their hosts."""
+class ARefusingHostIsAskedOnce(unittest.TestCase):
+    """The search keeps one thing between its board reads: the hosts that refused (src/sources/board_lanes.py read_in_lane). Two pages of one
+    host are both read (d03, 14 Nov 2026: delucru.md's pack page and its web search page gave different jobs; the read-once claim cost 2 right
+    jobs in CI pair 43621918836); a host that refused is not asked again, on any page (CLAUDE.md: never retry a 401 or 403)."""
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         new_search()
-        self.addCleanup(setattr, time_budget.CLOCK, 'board_hosts', None)
+        self.addCleanup(setattr, time_budget.CLOCK, 'refused_hosts', None)
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(board_ideas, 'load', return_value={'boards': {}}),
                       mock.patch.object(board_ideas, 'save'), mock.patch.object(found_boards, '_dead', return_value=set()),
                       mock.patch.object(found_boards.board_employers, 'note'), mock.patch('builtins.print'),
@@ -92,69 +93,53 @@ class OneHostOneRead(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def test_the_web_searchs_name_of_a_pack_board_is_not_read_again(self):
-        read = []
+    def read_board(self, refusing=()):
+        self.read = []
 
         def read_board(b, search, fetch, route=None, early=False, show=None):
-            read.append(b['search_url'])
-            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/{len(read)}"}], 'ok', None
+            self.read.append(b['search_url'])
+            if b['host'] in refusing:
+                return [], 'browser', None
+            return [{'title': 'Developer', 'url': f"{b['search_url']}#job{len(self.read)}"}], 'ok', None
+        return mock.patch.object(found_boards, 'read_board', read_board)
+
+    def test_both_search_pages_of_one_host_are_read_in_one_search(self):
         pack = {**board(1), 'name': 'delucru.md', 'host': 'delucru.md', 'search_url': 'https://delucru.md/jobs/{role}'}
-        web = {**pack, 'name': 'DeLucru.md', 'search_url': 'https://www.delucru.md/jobs/it-software'}   # the same host (board_ideas._host), its own name and page
-        with mock.patch.object(found_boards, 'read_board', read_board):
+        web = {**pack, 'name': 'DeLucru.md', 'search_url': 'https://www.delucru.md/jobs/it-software'}   # the same host (board_ideas._host), its own page
+        with self.read_board():
             first = found_boards.read(SEARCH, [pack], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
-            second = found_boards.read(SEARCH, [web, board(2)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
-        self.assertEqual(read, ['https://delucru.md/jobs/{role}', 'https://b2.example/?q={role}'], 'delucru.md read once in the search')
-        self.assertEqual(len(first), 1)
-        self.assertEqual([j['url'] for j in second], ['https://b2.example/job/2'], 'the second read goes on to its other boards')
+            second = found_boards.read(SEARCH, [web], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+        self.assertEqual(self.read, ['https://delucru.md/jobs/{role}', 'https://www.delucru.md/jobs/it-software'])
+        self.assertEqual((len(first), len(second)), (1, 1), 'each page\'s jobs are kept')
+
+    def test_a_host_that_refused_on_one_page_is_not_asked_on_its_other_page(self):
+        pack = {**board(1), 'search_url': 'https://b1.example/jobs/{role}'}
+        web = {**board(1), 'name': 'B1', 'search_url': 'https://b1.example/jobs/it'}
+        with self.read_board(refusing={'b1.example'}):
+            found_boards.read(SEARCH, [pack], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+            jobs = found_boards.read(SEARCH, [web, board(2)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+        self.assertEqual(self.read, ['https://b1.example/jobs/{role}', 'https://b2.example/?q={role}'], 'b1.example refused once, asked once')
+        self.assertEqual(len(jobs), 1)
+
+    def test_a_refused_spare_is_not_asked_again_and_the_next_spare_reads(self):
+        with self.read_board(refusing={'b1.example', 'b2.example'}):
+            found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2), board(3)], is_relevant=list, dead=set(), fetch=lambda url: '')
+            found_boards.read(SEARCH, [board(2), board(4)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+        self.assertEqual([url.split('/')[2] for url in self.read], ['b1.example', 'b2.example', 'b3.example', 'b4.example'])
 
     def test_a_board_that_got_no_lane_is_read_by_the_next_read_of_the_search(self):
-        """Gitar, #4268: the claim was kept when no lane came before the cut, so no read of the search read that host."""
-        read = []
-
-        def read_board(b, search, fetch, route=None, early=False, show=None):
-            read.append(b['host'])
-            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
-        with mock.patch.object(found_boards, 'read_board', read_board):
+        with self.read_board():
             with mock.patch.object(board_lanes.Lanes, 'take', return_value=False):   # the first read's lanes stay full to its cut
                 found_boards.read(SEARCH, [board(1)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
             jobs = found_boards.read(SEARCH, [board(1)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
-        self.assertEqual(read, ['b1.example'], 'the read that got no lane read nothing and gave the host back')
-        self.assertEqual([j['url'] for j in jobs], ['https://b1.example/job/1'])
-
-    def test_a_spare_board_another_read_took_is_not_read_in_place_of_a_refusing_one(self):
-        """Gitar, #4268: only the first board's host was claimed, so a spare read in its place could be a host another read of the search had."""
-        read = []
-
-        def read_board(b, search, fetch, route=None, early=False, show=None):
-            read.append(b['host'])
-            if b['host'] == 'b1.example':
-                return [], 'browser', None   # refuses: a spare is read in its place
-            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
-        with mock.patch.object(found_boards, 'read_board', read_board):
-            found_boards.read(SEARCH, [board(2)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
-            found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2), board(3)], is_relevant=list, dead=set(),
-                              fetch=lambda url: '')
-        self.assertEqual(read, ['b2.example', 'b1.example', 'b3.example'], 'b2.example read once; the next spare reads in its place')
-
-    def test_a_refused_host_is_not_asked_again_by_another_read_of_the_search(self):
-        """Gitar on #4273 asked to give a refused spare's host back; a refusal can be a 403 or a bot check, and CLAUDE.md never retries a 401/403."""
-        read = []
-
-        def read_board(b, search, fetch, route=None, early=False, show=None):
-            read.append(b['host'])
-            return ([], 'browser', None) if b['host'] in ('b1.example', 'b2.example') else ([{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None)
-        with mock.patch.object(found_boards, 'read_board', read_board):
-            found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2), board(3)], is_relevant=list, dead=set(), fetch=lambda url: '')
-            found_boards.read(SEARCH, [board(2), board(4)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
-        self.assertEqual(read, ['b1.example', 'b2.example', 'b3.example', 'b4.example'], 'b2.example refused once and is not asked again')
+        self.assertEqual((len(self.read), len(jobs)), (1, 1), 'the read that got no lane asked nothing')
 
     def test_a_board_that_was_not_read_shares_nothing_with_the_next_search(self):
         """Gitar on #4273: the not-read results were one list for every search; a consumer extending it would change them all."""
-        self.assertEqual((found_boards.NO_LANE[0], found_boards.TAKEN[0]), ((), ()))
+        self.assertEqual((found_boards.NO_LANE[0], found_boards.REFUSED[0]), ((), ()))
 
-    def test_every_board_first_or_spare_gives_its_lane_back_and_keeps_its_host_only_when_asked(self):
-        """Design (#4273): one way in for every board (board_lanes.read_in_lane). After the read no lane is held; the host stays claimed when it
-        was asked (read or refused: never asked twice in a search) and is given back when no lane came (nothing asked)."""
+    def test_every_board_first_or_spare_gives_its_lane_back(self):
+        """Every board, first or spare, read, refused or with no lane: no lane is held after the read; only a refusal is kept."""
         for where in ('first', 'spare'):
             for outcome in ('read', 'refused', 'no lane'):
                 with self.subTest(where=where, outcome=outcome):
@@ -166,39 +151,21 @@ class OneHostOneRead(unittest.TestCase):
                             super().__init__(*a, **k)
                             made.append(self)
 
-                        def take(self, key, wait=None):
-                            return False if outcome == 'no lane' and key == target else super().take(key, wait)
-
-                    def read_board(b, search, fetch, route=None, early=False, show=None):
-                        if b['host'] == 'b1.example' and where == 'spare' or outcome == 'refused':
-                            return [], 'browser', None
-                        return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
-                    with mock.patch.object(found_boards, 'read_board', read_board), mock.patch.object(board_lanes, 'Lanes', Spy):
+                        def take(self, key, wait=None, rank=0):
+                            return False if outcome == 'no lane' and key == target else super().take(key, wait, rank)
+                    refusing = {'b1.example'} if where == 'spare' else set()
+                    with self.read_board(refusing=refusing | ({target} if outcome == 'refused' else set())), mock.patch.object(board_lanes, 'Lanes', Spy):
                         found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2)] if where == 'spare' else (), is_relevant=list,
                                           dead=set(), fetch=lambda url: '')
                     self.assertEqual([lanes.reading for lanes in made], [{}], 'no lane held after the read')
-                    self.assertEqual(target in time_budget.CLOCK.board_hosts, outcome != 'no lane')
+                    self.assertEqual(target in time_budget.CLOCK.refused_hosts, outcome == 'refused')
 
-    def test_a_new_search_reads_the_board_again(self):
-        self.assertTrue(board_lanes.claim('delucru.md', 'read 1'))
-        self.assertFalse(board_lanes.claim('delucru.md', 'read 2'))
-        self.assertTrue(board_lanes.claim('delucru.md', 'read 1'), 'the read that took it keeps it (its own items of one host)')
-        time_budget.start(60)   # the next search's clock: its own claims (owner, 14 Nov 2026: "The search owns it")
-        self.assertTrue(board_lanes.claim('delucru.md', 'read 2'), 'the next search starts with no host taken')
-        time_budget.CLOCK.board_hosts = None
-        self.assertTrue(board_lanes.claim('delucru.md', 'read 3'), 'no search clock (the scout): every read is its own')
-
-    def test_the_full_read_skips_a_host_the_lane_read_after_the_lane_ended(self):
-        """Gitar on #4277: the lane's end closed the claims while the full read, started at second 0, still ran; the search owns them now."""
-        read = []
-
-        def read_board(b, search, fetch, route=None, early=False, show=None):
-            read.append(b['host'])
-            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
-        with mock.patch.object(found_boards, 'read_board', read_board):
-            found_boards.read(SEARCH, [board(1)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')   # the lane's read, then the lane ends
-            found_boards.read(SEARCH, [board(1), board(2)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '', web=False)
-        self.assertEqual(read, ['b1.example', 'b2.example'], 'b1.example read once in the search')
+    def test_a_new_search_asks_a_refusing_host_again(self):
+        time_budget.CLOCK.refused_hosts.add('b1.example')
+        time_budget.start(60)   # the next search's clock (owner, 14 Nov 2026: "The search owns it")
+        self.assertEqual(time_budget.CLOCK.refused_hosts, set(), 'the next search starts with no host refused')
+        time_budget.start(None)
+        self.assertIsNone(time_budget.CLOCK.refused_hosts, 'no search clock (the scout, tests): nothing kept')
 
 if __name__ == '__main__':
     unittest.main()

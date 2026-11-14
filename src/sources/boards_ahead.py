@@ -99,7 +99,7 @@ def scan_beside(sources, db, search, so_far, due, scan=None, first=None, early=N
             return scan(sources, db, on_jobs=sites, **after_site), None
     with batch_scope.concurrent():
         # Why (xc, 14 Nov 2026, L36 asked via AskUserQuestion: "Yes, one queue (Recommended)"): started at second 0 beside the lane's reads,
-        # never after their first pages; a board the lane took is not read again here (board_lanes.claim), so there is no second full read
+        # never after their first pages; it goes on from the pages the lane fetched (found_boards._early), and skips a host that refused (board_lanes)
         ahead = start(db, search)
 
         def on_site(jobs):

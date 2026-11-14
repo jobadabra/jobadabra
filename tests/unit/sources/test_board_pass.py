@@ -345,5 +345,21 @@ class TheLastPass(unittest.TestCase):
         self.assertIn('Waiting: Job boards found https://board.example.test/job/1\n', self.said)
 
 
+
+class ACutPassReadsItsAnswersOnce(unittest.TestCase):
+    """Gitar on #4284: a cut pass's threads still write the stores; the hand-over, the queue's rows and the owed line read them at three moments,
+    so a job that turned 'vague' between them was neither listed nor settled and N = L + R + W did not hold."""
+    def test_a_place_that_changes_after_the_hand_over_is_counted_as_it_was_listed(self):
+        job = {'url': 'https://board.example.test/job/1', 'title': 'Known role', 'location': 'Known town'}
+        places = {'place': 'in'}
+        with mock.patch.object(feeds, 'place_of', lambda _job: places['place']), mock.patch.object(feeds, 'judged_title', lambda _title: True):
+            done = board_pass.Done([job], 100, 1, 1, None, got=(1, 1), owed=[job])
+            ready = board_pass.listable(done.freeze())
+            places['place'] = 'vague'   # the cut pass's place round answers after the hand-over
+            line = done.accounted({job['url']} if ready else set())
+            self.assertEqual((len(ready), board_pass.settled(done, {job['url']})), (1, [job['url']]))
+            self.assertEqual(board_pass.listable(done), ready, 'a second read of the same pass sees what the hand-over saw')
+        self.assertIn('owed 1 · listed 1 · refused 0 · waiting 0', line)
+
 if __name__ == '__main__':
     unittest.main()

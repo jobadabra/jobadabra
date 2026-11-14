@@ -39,7 +39,7 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
-NO_LANE, TAKEN = board_lanes.NO_LANE, board_lanes.TAKEN   # not read: no lane before the cut / another read of the search has the host
+NO_LANE, REFUSED = board_lanes.NO_LANE, board_lanes.REFUSED   # not read: no lane before the cut / the host refused earlier in this search
 _early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
 
 
@@ -369,7 +369,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         return result
 
     def read_one(read_item):   # every board, first or spare: one way in (board_lanes.read_in_lane, Design #4273)
-        return board_lanes.read_in_lane(lanes, read_item[0]['host'], read_budget.seconds_left(cut), lambda host: one(read_item, host))
+        return board_lanes.read_in_lane(lanes, read_item[0]['host'], read_budget.seconds_left(cut), lambda host: one(read_item, host),
+                                        rank=order.get(id(read_item), 0))
 
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
         first = result = read_one(read_item)
@@ -382,7 +383,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
             if (got := read_one(spare_item)) is NO_LANE:
                 break
-            if got is not TAKEN:   # TAKEN: another read of the search has it, the next spare
+            if got is not REFUSED:   # REFUSED: the host refused earlier in this search, the next spare
                 print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
                 result, name = got, spare_item[0]['name']
                 with lock:
@@ -460,8 +461,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
     for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders, between=rounds.take if rounds else None), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
-        if result is TAKEN:
-            print(f"Job boards: {read_item[0]['name']} is read by another of this search's reads; not read twice", flush=True)
+        if result is REFUSED:
+            print(f"Job boards: {read_item[0]['name']} refused earlier in this search; not asked again", flush=True)
             continue
         if result is read_budget.LEFT or result is NO_LANE:
             left.append(read_item[0]['name'])

@@ -1,7 +1,7 @@
 """Guard: safety — a job board that refused us (a 401/403 or a bot check) is never asked again in the same search by another of its reads.
 Why (14 Nov 2026, owner via sa, asked via AskUserQuestion: "The search owns it (Recommended)"; CLAUDE.md "never retry a 401 or 403"): the boards'
-lane and the full read both read boards in one search; the host claims are the search's (src/press/clock.py start, src/sources/board_lanes.py),
-so a host the lane asked and that refused is skipped by the full read, even after the lane ended (Gitar on #4277)."""
+lane and the full read both read boards in one search; the hosts that refused are the search's (src/press/clock.py start, src/sources/board_lanes.py
+read_in_lane), so a host that refused the lane is skipped by the full read, even after the lane ended (Gitar on #4277), and on its other pages."""
 import tempfile
 import unittest
 from pathlib import Path
@@ -40,7 +40,7 @@ class ARefusedBoardIsAskedOnce(unittest.TestCase):
                       mock.patch.object(found_boards.board_yield, 'pick', side_effect=lambda boards, *a, **k: list(boards))):
             patch.start()
             self.addCleanup(patch.stop)
-        self.addCleanup(setattr, time_budget.CLOCK, 'board_hosts', None)
+        self.addCleanup(time_budget.start, None)
 
     def test_the_full_read_does_not_ask_a_board_that_refused_the_lane(self):
         asked = []
@@ -51,8 +51,9 @@ class ARefusedBoardIsAskedOnce(unittest.TestCase):
         time_budget.start(60)   # the search's clock opens its claims
         with mock.patch.object(found_boards, 'read_board', read_board):
             found_boards.read(SEARCH, [board(1)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')   # the lane: b1 refuses
-            found_boards.read(SEARCH, [board(1), board(2)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '', web=False)   # the full read
-        self.assertEqual(asked, ['b1.example', 'b2.example'], 'the refusing board was asked once in the search')
+            found_boards.read(SEARCH, [board(1), {**board(1), 'name': 'B1 jobs', 'search_url': 'https://b1.example/jobs'}, board(2)], workers=1,
+                              is_relevant=list, dead=set(), fetch=lambda url: '', web=False)   # the full read, with another page of b1.example
+        self.assertEqual(asked, ['b1.example', 'b2.example'], 'the refusing board was asked once in the search, on no other page')
 
 
 if __name__ == '__main__':
