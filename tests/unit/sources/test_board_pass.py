@@ -18,6 +18,8 @@ from src.ai import engine, place_triage, slots, title_triage
 from src.sources import aggregators, board_pass, boards_first, feeds, places_later, read_budget, waiting_jobs
 from tests.unit.ai.test_titles_with_places import Model
 
+WANTED = feeds.wanted_location   # the real rule, before a fixture's stand-in replaces it
+
 SEARCH = {'role_keywords': ['known role'], 'preferences': {'locations': {'best': ['Known town']}}}
 NOW = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
 PACES = {'place_rounds': 8.0, 'title_rounds': 7.0}   # this computer's measured rounds: the pass needs 15 s, inside the floor and the ceiling
@@ -273,9 +275,9 @@ class TheLastPass(unittest.TestCase):
         or the place words put in the person's places; a 'vague' one waits for the queue, which reads its posting."""
         at(100)
         country = {**board()[1], 'title': 'Known role 7', 'location': 'Spain', 'url': 'https://board.example.test/job/7', 'id': '7'}
-        real = lambda job: job['location'] == 'Known town' if feeds.place_of(job) is None else feeds.place_of(job) != 'out'   # feeds.wanted_location's rule
         feeds.placed()['spain'] = 'out:vague'   # the place round's answer: Spain names no town; its posting is not read in the search
-        with mock.patch.object(feeds, 'wanted_location', real):
+        feeds.placed()['known town'] = 'best'
+        with mock.patch.object(feeds, 'wanted_location', WANTED):   # the real rule: it keeps a 'vague' job open until its posting is read
             lane, shown = self.lane(lambda run, search, **kw: iter([('the board', [board()[0], country])]))
             self.pass_time(lane)
             lane.last_pass(self.db, shown.extend)
