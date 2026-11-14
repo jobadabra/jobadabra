@@ -158,6 +158,84 @@ class TheLaneGoesOn(unittest.TestCase):
         self.assertIn("round 'fahrer': 1 job(s) on the page, 1 new, next pages: none linked on the page", out.getvalue())
 
 
+class TheReadOnWaitsForTheFirstJobsStep(unittest.TestCase):
+    """sa, 14 Nov 2026, from pair 2 of #4180 (c12: the first-jobs step closed at 71 s against 46 s on main; a 6-title batch asked at 49 s was
+    answered at 70 s, at 6 s on main): a read-on call already in an AI slot keeps it, whatever the level. In a first run the read that goes on
+    starts only when the first-jobs step has ended (boards_first.Beside.step_ended), so the step's AI calls never wait behind one."""
+    setUp, fetch = TheLaneGoesOn.setUp, TheLaneGoesOn.fetch
+
+    def start(self, after):
+        """read_board in its own thread, in a lane whose boards go on past their first jobs only through `after`."""
+        told = lambda url: self.fetch(url)   # noqa: E731 — a fetch the search listens on, as in TheLaneGoesOn.read
+        told.on_round, out = self.rounds.append, {}
+
+        def read():
+            with redirect_stdout(io.StringIO()):
+                out['jobs'] = found_boards.read_board(BOARD, SEARCH, fetch=told, early=True)[0]
+        time_budget.start(BUDGET, now=time.monotonic() - BUDGET * 100 / time_budget.PLANNED)
+        with slots.in_lane(read_budget.run_end(), after):
+            thread = threading.Thread(target=slots.carry(read))
+        thread.start()
+        return thread, out
+
+    def test_no_page_of_the_read_on_is_fetched_before_the_first_jobs_step_ends(self):
+        step_ended, waiting = threading.Event(), threading.Event()
+
+        def after(seconds):
+            waiting.set()
+            return step_ended.wait(seconds)
+        thread, out = self.start(after)
+        self.assertTrue(waiting.wait(5), 'the read reached the wait for the step')   # hang guard only
+        self.assertEqual(self.asked, ['https://stellen.example/jobs/fahrer', 'https://stellen.example/jobs/kraftfahrer'],
+                         'while the step runs: the slice\'s 2 pages only')
+        self.assertEqual(len(self.rounds), 2, 'the slice\'s jobs were handed before the wait')
+        step_ended.set()
+        thread.join(5)
+        self.assertEqual(sorted(set(self.asked)), sorted(PAGES), 'after it: every word and its next pages')
+        self.assertEqual(len(out['jobs']), len(PAGES))
+
+    def test_the_steps_last_title_batch_is_not_behind_a_read_on_call(self):
+        one, served, step_ended, release, waiting = slots.Slots(1), [], threading.Event(), threading.Event(), threading.Event()
+        real = found_boards._read
+
+        def read_on_holds_a_slot(board, search, fetch, route, early, *rest):   # a read-on AI call (a link question) that keeps its slot a while
+            if early:
+                return real(board, search, fetch, route, early, *rest)
+            with one:
+                served.append('read on')
+                release.wait(5)   # hang guard only
+            return [], 'ok', None
+
+        def title_batch():
+            with slots.priority(slots.TITLES), one:
+                served.append('title batch')
+        with mock.patch.object(found_boards, '_read', side_effect=read_on_holds_a_slot):
+            thread, _ = self.start(lambda seconds: waiting.set() or step_ended.wait(seconds))
+            for _ in range(5000):   # until the read waits for the step, or (without that wait) a read-on call holds the slot: a state, never a fixed time
+                if waiting.is_set() or served:
+                    break
+                time.sleep(0.001)
+            batch = threading.Thread(target=title_batch)
+            batch.start()
+            batch.join(2)   # hang guard: behind a read-on call it would wait for `release`
+            self.assertEqual(served, ['title batch'], 'the step\'s title batch took the slot at once; no read-on call held it')
+            step_ended.set()
+            release.set()
+            thread.join(5)
+        self.assertEqual(served, ['title batch', 'read on'])
+
+
+class TheSearchEndsTheStepForTheLane(unittest.TestCase):
+    def test_a_first_press_lets_its_lane_go_on_after_the_first_jobs_step_whatever_its_end(self):
+        """The wait above ends only if the search ends it: after first_jobs.run, outside its try, so a failed step lets the lane go on too
+        (the form of test_first_press_order's L10 check: the search's own order, read from its source)."""
+        source = (Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py').read_text()
+        body = source[source.index('def search('):]
+        step, failed, ended = body.index('first_jobs.run('), body.index("Warning: first jobs skipped"), body.index('first.step_ended.set()')
+        self.assertLess(failed, ended, 'after the step and after its failure')
+        self.assertLess(step, ended)
+
+
 class TheAiReaderOncePerPage(unittest.TestCase):
     """Gitar on #4180: the read that goes on asks the slice's words again (to page them); the AI page reader must not read the same page twice."""
     def setUp(self):
