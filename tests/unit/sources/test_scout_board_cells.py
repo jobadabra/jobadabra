@@ -188,6 +188,17 @@ class FactRule(unittest.TestCase):
         cells.record(self.db, 'es', [self.FAMILY], [], TODAY, again=cells.stale(self.db, TODAY)['es'][:1])
         self.assertEqual(cells.pick(self.db, TODAY)[0], 'nl', 'the big one waits its REREAD_DAYS: the small old one is next')
 
+    def test_the_pass_says_what_is_due_in_order_with_the_counts_before_it_reads(self):
+        """14 Nov 2026, es discovery 43544069411: a pass that re-read nothing printed nothing about the re-reads. The line lists the due facts of the pass's country in the order it takes them (the 53 before the 4), and says 0 when none is due."""
+        fact(self.db, 'small.example', 'es', [self.FAMILY], TODAY - timedelta(days=9), right=4, rule=None)
+        fact(self.db, 'airline.example', 'es', [self.FAMILY], TODAY - timedelta(days=1), right=53, rule=None)
+        self.assertEqual(cells.due_line(self.db, 'es', cells.stale(self.db, TODAY)['es']), 'Board pass: re-reads due in es: 2; first: airline.example (53), small.example (4)')
+        self.assertEqual(cells.due_line(self.db, 'nl', []), 'Board pass: re-reads due in nl: 0')
+        lines = []
+        with mock.patch.object(cells, 'date', mock.Mock(today=lambda: TODAY)), mock.patch.dict(os.environ, {'SCOUT_BOARD_CELLS': f'es:{self.FAMILY}', 'SCOUT_BOARD_SEED_DB': ''}):
+            scout.discover(self.db, run=lambda db, **ask: [], out=lines.append)
+        self.assertIn('Board pass: re-reads due in es: 2; first: airline.example (53), small.example (4)', lines, 'printed by the pass itself, before it reads')
+
     def test_facts_at_an_older_rule_are_counted_in_one_line(self):
         fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
         fact(self.db, 'new.example', 'es', [self.FAMILY])

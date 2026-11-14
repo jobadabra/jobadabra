@@ -86,6 +86,14 @@ def share(again, candidates, places=None):
     return list(again)[:half + max(0, half - len(candidates))], list(candidates)[:half + max(0, half - len(again))]
 
 
+def due_line(db, country, again, shown=12):
+    """One log line before the pass reads: how many facts of `country` are due to be read again and the first `shown` in the order the pass takes them, each with its best served count: `Board pass: re-reads due in es: 3; first: airlinejobs.com (53), ...`.
+    Why (14 Nov 2026, es discovery 43544069411, sa for the owner: "the six re-reads in order with their old counts"): the pass printed only the boards it read, so a pass that re-read nothing looked the same as one that re-read the right ones."""
+    best = {(host, code): max((counts or {}).values(), default=0) for host, code, _, _, _, counts in _facts(db)}
+    first = ', '.join('%s (%d)' % (board['host'], best.get((board['host'], country), 0)) for board in again[:shown])   # no nested f-string quotes: 3.11 reads this file too
+    return f'Board pass: re-reads due in {country}: {len(again)}' + (f'; first: {first}' if again else '')
+
+
 def rule_line(db, today=None):
     """One log line: how many of the facts the site still serves (not dropped, MIN_LOCAL+ local jobs) were measured under an older rule than LISTED_RULE, as `Board pass: facts at an older rule: N of M`.
     Why (14 Nov 2026, lab run 43535757557): `scout.discover(db)` passes today=None in production and this was the one function of the module that did not default it, so every discovery pass ended in a TypeError after its reads."""
