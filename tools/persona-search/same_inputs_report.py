@@ -54,14 +54,21 @@ for s in SIDES:
     stages[s] = (inout.stages(logs[0]) if logs else None) or {}   # a run cut before its first stage line has none: READ 0, not a crash
     never[s] = sum(1 for st in stages[s].values() if all(x == 'read' for x in st))
 L = {s: set(listed[s]) for s in SIDES}
+# Why (14 Nov 2026, sa, owner's pair rule): "the search's time was up before Claude Code had a free slot" (src/ai/providers/cli_base.py) is the engine's own clock rule, hit alike by both sides, not a fault: it is a count per side, flagged only when the sides differ by more than 3.
+# A pair is NOT VALID for any other failed call (plan refused, no valid JSON, no answer in N s) and for one whose text is not in the log (a build without the same-inputs text capture).
+CLOCK = "the search's time was up before Claude Code had a free slot"
 failed = {}
-for s in SIDES:   # a failed AI call is a step that did not run: the pair then compares luck, not code
+for s in SIDES:
     texts = [open(os.path.join(d, f), errors='replace').read() for d, _, files in os.walk(os.path.join(work, s)) for f in files if f == 'run-1.log']
     failed[s] = [line for text in texts for line in text.splitlines() if re.search(r'Technical: .*(Cli|Ai)\w*(Error|Limit|Unavailable)\b', line)]
-print(f'{pid}: ' + ('NOT VALID: ' if any(failed.values()) else 'valid: ') + f'AI calls failed A {len(failed["a"])}, B {len(failed["b"])}')
+clock = {s: [line for line in failed[s] if CLOCK in line] for s in SIDES}
+other = {s: [line for line in failed[s] if CLOCK not in line] for s in SIDES}
+gap = abs(len(clock['a']) - len(clock['b']))
+verdict = 'NOT VALID' if any(other.values()) else 'valid, clock-rule gap over 3 (flag)' if gap > 3 else 'valid'
+print(f'{pid}: {verdict}: AI calls failed A {len(failed["a"])} (clock rule {len(clock["a"])}, other {len(other["a"])}), B {len(failed["b"])} (clock rule {len(clock["b"])}, other {len(other["b"])})')
 for s in SIDES:
-    for line in failed[s][:3]:
-        print(f'  failed {s.upper()}: {line[:200]}')
+    for line in other[s][:3]:
+        print(f'  failed {s.upper()} (not the clock rule): {line[:200]}')
 print(f'{pid}: LISTED both / only A / only B: {cells(L["a"], L["b"])}')
 print(f'{pid}: READ   both / only A / only B: {cells(*({u for u in stages[s]} for s in SIDES))}   (read, never judged: A {never["a"]}, B {never["b"]})')
 if '--no-judge' not in sys.argv:
