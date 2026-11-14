@@ -468,7 +468,7 @@ def main():
     state = 'pending' if state == 'settling' else state
     # The pair starts first (its row, when it is instant, is then read below), the row then decides a search PR's green (plan 5/5; both are tools/pr_verdict_pair*.py).
     companion(a.repo, ref, 'pr_verdict_pair', lambda m: m.publish(a.repo, a.sha, pulls, files, gh, datetime.now(timezone.utc), a.dry_run), 'search pair start')
-    state, why = companion(a.repo, ref, 'pr_verdict_pair_gate', lambda m: m.apply(a.repo, a.sha, pulls, files, state, why, gh), 'search pair row') or (state, why)
+    state, why, pair_run = companion(a.repo, ref, 'pr_verdict_pair_gate', lambda m: m.apply(a.repo, a.sha, pulls, files, state, why, gh), 'search pair row') or (state, why, '')
     print(quota_line() or 'quota: not readable')
     for r in live:
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
@@ -481,7 +481,7 @@ def main():
     if state == 'failure':
         why = flaky_note(a.repo, ref, live, why)
     print(f'{CONTEXT}: {state}: {why}')
-    url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
+    url = f'{server}/{a.repo}/actions/runs/{pair_run or target or my_run}'   # the run it waits on, or the red one (the search pair's when its row decides: pr_verdict_pair_gate.apply); the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')
     companion(a.repo, ref, 'pr_verdict_rows', lambda m: m.publish(a.repo, a.sha, pulls, live, state, gh, server, datetime.now(timezone.utc), a.dry_run, os.environ.get('GITHUB_STEP_SUMMARY', '')), 'check rows')

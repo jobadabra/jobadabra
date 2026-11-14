@@ -54,15 +54,26 @@ class WhatTheRowMakesOfAGreenPr(unittest.TestCase):
             if want[1]:
                 self.assertIn(want[1], why, name)
 
+    def test_a_verdict_the_row_decides_names_the_pairs_run_and_no_other(self):
+        link = '[Open the search run](https://github.com/o/r/actions/runs/4242)\n\nrest'
+        waits = {**row('rerunning', 'in_progress', None, 'running once more'), 'summary': link}
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub(waits)), ('pending', 'search pair: running once more', '4242'))
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub({**waits, 'conclusion': 'failure', 'status': 'completed', 'external_id': 'search-pair:counted:3:9'}))[2], '4242', 'a red row links its pair too')
+        yes = {**row('counted', 'completed', 'success', 'p3 15 → 17'), 'summary': link}
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub(yes)), ('success', 'g', ''), 'a yes changes nothing: the verdict keeps its own link')
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'failure', 'x', stub(waits)), ('failure', 'x', ''), 'a verdict red for another reason keeps its own link')
+        for summary in ('', 'no link', 'text first\n\n' + link, '[Open the search run](https://evil.example/x)', '[Open the search run](javascript:1/actions/runs/7)'):
+            self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub({**waits, 'summary': summary}))[2], '', summary)
+
     def test_apply_changes_only_a_green_verdict_of_a_search_pr_on_its_current_open_head(self):
         red = row('counted', 'completed', 'failure', 'no proven gain: p3 15 → 17')
         self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'all green', stub(red))[0], 'failure')
         for state in ('failure', 'pending', None):   # a verdict that is not green keeps its own words
-            self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, state, 'x', stub(red)), (state, 'x'), state)
-        self.assertEqual(gate.apply('o/r', SHA, PULLS, ['README.md'], 'success', 'g', stub(red)), ('success', 'g'), 'a PR outside the search files has no pair to read')
-        self.assertEqual(gate.apply('o/r', SHA, PULLS, None, 'success', 'g', stub(red)), ('success', 'g'), 'a file list not read: no guess')
+            self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, state, 'x', stub(red)), (state, 'x', ''), state)
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, ['README.md'], 'success', 'g', stub(red)), ('success', 'g', ''), 'a PR outside the search files has no pair to read')
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, None, 'success', 'g', stub(red)), ('success', 'g', ''), 'a file list not read: no guess')
         for pulls in ([{**PULLS[0], 'head_sha': 'b' * 40}], [{**PULLS[0], 'cross_repo': True}], [{**PULLS[0], 'state': 'closed'}], []):
-            self.assertEqual(gate.apply('o/r', SHA, pulls, SEARCH, 'success', 'g', stub(red)), ('success', 'g'), 'a replaced head, a fork, a closed PR: nothing')
+            self.assertEqual(gate.apply('o/r', SHA, pulls, SEARCH, 'success', 'g', stub(red)), ('success', 'g', ''), 'a replaced head, a fork, a closed PR: nothing')
         spy = stub(red)
         gate.apply('o/r', SHA, PULLS, ['README.md'], 'success', 'g', spy)
         self.assertEqual(spy.calls, [], 'no read at all for a PR outside the search files')
@@ -75,7 +86,7 @@ class WhatTheRowMakesOfAGreenPr(unittest.TestCase):
 
         def broken(*args):
             raise RuntimeError('HTTP 502')
-        self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'g', broken), ('success', 'g'))
+        self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'g', broken), ('success', 'g', ''))
 
     def test_the_status_words_fit_the_140_characters_a_status_description_holds(self):
         long = row('counted', 'completed', 'failure', 'x' * 300)
