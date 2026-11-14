@@ -101,8 +101,22 @@ class EmployerCopy(unittest.TestCase):
         self.assertEqual(job['url'], LINKEDIN['url'])
 
     def test_no_feed_starts_after_the_read_cut(self):
-        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(FEED), log=lambda line: None, past_cut=lambda: True)
-        self.assertEqual((job['url'], self.reads), (LINKEDIN['url'], []))
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(FEED), log=lambda line: None, past_cut=lambda: True, guess=self.guess)
+        self.assertEqual((job['url'], self.reads, self.guesses), (LINKEDIN['url'], [], []))
+
+    def test_a_company_with_two_feeds_has_the_second_read_when_the_first_lacks_the_job(self):
+        feeds = {'old': [FEED[1]], 'new': FEED}
+        index = [{'company': 'Canonical', 'ats': 'greenhouse', 'slug': 'old'}, {'company': 'Canonical', 'ats': 'ashby', 'slug': 'new'}]
+        [job] = employer_copy.prefer_employer([LINKEDIN], index, fetch=lambda system, slug: feeds[slug], log=lambda line: None, guess=self.guess)
+        self.assertEqual(job['url'], FEED[0]['url'])
+
+    def test_linkedins_city_anywhere_in_the_feed_place_agrees(self):
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([{**FEED[0], 'location': 'In office - Zürich'}]), log=lambda line: None, guess=self.guess)
+        self.assertEqual(job['url'], FEED[0]['url'])
+
+    def test_one_posting_listed_twice_by_a_careers_page_is_one_job(self):
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([{**FEED[0], 'location': ''}, {**FEED[0], 'location': ''}]), log=lambda line: None, guess=self.guess)
+        self.assertEqual(job['url'], FEED[0]['url'])
 
     def test_a_feed_that_fails_keeps_linkedin(self):
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(None), log=lambda line: None, guess=self.guess)
@@ -117,30 +131,40 @@ class EmployerCopy(unittest.TestCase):
 
 
 class LinkedInRow(unittest.TestCase):
-    def read(self, disable=''):
+    def read(self, disable='', note=None):
+        """LinkedIn's reader row on a temporary jobs file: {job, reads, loads, feeds: [(ats, slug, company, added_at)], notes}."""
         import tempfile
+        from contextlib import closing
         from pathlib import Path
         from unittest import mock
+        from src import store
         from src.sources import reader_rows
         with tempfile.TemporaryDirectory() as folder, mock.patch('src.paths.DATA', Path(folder)), \
                 mock.patch('src.sources.linkedin_guest.read', return_value=[LINKEDIN]), mock.patch('src.employer_index.load', return_value=INDEX) as load, \
                 mock.patch('src.sources.ats.probe', side_effect=lambda system, slug: FEED if system == 'greenhouse' else None) as probe, \
-                mock.patch('src.sources.board_employers.note') as note, \
+                mock.patch('src.sources.board_employers.note', side_effect=note) as noted, \
                 mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': disable, 'JOBADABRA_FIXTURE_DIR': ''}):
             [job] = reader_rows._linkedin_read(None, {})
-            from src import store
-            from contextlib import closing
             with closing(store.connect(Path(folder) / 'jobs.sqlite')) as db:
-                feeds = [tuple(row) for row in db.execute('SELECT ats, slug, company FROM feed_sources')]
-        return job, probe.call_count, load.call_count, feeds, note.call_count
+                feeds = [tuple(row) for row in db.execute('SELECT ats, slug, company, added_at FROM feed_sources')]
+        return {'job': job, 'reads': probe.call_count, 'loads': load.call_count, 'feeds': feeds, 'notes': noted.call_count}
 
     def test_linkedins_reader_row_hands_out_the_employers_address(self):
-        job, reads, loads, feeds, notes = self.read()
-        self.assertEqual((job['url'], reads, feeds, notes), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1, [], 0))
+        got = self.read()
+        self.assertEqual((got['job']['url'], got['reads'], got['feeds'], got['notes']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1, [], 0))
 
     def test_with_the_index_off_the_row_finds_the_feed_by_name_and_keeps_it(self):
-        job, reads, loads, feeds, notes = self.read(disable='index')
-        self.assertEqual((job['url'], loads, feeds), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 0, [('greenhouse', 'canonical', 'Canonical')]))
+        got = self.read(disable='index')
+        self.assertEqual((got['job']['url'], got['loads'], [feed[:3] for feed in got['feeds']]),
+                         ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 0, [('greenhouse', 'canonical', 'Canonical')]))
+
+    def test_a_kept_feed_is_dated_like_every_other_feed_source(self):
+        [(*_, added_at)] = self.read(disable='index')['feeds']
+        self.assertRegex(added_at, r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$')
+
+    def test_a_scout_file_that_cannot_be_written_never_costs_the_jobs_read(self):
+        got = self.read(disable='index', note=OSError('read-only'))
+        self.assertEqual(got['job']['url'], 'https://job-boards.greenhouse.io/canonical/jobs/5517891')
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 LISTED = [{'id': f'eures:{n}', 'title': title, 'location': 'Lyon, France', 'url': f'https://example.test/{n}'} for n, title in enumerate(('Électricien', 'Aide', 'Chef'))]
 # Each row's network seam, patched with the jobs it lists: a new row adds its own here (the loop below fails on a row it does not know).
-SEAMS = {'EURES': 'src.sources.eures.eures', 'Platsbanken': 'src.sources.national.read', 'Le Forem': 'src.sources.national.read', 'arbeidsplassen.no': 'src.sources.national.read', 'Job-Room': 'src.sources.national.read', 'LinkedIn': 'src.sources.linkedin_guest.read'}
+SEAMS = {'EURES': 'src.sources.eures.eures', 'Platsbanken': 'src.sources.national.read', 'Le Forem': 'src.sources.national.read', 'arbeidsplassen.no': 'src.sources.national.read', 'Job-Room': 'src.sources.national.read', 'LinkedIn': 'src.sources.employer_copy.linkedin_jobs'}
 
 
 class ReaderRowsTest(unittest.TestCase):

@@ -45,7 +45,7 @@ def note(jobs, source):
         if missing(name):
             continue
         entry = names.setdefault(name, {'source': source, 'jobs': 0})
-        entry.update(jobs=entry['jobs'] + 1, last_seen=stamp)
+        entry.update(jobs=entry['jobs'] + 1, last_seen=stamp, **({'linkedin': True} if source == 'LinkedIn' else {}))
     if len(names) > MAX_KEPT:
         names = dict(sorted(names.items(), key=lambda item: item[1].get('last_seen', ''))[-MAX_KEPT:])
     if names:
@@ -67,7 +67,9 @@ def note_site(name, website, source):
 def candidates():
     """The scout's candidates: every kept employer name, most jobs first (the scout's own queue does the real ranking)."""
     for name, entry in sorted(_load().items(), key=lambda item: -item[1].get('jobs', 0)):
-        yield dict(name=name, origin='Board employer', priority=65, **({'website': entry['website']} if entry.get('website') else {}))
+        linkedin = entry.get('linkedin')   # seen on the person's own LinkedIn search: checked even on a covered day (src/scout_candidates.py counts_when_covered)
+        yield dict(name=name, origin='LinkedIn employer' if linkedin else 'Board employer', priority=80 if linkedin else 65,
+                   **({'website': entry['website']} if entry.get('website') else {}))
 
 
 def fill_missing(jobs, fetch=None):

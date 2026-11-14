@@ -274,6 +274,11 @@ def search_kinds():
         return ()
 
 
+def linkedin_employer_candidates():
+    """The employers of jobs the person's own LinkedIn search listed and no known feed holds: origin LINKEDIN_ORIGIN (src/sources/board_employers.py)."""
+    return (c for c in board_employer_candidates() if c['origin'] == LINKEDIN_ORIGIN)
+
+
 def board_employer_candidates():
     """Employers named on the jobs that boards and aggregators list, whatever the role: origin "Board employer" (src/sources/board_employers.py)."""
     from .sources import board_employers
@@ -307,6 +312,7 @@ def default_sources(db, seeds, countries, skip=()):
 
 
 MET_ORIGIN = 'Met by you'
+LINKEDIN_ORIGIN = 'LinkedIn employer'   # an employer of a job the person's own LinkedIn search listed (src/sources/employer_copy.py from_row)
 MET_PRIORITY = 96      # a company the person met comes before every list (seeds are 90-100, boards 65)
 MET_PER_RUN = 200
 
@@ -331,8 +337,9 @@ def met_company_candidates(stores):
 
 
 def counts_when_covered(candidate):
-    """On a day the shared list needs no new names, a name the person added (manual watch) or met is still checked."""
-    return candidate['status'] == 'manual' or candidate['origin'] == MET_ORIGIN
+    """On a day the shared list needs no new names, a name the person added (manual watch), met, or saw on their own LinkedIn search is still checked.
+    Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Both"): a covered Zurich SRE's Scout checked 0 of 19 LinkedIn employers; a board's employers still wait."""
+    return candidate['status'] == 'manual' or candidate['origin'] in (MET_ORIGIN, LINKEDIN_ORIGIN)
 
 
 def harvest_met(db, seeds, stores, skip=()):
