@@ -8,7 +8,9 @@ Every read of the run ends at its cut, half the budget (owner, 26 Oct 2026: "A f
 and scores of what was read get the other half of the same deadline (src/time_budget.py); a read stage past the cut only queues (past_cut).
 Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cut.py.
 A lane of its own (src/ai/slots.py in_lane: the job boards, src/sources/boards_first.py Beside) reads to the run's end instead of this cut; every
-read in its threads (slots.carry) sees that end as its cut. Tests: tests/unit/sources/test_board_lane_clock.py."""
+read in its threads (slots.carry) sees that end as its cut. Tests: tests/unit/sources/test_board_lane_clock.py.
+The lane starts no new read after the search's last judging pass (pass_at), so what it read is placed and judged in the search; a read already
+open is still waited for to the run's end, and its jobs wait for the queue after the search. Tests: tests/unit/sources/test_board_pass.py."""
 import json
 from concurrent.futures import FIRST_COMPLETED, TimeoutError as Late, wait
 from datetime import datetime
@@ -19,6 +21,8 @@ from ..press import budget, rank, resume
 READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
 READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
 READ_GRACE = budget.value('read_budget.READ_GRACE')      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
+PASS_MIN = budget.value('read_budget.PASS_MIN')    # the last judging pass starts at least this long before the run's end (pass_at)
+PASS_MAX = budget.value('read_budget.PASS_MAX')    # and at most this long before it
 BETWEEN_S = budget.value('read_budget.BETWEEN_S')        # how often a read's loop looks at what its open reads ended meanwhile (as_done `between`)
 LEFT = object()      # result(): the site was still being read at the cut
 LEFT_DAYS = 7        # a kept list older than this is dropped (a search moved on)
@@ -52,6 +56,20 @@ def run_end():
     return time_budget.end() - time_budget.part(time_budget.TAIL)
 
 
+def pass_at():
+    """When the search's last judging pass over the job boards' jobs starts (src/sources/board_pass.py; boards_first.Beside.last_pass), the lane's
+    last moment to start a read: the run's end less one place round and one title round at this computer's measured paces (time_budget._paces),
+    kept between PASS_MIN and PASS_MAX of the PLANNED seconds; None without a budget. The one owner of that moment: no second deadline.
+    Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; L05: "Yes, stop new reads then (Recommended)"):
+    every board job read before it is placed and judged in the search; one read after it waits for the queue after the search."""
+    end = run_end()
+    if end is None:
+        return None
+    paces = time_budget._paces()
+    need = paces.get('place_rounds', time_budget.PACE['place_rounds']) + paces.get('title_rounds', time_budget.PACE['title_rounds'])
+    return end - min(max(need, time_budget.part(PASS_MIN)), time_budget.part(PASS_MAX))
+
+
 def deadline(now=None):
     """The monotonic time after which no new site starts, or None when the search has no budget. In a lane: the lane's end."""
     if time_budget.DEADLINE is None:
@@ -79,8 +97,11 @@ def cut_at():
 
 
 def past_cut(now=None):
-    """A timed search is past its read cut: a read stage starts nothing more and queues it (time_budget.later)."""
-    at = cut_at()
+    """A timed search is past its read cut: a read stage starts nothing more and queues it (time_budget.later). In the boards' lane: past the
+    last judging pass (pass_at), while cut_at, the wait for a read already open, stays the run's end.
+    Why (owner, 14 Nov 2026, L05, asked via AskUserQuestion: "Yes, stop new reads then (Recommended)"): reads started to the run's end came back
+    after the AI's stop; 486 board jobs of 12 searches were read and never asked."""
+    at = pass_at() if lane_end() is not None else cut_at()
     return at is not None and (now if now is not None else time_budget.now()) >= at
 
 
