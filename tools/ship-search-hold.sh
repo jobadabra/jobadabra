@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Holds a search PR whose "Moves:" number is still pending and starts its before/after pair: draft, "DONT MERGE" after the session tag, label search-hold (ship's own hold).
+# Holds a search PR whose "Moves:" number is still pending (its pair is started by the PR's verdict, tools/pr_verdict_pair.py): draft, "DONT MERGE" after the session tag, label search-hold (ship's own hold).
 # Why (13 Nov 2026, owner via sa: "we shoulndt do  by hand"; plan docs/superpowers/plans/2026-11-13-search-pair.md 4/4): a session wrote "→ pending", then set the hold and
 #   dispatched the pair by hand. The pair (search-pair.yml's comment job, tools/persona-search/pair.py settle) writes the numbers and lifts only a hold carrying the label.
 # Usage: tools/ship-search-hold.sh <pr> <owner/repo>   (called by tools/ship-pr.sh in review mode; one line per thing it did on stdout, nothing when the body has no pending number)
@@ -16,17 +16,6 @@ if ! grep -q 'DONT MERGE' <<<"$title"; then
   else echo "could not set the hold on #$n: set it by hand (gh pr edit $n --title \"$held\")"; fi
 fi
 if [ "$(jq -r '.isDraft' <<<"$view")" != true ]; then gh pr ready "$n" -R "$repo" --undo >/dev/null 2>&1 || true; fi
-busy="$(gh run list -R "$repo" --workflow search-pair.yml --limit 30 --json status,displayTitle --jq "[.[] | select(.status != \"completed\" and (.displayTitle | startswith(\"Search pair · #$n \")))] | length" 2>/dev/null || echo 0)"
-if [ "${busy:-0}" != 0 ]; then echo "#$n: its pair is already queued or running: not started again"
-else
-  # Why (14 Nov 2026, rb; owner via mac-95: #4091 and #4100 sat ~25 min with no pair, REST quota 0 at ~22:50Z, and the only trace was a plain line nobody read): a dispatch that fails is tried once more
-  #   after 3 s (a 5xx or a dropped connection; GitHub has no GraphQL mutation for a workflow dispatch, so a quota-0 failure cannot be read around and waits for the reset), then ends as `PAIR NOT STARTED <gh's own words>`,
-  #   which tools/ship-pr.sh turns into the `ship: PAIR NOT STARTED` line the watchers wake on (a `|` in gh's words is made `/`: it is this line's one separator, Gitar on #4125). The held PR stays held: only its pair lifts the hold.
-  for try in 1 2; do
-    if err="$(gh workflow run search-pair.yml -R "$repo" -f pr="$n" -f people="$people" 2>&1 >/dev/null)"; then
-      echo "#$n: started its before/after pair for $people (search-pair.yml; its comment writes the number and lifts the hold)"; exit 0
-    fi
-    [ "$try" = 2 ] || sleep "${SHIP_PAIR_RETRY_S:-3}"
-  done
-  echo "PAIR NOT STARTED $(tail -n 1 <<<"$err" | tr '|' '/' | cut -c1-160)|gh workflow run search-pair.yml -R $repo -f pr=$n -f people='$people'"
-fi
+# Why (14 Nov 2026, owner via sa: "I want all the PRs like that, to start the pair by themselves"; plan docs/superpowers/plans/2026-11-14-pr-checks-rows-and-pair.md 3/5): this script no longer starts the pair. The PR's verdict does
+#   (tools/pr_verdict_pair.py, run by pr-verdict.yml after each verdict): one starter for every search PR, once per head, with its row on the PR's checks. The hold above stays until 5/5.
+echo "#$n: its before/after pair starts by itself from the PR's verdict (a row \"Search before/after\" appears on the PR's checks within minutes)"
