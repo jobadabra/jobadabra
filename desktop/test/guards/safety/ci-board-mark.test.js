@@ -75,3 +75,9 @@ test('under the relay (codex.mjs) the mark is asked through it: the child sends 
   assert.deepEqual(seen.at(-1), {url: 'https://broker.example/board-read', auth: 'Bearer run-token', body: '{"op":"reserve"}'});
   assert.equal((await boardForward('{}', {env: {}, fetchImpl})).status, 503, 'no run token in the relay: a refusal, so the caller skips');
 });
+
+test('CI\'s board browser drops the sandbox only on Linux, by the harness\'s one rule (Gitar on #4333)', async () => {
+  const {sandboxArgs} = await import('../../../e2e/lib/hidden-browser-env.mjs');
+  assert.deepEqual(sandboxArgs('linux'), ['--no-sandbox']);
+  for (const platform of ['darwin', 'win32']) assert.deepEqual(sandboxArgs(platform), [], `${platform} keeps the sandbox`);
+});

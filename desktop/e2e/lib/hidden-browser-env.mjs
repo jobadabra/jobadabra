@@ -4,5 +4,8 @@
 // background-proof.mjs does (form-judge.js), and importing it from context.mjs killed every apply suite on CI with ERR_MODULE_NOT_FOUND shared/alias-schema.js.
 import {hostRules} from './forms.mjs';
 
+/** -> the hidden browser's sandbox flags on this platform: `--no-sandbox` on Linux, where a CI runner (Ubuntu 24.04) may not allow Chromium's sandbox (#2364); none elsewhere. */
+export const sandboxArgs = (platform = process.platform) => (platform === 'linux' ? ['--no-sandbox'] : []);
+
 /** -> the env entries that give the hidden browser the fixture host map for the forms server on `port`. */
-export const hiddenBrowserEnv = port => ({JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify([`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors', ...(process.platform === 'linux' ? ['--no-sandbox'] : [])])});
+export const hiddenBrowserEnv = port => ({JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify([`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors', ...sandboxArgs()])});
