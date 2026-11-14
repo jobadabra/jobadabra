@@ -78,7 +78,7 @@ def _host(job):
 
 
 def _say(unplaced, titled):
-    """Per board: `Board pass: <host> places asked n · inside i · outside o · no answer u`, then the titles' line (tools/persona-search reads them)."""
+    """Per board: `Board pass: <host> places asked n · inside i · outside o · no answer u`, then the titles' line (read by [xb] 2/2's card and funnel lines; nothing reads them before it)."""
     from . import feeds
     places, titles = defaultdict(Counter), defaultdict(Counter)
     for job in unplaced:
