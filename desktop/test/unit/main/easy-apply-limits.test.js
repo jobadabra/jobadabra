@@ -62,3 +62,19 @@ test('a LinkedIn warning pauses all LinkedIn 24 h; the second turns Easy Apply o
   assert.equal(storage.mine.easyApply.stops, 0, 'a new yes counts stops from 0');
   assert.equal(noteStop(storage, at(16, 10)).off, false, 'so the next warning only pauses');
 });
+
+// Gitar on #4271: the second stop is one more way Easy Apply goes off, so it goes through Easy Apply's one off path: with LinkedIn jobs off too, the sign-in is deleted (both off).
+test('a second stop with LinkedIn jobs off deletes the kept sign-in; with LinkedIn jobs on it stays for LinkedIn jobs', () => {
+  const items = new Map([['jobadabra.linkedin-jobs.session', '{"li_at":"fake"}']]);
+  const keychain = {write: (s, v) => { items.set(s, v); return true; }, read: s => items.get(s) || null, remove: s => items.delete(s)};
+  const alone = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true, warnedAt: WARNED}});
+  noteStop(alone, at(13, 10), undefined, {keychain});
+  assert.equal(items.size, 1, 'one stop: still on, still kept');
+  assert.equal(noteStop(alone, at(14, 11), undefined, {keychain}).off, true);
+  assert.equal(items.size, 0, 'both off now: the sign-in is gone');
+  assert.equal(alone.settings().linkedinJobs.signedIn, false);
+  const both = store({linkedinJobs: {on: true, signedIn: true}, easyApply: {on: true, warnedAt: WARNED}});
+  items.set('jobadabra.linkedin-jobs.session', '{"li_at":"fake"}');
+  noteStop(both, at(13, 10), undefined, {keychain}); noteStop(both, at(14, 11), undefined, {keychain});
+  assert.equal(items.size, 1, 'LinkedIn jobs still uses it');
+});

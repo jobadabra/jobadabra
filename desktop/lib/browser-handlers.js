@@ -105,6 +105,6 @@ export function registerBrowserHandlers(ctx) {
   }, () => server.extensionSeen()?.at || 0));
   // LinkedIn jobs (lib/linkedin-handlers.js): the person signs in in a Jobadabra window (lib/linkedin-signin-window.js); the extension's own consent page is the shortcut when it is connected.
   // A press that opened nothing says why (lib/extension-target.js): never "extension needed" while the extension has checked in.
-  registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn: createSignIn({BrowserWindow, shell, hidden: HIDDEN}), openPage: linkedinPageOpener({server, installed: () => extensionInstall.installed({folder: extensionFolder()}), open: extensionInstall.openInChrome})});
+  registerLinkedinHandlers({DEMO, ipcMain, server, storage, packaged: app?.isPackaged ?? true, signIn: createSignIn({BrowserWindow, shell, hidden: HIDDEN}), openPage: linkedinPageOpener({server, installed: () => extensionInstall.installed({folder: extensionFolder()}), open: extensionInstall.openInChrome})});
   registerEasyApplyHandlers({DEMO, ipcMain, storage, packaged: app?.isPackaged ?? true});   // LinkedIn Easy Apply's switch (plan 1/5), beside LinkedIn jobs; no app known = packaged: not offered
 }
