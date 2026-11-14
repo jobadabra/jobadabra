@@ -16,7 +16,7 @@ export const messages = {
   "turnOff": "Dezactivează",
   "keepOn": "Păstrează activat",
   "linkedinSuggestion": "Caută și pe LinkedIn",
-  "linkedinSuggestionDetail": "În fundal, fără fereastră. Te autentifici o dată în LinkedIn într-o fereastră Jobadabra.",
+  "linkedinSuggestionDetail": "În fundal, fără fereastră. Te autentifici o dată în LinkedIn: cu autentificarea din Chrome sau într-o fereastră Jobadabra.",
   "linkedinSuggestionEvidence": "Căutarea LinkedIn este oprită, deci Caută locuri de muncă nu citește căutările tale din LinkedIn.",
   "extensionNeeded": "Este necesară extensia Chrome",
   "linkedinExtensionHelp": "LinkedIn folosește extensia Chrome Jobadabra. Conecteaz-o în Setări → Conexiuni → Extensie Chrome, apoi reîncearcă.",
