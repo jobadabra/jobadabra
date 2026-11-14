@@ -90,6 +90,14 @@ class WrongLink(unittest.TestCase):
                 self.assertEqual(titles, [])
                 self.assertNotIn(HOME, self.asked)
 
+    def test_a_posted_alert_form_is_never_asked_it_would_be_the_wrong_link_again(self):
+        alert = '<html><body><form method="post" action="/alert"><input type="hidden" name="q" value=""><input name="alertAddress"></form></body></html>'
+        with mock.patch.object(found_boards.board_search_first.board_forms, 'home', return_value=(HOME, alert)):
+            titles, log, _ = self.direct()
+        self.assertEqual(titles, [])
+        self.assertEqual([url for url in self.asked if 'alertAddress' in url], [], 'a request spent on a form asked at the 404 link')
+        self.assertIn('no search form on its home page', log)
+
     def test_a_link_that_404s_on_every_page_is_searched_through_the_home_form_in_the_first_jobs_read(self):
         titles, log = self.read()
         self.assertEqual(titles, ['Welder'], log)

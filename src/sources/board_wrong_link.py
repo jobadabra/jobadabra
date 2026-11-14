@@ -5,6 +5,7 @@ Why (14 Nov 2026, zb, sa's runs 43614387886 43614410252 43617651998): of 52 boar
 first-jobs slice, which ends a search's board reads, so those boards gave 0 for the whole press and their fix waited for a next search.
 Tests: tests/unit/sources/test_board_wrong_link.py."""
 import urllib.error
+import urllib.parse
 
 from . import board_search_first, read_budget
 
@@ -49,4 +50,14 @@ def read(board, entry, proposed, search, fetch, judge, show, early, first):
     codes = '/'.join(str(code) for code in sorted(set(watch.codes)))
     print(f"Job boards: {board['name']}: its search link answered HTTP {codes} on every page (a wrong link, not a refusal): asked through its home page's search form", flush=True)
     return board_search_first.through_form(board, entry, proposed, search, fetch, judge, show, early, read_board,
-                                           'the form answered with no job', 'its 0 stands') or result
+                                           'the form answered with no job', 'its 0 stands', lambda link: elsewhere(link, board['search_url'])) or result
+
+
+def elsewhere(link, wrong):
+    """True when a home-page form's link is asked at another address than the link that answered 404/410.
+    Why (14 Nov 2026, zb, sa): a form sent by POST (a job alert, a lead or contact form on golem, personeel, berg-it) is asked as a GET at the board's
+    own search link (board_forms.templates `posted_at`), here the wrong one: it would answer 404 again, so it costs a request and is never asked."""
+    def at(url):
+        parts = urllib.parse.urlsplit(url)
+        return ((parts.hostname or '').removeprefix('www.'), parts.path.rstrip('/'))
+    return at(link) != at(wrong)

@@ -21,16 +21,16 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
     return through_form(board, entry, proposed, search, fetch, judge, show, early, read_board, 'its general list is not read for it', 'its list is read')
 
 
-def through_form(board, entry, proposed, search, fetch, judge, show, early, read_board, empty_note, fallback_note):
+def through_form(board, entry, proposed, search, fetch, judge, show, early, read_board, empty_note, fallback_note, keep=None):
     """(jobs, state, None) of the board asked through the search form on its own home page (board_forms), or None: no form (for a list link, marked
     `general_for`), each form failed or refused, or the read cut came. One line says what it did and its seconds. empty_note: said after a form that
-    answered with no job; fallback_note: what is read instead when no form answered. Shared by a link with no search word (read) and a search link
+    answered with no job; fallback_note: what is read instead when no form answered; keep(link): only the form links it accepts are asked. Shared by a link with no search word (read) and a search link
     that answered 404 or 410 (board_wrong_link): one form loop, never a second."""
     started = time.monotonic()
     page = board_forms.home(board, fetch)
     if not page[1]:
         return None
-    templates = board_forms.home_templates(board, fetch, page)
+    templates = [link for link in board_forms.home_templates(board, fetch, page) if keep is None or keep(link)]
     if not templates:
         if '{role}' not in board['search_url']:
             entry['general_for'] = proposed
