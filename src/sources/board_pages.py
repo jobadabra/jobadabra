@@ -12,6 +12,7 @@ import time
 import urllib.error
 import urllib.parse
 
+from . import anchors
 from .careers_parse import page_links
 
 MAX_PAGES = 5       # pages of one board search read at most, page 1 included (owner, 18 Oct 2026)
@@ -22,8 +23,8 @@ def next_link(url, markup, numbered):
     """The page after `url`: its rel=next link on the same site, else the first of the numbered pages not read yet; None at the end."""
     host = urllib.parse.urlsplit(url).netloc
     for tag in re.findall(r'<(?:link|a)\b[^>]*\brel=["\']?next\b[^>]*>', markup or '', re.I):
-        href = re.search(r'\bhref=["\']([^"\']+)["\']', tag)
-        link = _encoded(urllib.parse.urljoin(url, html.unescape(href.group(1)))) if href else ''
+        href = anchors.href(tag)   # quoted or not (src/sources/anchors.py)
+        link = _encoded(urllib.parse.urljoin(url, html.unescape(href))) if href else ''
         if link and urllib.parse.urlsplit(link).netloc == host:
             return link
     return _encoded(numbered.pop(0)) if numbered else None

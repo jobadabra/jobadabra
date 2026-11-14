@@ -19,7 +19,7 @@ import sqlite3
 import urllib.parse
 from datetime import datetime, timezone
 
-from . import page_paths
+from . import anchors, page_paths
 
 TAGS = ('h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'a', 'strong', 'b', 'span', 'div', 'p', 'td', 'dt')
 MATCH_SHARE = 0.8          # a replay must give back at least this share of what the model found
@@ -61,7 +61,7 @@ def _text(fragment):
 
 def _links(markup, base):
     out = []
-    for href, inner in re.findall(r'<a\b[^>]*?href=["\']([^"\'#][^"\']*)["\'][^>]*>(.*?)</a>', markup, re.S | re.I):
+    for href, inner in anchors.anchors(markup):   # quoted or not (src/sources/anchors.py)
         out.append((urllib.parse.urljoin(base, html.unescape(href)), _text(inner)))
     return out
 
@@ -69,10 +69,8 @@ def _links(markup, base):
 def _card_links(markup, base, title):
     """[(address, title)] of every link, its title read as `title` says (TITLES): the link's aria-label or title attribute, or its first heading."""
     out = []
-    for attrs, inner in re.findall(r'<a\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>(.*?)</a>', markup, re.S | re.I):   # a `>` inside a quoted attribute is not the tag's end
-        href = re.search(r'(?<![\w-])href=["\']([^"\'#][^"\']*)["\']', attrs, re.I)
-        if not href:
-            continue
+    for attrs, inner in anchors.tagged(markup):   # its href quoted or not (src/sources/anchors.py)
+        href = anchors.href(attrs)
         if title == 'label':
             # Why (13 Nov 2026, #4061, Gitar on #4070): match the attribute name whole (`\b` also matched data-title / data-aria-label, which tracking code puts on cards); the title is the first non-empty of aria-label and title (an empty aria-label must not hide a real title).
             named = (re.search(r'(?<![\w-])' + name + r'=["\']([^"\']*)["\']', attrs, re.I) for name in ('aria-label', 'title'))
@@ -80,7 +78,7 @@ def _card_links(markup, base, title):
         else:
             heading = re.search(r'<{0}\b[^>]*>(.*?)</{0}>'.format(title), inner, re.S | re.I)
             text = _text(heading.group(1)) if heading else ''
-        out.append((urllib.parse.urljoin(base, html.unescape(href.group(1))), text))
+        out.append((urllib.parse.urljoin(base, html.unescape(href)), text))
     return out
 
 

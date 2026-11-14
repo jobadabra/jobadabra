@@ -11,7 +11,7 @@ import json
 import re
 import urllib.parse
 
-from . import ats
+from . import anchors, ats
 from .. import country_codes
 from ..ai import meanings_pack, page_words
 
@@ -60,7 +60,7 @@ def decode(slug):
 def links(markup, base):
     """(absolute address, link text) for every link on the page."""
     found = []
-    for href, inner in re.findall(r'<a\b[^>]*?href=["\']([^"\'#][^"\']*)["\'][^>]*>(.*?)</a>', markup, re.S | re.I):
+    for href, inner in anchors.anchors(markup):   # quoted or not (src/sources/anchors.py)
         found.append((urllib.parse.urljoin(base, html.unescape(href)), re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', inner))).strip()))
     return found
 

@@ -15,7 +15,7 @@ import re
 import urllib.parse
 from datetime import datetime, timezone
 
-from . import ats, feeds
+from . import anchors, ats, feeds
 from ..ai.models import SMALL_MODEL
 from ..press import resume
 
@@ -68,7 +68,7 @@ def parts(payload):
 def links(markup, plain, site):
     """[(text, address)] of the email's links to the job site (HTML anchors, else addresses in the plain text)."""
     found = []
-    for href, inner in re.findall(r'<a\b[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', markup or '', re.S | re.I):
+    for href, inner in anchors.anchors(markup, fragments=True):   # quoted or not (src/sources/anchors.py)
         url = html.unescape(href)
         text = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', inner))).strip()
         if site in (urllib.parse.urlsplit(url).hostname or ''):
