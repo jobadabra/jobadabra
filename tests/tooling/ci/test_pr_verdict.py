@@ -455,7 +455,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         _, written, _ = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], runs=[run('CI · Pull request', id=1), e2e], jobs={5: [job(50, 'E2E · jobs', status='in_progress', conclusion='')]})
         self.assertIn('"state=pending"', written)
         row = json.loads(self.rows.strip())
-        self.assertTrue({'name=E2E for PR · jobs · topic', 'status=in_progress', 'details_url=https://github.com/o/r/actions/runs/5'} <= set(row), row)
+        self.assertTrue({'name=run · E2E for PR · jobs · topic', 'status=in_progress', 'details_url=https://github.com/o/r/actions/runs/5'} <= set(row), row)
 
     def test_a_merged_pr_gets_nothing(self):
         done, written, _ = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': '2026-10-26T04:59:23Z'}])

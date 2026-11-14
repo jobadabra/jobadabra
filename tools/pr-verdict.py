@@ -415,8 +415,8 @@ def publish_rows(a, pulls, live, state, server, ref):
     """Rows and the summary table come after the status and never change it (tools/pr_verdict_rows.py: one row per by-hand run, the current open head only)."""
     try:
         main_state_module(a.repo, ref, 'pr_verdict_rows').publish(a.repo, a.sha, pulls, live, state, gh, server, datetime.now(timezone.utc), a.dry_run, os.environ.get('GITHUB_STEP_SUMMARY', ''))
-    except Exception as error:   # the companion not loaded: the status above stands
-        print(f'check rows not written ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
+    except Exception as error:   # the companion not loaded (publish() catches its own failures): the status above stands
+        print(f'check rows companion not loaded ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
 
 
 def main():

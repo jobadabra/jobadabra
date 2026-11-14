@@ -30,7 +30,12 @@ class Gh:
 class OneRowPerByHandRun(unittest.TestCase):
     def test_only_by_hand_runs_get_a_row_and_each_row_opens_its_run(self):
         got = rows.rows([run(5), run(6, 'CI · Pull request', event='pull_request')], 'success', REPO, SERVER, NOW)
-        self.assertEqual([(r['name'], r['url'], r['status'], r['conclusion']) for r in got], [('E2E for PR · jobs · topic', 'https://github.com/o/r/actions/runs/5', 'completed', 'success')])
+        self.assertEqual([(r['name'], r['url'], r['status'], r['conclusion']) for r in got], [('run · E2E for PR · jobs · topic', 'https://github.com/o/r/actions/runs/5', 'completed', 'success')])
+
+    def test_the_summary_opens_with_a_link_to_the_run_because_github_ignores_details_url_for_this_app(self):
+        """Read back on 14 Nov 2026 (sa, #4187's pair row): a check run created with GITHUB_TOKEN keeps its own page as Details whatever details_url says; the summary is the link."""
+        row = rows.rows([run(5)], 'success', REPO, SERVER, NOW)[0]
+        self.assertTrue(row['summary'].splitlines()[0].startswith('[run · E2E for PR') and row['summary'].splitlines()[0].count('https://github.com/o/r/actions/runs/5') == 1, row['summary'])
 
     def test_the_row_follows_the_run_running_green_red(self):
         states = [rows.rows([run(5, status=s, conclusion=c)], 'pending', REPO, SERVER, NOW)[0] for s, c in (('queued', ''), ('in_progress', ''), ('completed', 'failure'))]
@@ -74,7 +79,7 @@ class StaysWithinTheTokensCalls(unittest.TestCase):
     def test_a_new_row_is_one_list_and_one_create_then_an_unchanged_row_costs_the_list_only(self):
         gh = Gh()
         rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', gh, SERVER, NOW)
-        self.assertEqual([c[1] for c in gh.calls], ['repos/o/r/commits/abc/check-runs?per_page=100&check_name=E2E%20for%20PR%20%C2%B7%20jobs%20%C2%B7%20topic', 'repos/o/r/check-runs'])
+        self.assertEqual([c[1] for c in gh.calls], ['repos/o/r/commits/abc/check-runs?per_page=100&check_name=run%20%C2%B7%20E2E%20for%20PR%20%C2%B7%20jobs%20%C2%B7%20topic', 'repos/o/r/check-runs'])
         want = rows.rows([run(5)], 'success', REPO, SERVER, NOW)[0]
         again = Gh([{'id': 9, 'external_id': want['external_id'], 'status': want['status'], 'conclusion': want['conclusion'], 'title': want['title']}])
         rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', again, SERVER, NOW)
@@ -91,6 +96,11 @@ class StaysWithinTheTokensCalls(unittest.TestCase):
         gh = Gh()
         rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', gh, SERVER, NOW)
         self.assertIn('check_name=', gh.calls[0][1], 'a page of 100 check runs without the name filter would hide the row and add a copy on every write')
+
+    def test_a_summary_path_that_cannot_be_written_does_not_hide_the_rows(self):   # Gitar on #4188
+        gh = Gh()
+        done = rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', gh, SERVER, NOW, summary_path='/nonexistent-folder/summary.md')
+        self.assertEqual(len(done), 1)
 
     def test_the_summary_is_appended_for_any_head_even_without_a_row(self):
         with tempfile.TemporaryDirectory() as folder:

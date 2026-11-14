@@ -42,13 +42,14 @@ def row_of(run, state, repo, server, now):
         conclusion = CONCLUSIONS.get(ran, 'neutral')
         if state == 'success' and ran in RED:
             conclusion = 'neutral'
-    name = re.sub(r'\s+', ' ', str(run.get('displayTitle') or run.get('workflowName') or 'run')).strip()[:100]
+    # Why (Gitar on #4188): a display row never shares a name with a job or workflow check of the head, so its own `check_name` list finds only rows and the PR never shows two checks of one name.
+    name = 'run · ' + re.sub(r'\s+', ' ', str(run.get('displayTitle') or run.get('workflowName') or 'run')).strip()[:94]
     took = minutes(run, now)
     words = {'completed': f'ended {ran or "unknown"}' + (', read as grey by the verdict' if conclusion == 'neutral' and ran in RED else ''), 'queued': 'waiting for a runner',
              'in_progress': 'running'}[status]
     url = f"{server}/{repo}/actions/runs/{run['databaseId']}"
     return {'external_id': f"{PREFIX}{run['databaseId']}", 'name': name, 'status': status, 'conclusion': conclusion, 'url': url,
-            'title': f'{words} {took}'.strip()[:140], 'summary': f'[{name}]({url}): {words}{", " + took if took else ""}.'}
+            'title': f'{words} {took}'.strip()[:140], 'summary': f'[{name}]({url}): {words}{", " + took if took else ""}.'}   # the link first: GitHub ignores details_url for a check run of this app (its Details is the row's own page)
 
 
 def rows(live, state, repo, server, now):
@@ -101,14 +102,15 @@ def write(repo, sha, wanted, gh, dry_run=False):
 
 def publish(repo, sha, pulls, live, state, gh, server, now, dry_run=False, summary_path=''):
     """The verdict's side effects beyond its status, never able to change it: the summary table (any head), then the rows (the PR's current open head only).
-    A failure here is printed and leaves the verdict as written (the status is written first)."""
-    try:
-        if summary_path and live:
+    Each has its own try (Gitar on #4188: a full or missing summary path must not hide the rows); a failure is printed and the status written first stands."""
+    if summary_path and live:
+        try:
             with open(summary_path, 'a', encoding='utf-8') as file:
                 file.write(table(live, state, repo, server, now))
-        if not current_open_head(pulls, sha):
-            return []
-        return write(repo, sha, rows(live, state, repo, server, now), gh, dry_run)
+        except OSError as error:
+            print(f'summary table not written ({type(error).__name__}): {str(error)[:200]}')
+    try:
+        return write(repo, sha, rows(live, state, repo, server, now), gh, dry_run) if current_open_head(pulls, sha) else []
     except Exception as error:   # a row is display only: the required status above stays
         print(f'check rows not written ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
         return []
