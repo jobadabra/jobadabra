@@ -128,7 +128,7 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
     if (!clean.length) return false;
     const record = await recordOf(url);
     const entry = unpack(record?.apply_readiness);
-    if (!record?.id || !entry) return false;
+    if (!record?.id || !entry) { log('apply', 'readiness: no stored check to keep the steps with', {}); return false; }
     const text = pack({...entry.read, steps: clean}, {posted: entry.posted, now: Number.isNaN(Date.parse(entry.at)) ? clock() : new Date(entry.at)});
     if (!text) return false;
     return call(storage, 'applications', 'update', {app_id: record.id, fields: {apply_readiness: text}}).then(() => true, error => { log('apply', 'readiness: the steps were not stored', {error: String(error?.message || error).slice(0, 200)}); return false; });
