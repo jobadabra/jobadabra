@@ -24,11 +24,12 @@ from ..press import stage
 KINDS = ('job board', 'one employer', 'other')
 NOT_A_BOARD = ('gone', 'one employer', 'other')   # what is read in place of a board, not as one
 TOPIC = 'job site kind'
+# Why (14 Nov 2026, owner via sa): both judges left these out as 'not a job board'; one constant, so the two instructions cannot drift (Gitar, #4209)
+JOB_BOARD_EXAMPLES = "the job section of a classifieds or marketplace site, a public or municipal employment service's vacancy list"
 INSTRUCTIONS = ("Say what this website is, from its home page and the page its job offers are listed on (each: name, description and "
-                "the texts of its links). 'job board': it lists job offers from many different employers (a job portal, a job search site, a staffing agency's list of its clients' jobs, the job "
-                "section of a classifieds or marketplace site, a public or municipal employment service's vacancy list). 'one employer': it "
-                "is one company's or organisation's own site, even with a careers page. 'other': anything else (a directory, news, a "
-                "parked or empty domain).")
+                "the texts of its links). 'job board': it lists job offers from many different employers (a job portal, a job search "
+                "site, a staffing agency's list of its clients' jobs, " + JOB_BOARD_EXAMPLES + "). 'one employer': it is one company's "
+                "or organisation's own site, even with a careers page. 'other': anything else (a directory, news, a parked or empty domain).")
 LINKS = 40   # link texts sent at most
 CHROME = ('nav', 'header', 'footer', 'aside')   # the site's own menus, sent after the page's own links
 
@@ -158,16 +159,20 @@ def kind(board, fetch, term='', ask=None):
 
 def checked(board, entry, result, fetch, word, now=None):
     """The read's (jobs, state, route) after the board check, whose verdict is kept in entry['site_kind'] (with 'site_page', 'gone_days').
-    Asked when the read gave nothing (not 'browser') and no verdict or 'gone' is kept; and again when a 'one employer' or 'other' verdict is read,
-    which board_yield.pick allows only once its 30-day retry is due: the kept kind then follows the new answer, so a wrong verdict lasts one retry,
-    never for ever (owner via sa, 14 Nov 2026); no answer then drops the old verdict, so the next empty read asks again. A verdict that is not a
-    board replaces the jobs.
-    word: a function giving the search's first word, called only when the judge is asked (a read that gave jobs does no more work)."""
-    again = entry.get('site_kind') in ('one employer', 'other')
-    if not again and (result[0] or result[1] == 'browser' or entry.get('site_kind') not in (None, 'gone')):
+    Design (owner via sa, 14 Nov 2026; Gitar #4198-#4209), one owner of site_kind, these verdicts only:
+    - the read gave jobs: it is a board; a kept 'one employer'/'other' becomes 'job board', no AI ask, the jobs are kept;
+    - the read gave jobs, or is 'browser', or the AI page reader is off: nothing else changes;
+    - the read gave nothing, and nothing, 'gone', 'one employer' or 'other' is kept: the judge is asked (a kept not-a-board verdict is read only
+      on its 30-day retry, board_yield.pick) and its answer is kept; a retry with no answer drops the old verdict, so the next empty read asks;
+      an answer that is not a board replaces the read; a kept 'job board' is not asked again.
+    word: a function giving the search's first word, called only when the judge is asked."""
+    kept = entry.get('site_kind')
+    if result[0] and kept in ('one employer', 'other'):   # Why (#4209, Gitar): jobs read are the proof; re-judging could drop them
+        entry['site_kind'], entry['site_page'] = 'job board', ''
+    if result[0] or result[1] == 'browser' or careers.READER is None or kept not in (None, 'gone', 'one employer', 'other'):
         return result
     site, page = kind(board, fetch, word())
-    if again and not site:   # Why (14 Nov 2026, owner via sa): a script-built list judged 'other' from its home page must not stay 'other' for ever
+    if not site and kept in ('one employer', 'other'):   # Why (14 Nov 2026, owner via sa): a wrong 'other' must not stay for ever
         for key in ('site_kind', 'site_page'):
             entry.pop(key, None)
     if site:
@@ -180,12 +185,12 @@ def checked(board, entry, result, fetch, word, now=None):
 FIELD_KINDS = ('field board', 'job board', 'one employer', 'other')
 FIELD_TOPIC = 'job site kind for a field'
 FIELD_INSTRUCTIONS = ("Say what this website is for the person looking for work given first, from its home page and the page its job "
-                      "offers are listed on (each: name, description and the texts of its links). 'field board': it lists job offers from many employers in that person's field (a job board of the field, a "
-                      "recruiter's list of many clients' jobs in it, the job section of the field's trade press or association). 'job board': it "
-                      "lists job offers from many employers of any field (a general job portal, the job section of a classifieds or marketplace "
-                      "site, a public or municipal employment service's vacancy list). 'one employer': it is one company's or "
-                      "organisation's own site, even with a careers page. 'other': anything else (news without job offers, a directory, a shop, "
-                      "a parked or empty domain).")
+                      "offers are listed on (each: name, description and the texts of its links). 'field board': it lists job offers from "
+                      "many employers in that person's field (a job board of the field, a recruiter's list of many clients' jobs in it, the "
+                      "job section of the field's trade press or association). 'job board': it lists job offers from many employers of any "
+                      "field (a general job portal, " + JOB_BOARD_EXAMPLES + "). 'one employer': it is one company's or organisation's own "
+                      "site, even with a careers page. 'other': anything else (news without job offers, a directory, a shop, a parked or "
+                      "empty domain).")
 
 
 def field_kind(board, fetch, roles, ask=None):
