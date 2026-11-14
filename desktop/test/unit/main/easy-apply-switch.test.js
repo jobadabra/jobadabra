@@ -21,7 +21,7 @@ const linkedinOn = (extra = {}) => ({linkedinJobs: {on: true, asked: 1, declined
 
 test('off by default, and the view says so for a fresh install', () => {
   assert.deepEqual(state(store()), {on: false, warnedAt: ''});
-  assert.deepEqual(viewOf(store(), {packaged: false}), {on: false, signedIn: false, warned: false, offered: true});
+  assert.deepEqual(viewOf(store(), {packaged: false}), {on: false, lost: false, signedIn: false, warned: false, offered: true});
 });
 
 test('turning on needs a kept sign-in, not LinkedIn jobs: with none it says needs-signin', () => {
@@ -50,10 +50,14 @@ test('turning off keeps LinkedIn jobs as it was: its switch, its 24 h pause and 
   assert.deepEqual(state(storage), {on: false, warnedAt: NOW.toISOString()});
 });
 
-test('with no sign-in kept Easy Apply reads as off, whatever was saved', () => {
+test('with no sign-in kept Easy Apply is inactive (lost), whatever was saved, and a renewed sign-in brings it back with nothing else to do (owner, 14 Nov 2026)', () => {
   const storage = store({linkedinJobs: {on: false, login: {state: 'none', at: 0}}, easyApply: {on: true, warnedAt: NOW.toISOString()}});
   assert.equal(state(storage).on, false);
-  assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, signedIn: false, warned: true, offered: true});
+  assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, lost: true, signedIn: false, warned: true, offered: true});
+  const items = new Map(), keychain = {write: (key, value) => { items.set(key, value); return true; }, read: key => items.get(key) || null, remove: key => items.delete(key)};
+  assert.deepEqual(linkedin.saveSession(storage, [{name: 'li_at', value: 'fake-li-at', domain: '.linkedin.com'}], {keychain, now: () => NOW.getTime()}), {ok: true});
+  assert.deepEqual(viewOf(storage, {packaged: false}), {on: true, lost: false, signedIn: true, warned: true, offered: true}, 'renewed: on and active again, no second warning');
+  assert.equal(viewOf(store({linkedinJobs: {on: false, login: {state: 'none', at: 0}}, easyApply: {on: false}}), {packaged: false}).lost, false, 'a switch that was off stays off, never lost');
 });
 
 // Owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times" (replaces Gitar on #4008, where Easy Apply went off with LinkedIn jobs).
@@ -110,7 +114,7 @@ test('the three channels: demo mode touches no settings; a real turn-on passes t
   registerEasyApplyHandlers({DEMO: false, ipcMain, storage: real, packaged: false, clock: () => NOW, keychain: keptItem()});
   assert.deepEqual(await handlers.easyApplyOn({}, {}), {ok: false, reason: 'not-warned'});
   assert.deepEqual(await handlers.easyApplyOn({}, {warned: true}), {ok: true});
-  assert.deepEqual(await handlers.easyApplyState(), {on: true, signedIn: true, warned: true, offered: true});
+  assert.deepEqual(await handlers.easyApplyState(), {on: true, lost: false, signedIn: true, warned: true, offered: true});
   assert.deepEqual(await handlers.easyApplyOff(), {ok: true});
   assert.equal((await handlers.easyApplyState()).on, false);
 });

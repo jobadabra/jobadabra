@@ -18,14 +18,18 @@ export const EASY_APPLY = {
  * 'manage' (on: Keep on / Turn off) | 'linkedin-first' (no LinkedIn sign-in kept: the sign-in dialog first; any kept sign-in is enough, and the dialog keeps it without turning LinkedIn jobs on; owner, 14 Nov 2026) | 'warn' (the first turn-on) | 'turn-on' (warned once already).
  */
 export function nextStep(view) {
-  if (view.on) return 'manage';
+  if (view.on) return 'manage';   // `on` is the active switch; a lost sign-in (view.lost) is off here and goes to the sign-in first, then straight back on
   if (!view.signedIn) return 'linkedin-first';
   return view.warned ? 'turn-on' : 'warn';
 }
 
 /** The Connections row: shown only where offered (dev builds until plan 4/5), on, and the word beside the button while off. */
-export const rowOf = view => ({shown: !!(view?.loaded && view.offered), on: !!view?.on, words: view?.signedIn ? t('pagesCommon.off') : t('pagesEasyApply.needsLinkedin')});
+export const rowOf = view => ({shown: !!(view?.loaded && view.offered), on: !!view?.on, lost: !!view?.lost, words: view?.lost ? t('pagesLinkedinServices.signinMissing') : view?.signedIn ? t('pagesCommon.off') : t('pagesEasyApply.needsLinkedin')});   // lost: still on, inactive until the sign-in is renewed
+
+/** The ⌘K command "Turn off LinkedIn Easy Apply" while its sign-in is lost (the row's press is Renew then), so the saved-on switch can be cleared without renewing (Gitar on #4420); else null. */
+export const turnOffCommandOf = (view, run) => (view?.loaded && view.offered && view.lost
+  ? {label: t('pagesEasyApply.turnOff'), hint: t('pagesEasyApply.hint'), keywords: 'linkedin easy apply turn off disable connection', run} : null);
 
 /** The ⌘K command that opens the same flow as the row (`run`), or null where the switch is not offered. */
 export const commandOf = (view, run) => (view?.loaded && view.offered
-  ? {label: view.on ? t('pagesEasyApply.turnOff') : t('pagesEasyApply.turnOn'), hint: t('pagesEasyApply.hint'), keywords: 'linkedin easy apply send applications automatic connection', run} : null);
+  ? {label: view.lost ? t('pagesLinkedinServices.renewLabel') : view.on ? t('pagesEasyApply.turnOff') : t('pagesEasyApply.turnOn'), hint: t('pagesEasyApply.hint'), keywords: 'linkedin easy apply send applications automatic connection', run} : null);

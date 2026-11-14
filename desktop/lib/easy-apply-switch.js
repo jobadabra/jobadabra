@@ -4,7 +4,7 @@
 // Guard: test/unit/main/easy-apply-switch.test.js.
 import {readSession, releaseUnused, signedIn} from './linkedin-session.js';
 import * as realKeychain from './keychain.js';
-import {easyApplyOn} from '../renderer/apply-settings-model.js';   // the one rule, shared with the window's Full automation confirmation
+import {easyApplyLost, easyApplyOn} from '../renderer/apply-settings-model.js';   // the one rule, shared with the window's Full automation confirmation
 
 /** The saved switch, read through the sign-in: with none kept Easy Apply reads as off whatever was saved. Always the same two keys. */
 export function state(storage) {
@@ -16,7 +16,7 @@ const save = (storage, patch) => storage.saveSettings({easyApply: {...(storage.s
 /** What the window draws. `offered`: the row and ⌘K entry exist. Why (owner, 13 Nov 2026: "Dev builds only until 4/5"): nothing sends before the controller (plan 4/5), so a packaged build shows no switch that does nothing. */
 export const viewOf = (storage, {packaged}) => {
   const mine = state(storage);
-  return {on: mine.on, signedIn: signedIn(storage), warned: !!mine.warnedAt, offered: !packaged};
+  return {on: mine.on, lost: easyApplyLost(storage.settings()), signedIn: signedIn(storage), warned: !!mine.warnedAt, offered: !packaged};
 };
 
 /**

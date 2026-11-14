@@ -3,7 +3,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {EASY_APPLY, commandOf, nextStep, rowOf} from '../../../renderer/easy-apply-words.js';
+import {EASY_APPLY, commandOf, nextStep, rowOf, turnOffCommandOf} from '../../../renderer/easy-apply-words.js';
 
 const view = extra => ({loaded: true, on: false, signedIn: true, warned: false, offered: true, ...extra});
 
@@ -26,8 +26,8 @@ test('a press: manage while on, LinkedIn jobs first without its sign-in, the war
 test('the Connections row: only where offered, and it says why it is off', () => {
   assert.equal(rowOf(view({offered: false})).shown, false, 'packaged build: no row until sending lands');
   assert.equal(rowOf({loaded: false}).shown, false, 'not read yet: no row');
-  assert.deepEqual(rowOf(view()), {shown: true, on: false, words: 'Off'});
-  assert.deepEqual(rowOf(view({signedIn: false})), {shown: true, on: false, words: 'Needs a LinkedIn sign-in'});
+  assert.deepEqual(rowOf(view()), {shown: true, on: false, lost: false, words: 'Off'});
+  assert.deepEqual(rowOf(view({signedIn: false})), {shown: true, on: false, lost: false, words: 'Needs a LinkedIn sign-in'});
   assert.equal(rowOf(view({on: true})).on, true);
 });
 
@@ -42,4 +42,35 @@ test('⌘K: "Turn on" while off, "Turn off" while on, none where not offered', (
 test('both doors open the same flow: the Connections row and ⌘K', () => {
   assert.match(readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8'), /openEasyApply/);
   assert.match(readScreenSource(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8'), /addEasyApplyCommand\(add\)/);
+});
+
+// Owner, 14 Nov 2026: a lost sign-in leaves the saved switch on but inactive ("Needs sign-in"), its press is Renew, and a renewal brings it back; the one that was off stays off.
+test('a lost sign-in: the row is inactive and says so, ⌘K offers Renew, a press goes to the sign-in first', () => {
+  const lost = view({on: false, lost: true, signedIn: false});
+  assert.equal(rowOf(lost).on, false);
+  assert.equal(rowOf(lost).lost, true);
+  assert.match(rowOf(lost).words, /no sign-in kept/);
+  assert.equal(commandOf(lost, () => {}).label, 'Renew LinkedIn sign-in');
+  assert.equal(nextStep(lost), 'linkedin-first');
+  assert.equal(rowOf(view({signedIn: false})).lost, false, 'a switch that was off stays off, not lost');
+  assert.equal(commandOf(view(), () => {}).label, 'Turn on LinkedIn Easy Apply');
+});
+
+// Gitar on #4419: the Settings card is the one place a lost Easy Apply is seen; its Renew button comes from needsYou and its click opens the Easy Apply flow (which goes to the sign-in first).
+test('Settings: a lost Easy Apply is a needsYou card whose button is Renew and opens the Easy Apply flow', () => {
+  const page = readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8');
+  assert.match(page, /needsYou: \{'linkedin-jobs': !!needs, 'linkedin-easy-apply': easyApplyRow\(easyApplyView\)\.lost\}/, 'the row\'s lost state marks the card');
+  assert.match(page, /needsYou \? .Renew./, 'the button reads Renew while a card needs you');
+  assert.match(page, /service\.id === 'linkedin-easy-apply' \? openEasyApply\(\)/, 'its click opens the Easy Apply flow');
+  assert.equal(nextStep(view({on: false, lost: true, signedIn: false})), 'linkedin-first', 'which goes to the sign-in first');
+});
+
+// Gitar on #4420: a lost Easy Apply press is Renew, so Turn off is its own ⌘K entry (as LinkedIn jobs keeps its Turn off), and it clears the saved switch without a sign-in.
+test('a lost Easy Apply can be turned off without renewing: its own ⌘K entry, wired to the off call', () => {
+  assert.equal(turnOffCommandOf(view({lost: true, signedIn: false}), () => {}).label, 'Turn off LinkedIn Easy Apply');
+  assert.equal(turnOffCommandOf(view({on: true}), () => {}), null, 'active: the one command already says Turn off');
+  assert.equal(turnOffCommandOf(view({offered: false, lost: true}), () => {}), null, 'not offered: none');
+  const door = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
+  assert.match(door, /turnOffCommandOf\(view, \(\) => turnOff\(\)\)/, 'the entry is added with the others');
+  assert.match(door, /async function turnOff\(\) \{\n  await window\.pilot\.easyApplyOff\(\);/, 'and calls the off handler');
 });

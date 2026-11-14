@@ -3,7 +3,7 @@
 // 14 Nov 2026: "a turn on should focus just on that specific case"); the owner's warning comes once, before the first turn-on. The steps and words are renderer/easy-apply-words.js. Guard: test/unit/renderer/easy-apply-words.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-import {EASY_APPLY, commandOf, nextStep, view} from '../easy-apply-words.js';
+import {EASY_APPLY, commandOf, nextStep, turnOffCommandOf, view} from '../easy-apply-words.js';
 import {openLinkedinConsent, refreshLinkedin, say, showConsent} from './linkedin-consent.js';
 import {NO_PLACE} from '../targets.js';
 
@@ -11,9 +11,9 @@ export {view};
 
 /** Read the switch from the app; tells the pages ('easy-apply-changed') when what they draw changed. */
 export async function refreshEasyApply() {
-  const before = `${view.on}:${view.signedIn}:${view.offered}`;
+  const before = `${view.on}:${view.lost}:${view.signedIn}:${view.offered}`;
   Object.assign(view, await window.pilot.easyApplyState(), {loaded: true});
-  if (before !== `${view.on}:${view.signedIn}:${view.offered}`) window.dispatchEvent(new Event('easy-apply-changed'));
+  if (before !== `${view.on}:${view.lost}:${view.signedIn}:${view.offered}`) window.dispatchEvent(new Event('easy-apply-changed'));
   return view;
 }
 
@@ -32,9 +32,11 @@ export async function openEasyApply() {
   await refreshEasyApply();
   let step = nextStep(view);
   if (step === 'linkedin-first') {
+    const renewing = view.lost;   // owner, 14 Nov 2026: a renewed sign-in brings the saved switch back on and active; nothing is asked again
     await openLinkedinConsent({mode: 'easy-apply'});
     await refreshLinkedin().catch(() => {});
     await refreshEasyApply();
+    if (renewing) return;
     step = nextStep(view);
     if (step === 'linkedin-first') return;   // Not now, or the sign-in still finishing in Chrome: the person presses Turn on again once it is kept
   }
@@ -42,6 +44,11 @@ export async function openEasyApply() {
   const answer = await showConsent(step === 'manage' ? EASY_APPLY.manage : EASY_APPLY.warn);
   if (answer !== 'default') return;
   if (step === 'warn') return turnOn(true);
+  return turnOff();
+}
+
+/** Turn Easy Apply off (the Manage dialog's yes, or ⌘K while its sign-in is lost) and say so. */
+async function turnOff() {
   await window.pilot.easyApplyOff();
   await Promise.all([refreshEasyApply(), refreshLinkedin()]);   // Gitar on #4263: LinkedIn jobs' Manage must stop naming Easy Apply
   say(t('pagesEasyApply.offTitle'), t('pagesEasyApply.offBody'), NO_PLACE.itself, 'info');
@@ -52,4 +59,6 @@ export function addEasyApplyCommand(add) {
   refreshEasyApply().catch(() => {});
   const command = commandOf(view, () => openEasyApply());
   if (command) add('Settings', command.label, command.hint, command.keywords, command.run);
+  const off = turnOffCommandOf(view, () => turnOff());   // a lost sign-in: the row's press is Renew, so Turn off is its own entry (Gitar on #4420)
+  if (off) add('Settings', off.label, off.hint, off.keywords, off.run);
 }

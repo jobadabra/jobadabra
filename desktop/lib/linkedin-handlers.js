@@ -4,7 +4,7 @@ import * as session from './linkedin-session.js';
 import {refresh as realRefresh} from './linkedin-refresh.js';
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
-import {easyApplyOn} from '../renderer/apply-settings-model.js';
+import {easyApplyOn, linkedinLost} from '../renderer/apply-settings-model.js';
 
 /** The extension's three calls. session: {cookies} from the consent page -> saved or refused; pending: tells the extension whether to give up its LinkedIn permissions and whether a Find jobs press
  *  wants a fresh copy now; refresh: that fresh copy (or {held: false}), after which the waiting press goes on (lib/linkedin-refresh.js). */
@@ -25,7 +25,7 @@ export function linkedinRoutes(storage, deps = {}) {
 /** What the window needs: the state, whether the ask is due on this Find jobs press, and whether a session is held (never its value). */
 export function linkedinView(storage, deps = {}) {
   const mine = session.state(storage);
-  return {...mine, signedIn: session.signedIn(storage), login: session.loginOf(storage, deps).state, ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), signin: session.signinView(storage)};   // signin: the one state (#3911)
+  return {...mine, signedIn: session.signedIn(storage), login: session.loginOf(storage, deps).state, ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), lost: linkedinLost(storage.settings()), signin: session.signinView(storage)};   // signin: the one state (#3911)
 }
 
 /**

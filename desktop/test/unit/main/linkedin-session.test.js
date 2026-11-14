@@ -248,3 +248,11 @@ test('the same sign-in saved again keeps its keep time, in any state', () => {
   saveSession(settings, good(), {keychain: kc, now: () => 90000000});
   assert.equal(settings.settings().linkedinJobs.keptAt, keptAt);
 });
+
+// Gitar on #4419: a lost sign-in is the derived state; a read that started nothing for it leaves no stored needs-you behind, so a renewal has nothing stale to clear.
+test('a read stopped by a lost sign-in writes no stored verdict (the derived lost state is the one source)', () => {
+  const storage = store({linkedinJobs: {on: true, login: {state: 'none', at: 0}}});
+  noteRun(storage, {state: 'no-session', jobs: 0, at: '2026-11-15T08:00:00.000Z'}, {log: () => {}});
+  assert.equal(storage.settings().linkedinJobs.signin, undefined, 'no stored verdict for a lost sign-in');
+  assert.equal(storage.settings().linkedinJobs.last.state, 'no-session', 'the run itself is still recorded');
+});

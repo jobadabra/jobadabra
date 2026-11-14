@@ -288,3 +288,18 @@ test('the Chrome watch: a wait that ends still waiting says so; a press during t
     live = false;
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });
+
+// Owner, 14 Nov 2026: with the sign-in lost, LinkedIn jobs stays on but the card says it needs the person, and ⌘K offers Renew; off, it says nothing.
+test('LinkedIn jobs on with its sign-in lost: the card says so and Renew is offered; off stays quiet', () => {
+  const lost = {loaded: true, on: true, lost: true, signedIn: false, signin: {state: 'ok', why: '', empties: 0}};
+  assert.match(signinLine(lost), /^Needs you: no sign-in kept/);
+  assert.equal(signinLine({...lost, on: false, lost: false}), '');
+  assert.ok(renewCommandOf(lost, () => {}));
+});
+
+// Gitar on #4420: the derived lost state wins over an older stored verdict, so the card never shows a stale reason.
+test('lost wins over an older stored needs-you on the card line', () => {
+  const stale = {loaded: true, on: true, lost: true, signedIn: false, signin: {state: 'needs-you', why: 'check', empties: 0}};
+  assert.match(signinLine(stale), /no sign-in kept/);
+  assert.match(signinLine({...stale, lost: false, signedIn: true}), /^Needs you: /, 'not lost: the stored reason shows as before');
+});
