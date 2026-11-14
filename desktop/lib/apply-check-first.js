@@ -3,6 +3,7 @@
 // (Background · you submit, In Chrome · you submit) or is not applied; the window may lower a job, never raise one; a held batch is answered once; Cancel, a raised list or an old hold queue nothing.
 import {randomUUID} from 'node:crypto';
 import {splitBatch, urlsOf} from '../renderer/apply-split.js';
+import {readsQuestions} from '../renderer/apply-triage-mode.js';
 
 /** How long a held batch waits for its check and the person's answer. Why (7 Nov 2026, spec): a dialog left longer starts over, so a confirmation never lands on an old check. */
 export const HOLD_MS = 30 * 60000;
@@ -60,7 +61,7 @@ export function createCheckFirst({read, stored = async () => null, match = async
   async function matchAll(id) {
     const plan = live(id);
     if (!plan) return null;
-    const asked = [...plan.reads].filter(([, item]) => item?.simple === true && item.questions?.length && !item.match).map(([url, item]) => ({url, questions: item.questions}));
+    const asked = [...plan.reads].filter(([, item]) => readsQuestions(item) && item.questions?.length && !item.match).map(([url, item]) => ({url, questions: item.questions}));
     const found = asked.length ? await Promise.resolve(match(asked)).catch(() => ({})) : {};
     if (live(id) === plan) for (const {url} of asked) if (found?.[url]) plan.reads.set(url, {...plan.reads.get(url), match: found[url]});
     return {reads: Object.fromEntries(plan.jobs.map(job => [job.url, plan.reads.get(job.url) || null]))};

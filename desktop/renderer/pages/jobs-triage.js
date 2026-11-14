@@ -7,6 +7,7 @@ import {$} from './core.js';
 import {KEEP_TIMINGS, chipOf, estimateOf, pickForTriage, pickWhenFresh} from '../apply-triage-pick.js';
 import {listReady} from './jobs-state.js';
 import {heldAfterList} from '../apply-readiness-read.js';
+import {readsQuestions} from '../apply-triage-mode.js';
 import {shared} from './shared.js';
 
 // The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
@@ -102,7 +103,7 @@ function paint() {
 
 // One match for the whole check (L2b): the simple forms' required questions, asked of `match` once; a form it names gets its missing details on its read, and its line in the dialog is drawn again.
 async function matchChecked(jobs, match, rows) {
-  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length && !read.match).map(({url, read}) => ({url, questions: read.questions}));
+  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => readsQuestions(read) && read.questions?.length && !read.match).map(({url, read}) => ({url, questions: read.questions}));
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null, startedAt: Date.now()});
   paint();

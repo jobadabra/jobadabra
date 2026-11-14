@@ -1,6 +1,7 @@
 // Apply triage read (spec 2026-10-30-apply-triage, PR C): turns the form judge's answer into the flags the mode table reads (renderer/apply-triage-mode.js).
 // The judge gives a robot check (captcha), a login wall and an account to create (prompt change in lib/form-judge.js). "Every answer is a saved fact" is not a page
 // judgment (the page sketch holds no saved facts): the caller passes it from the fill plan. A flag nobody gave stays unknown (null), which the mode table reads as the unsafe answer. Pure: no AI, no I/O.
+import {readsQuestions} from '../renderer/apply-triage-mode.js';
 
 /**
  * The read flags from one judge answer: {eligible, captcha, login, accountCreation, allFactsSaved}. Unknown flags are null, never false.
@@ -28,6 +29,6 @@ export function readFromLook(report, {eligible = true} = {}) {
   if (!report || typeof report.simple !== 'boolean') return {eligible, captcha: null, login: null, accountCreation: null, allFactsSaved: null};   // words-ok: the read's own flag names, not a page word list
   const why = typeof report.why === 'string' ? report.why : '';
   const read = {eligible, captcha: why === 'captcha' || why === 'check', login: why === 'login', accountCreation: why === 'account', allFactsSaved: null, simple: report.simple, why};   // words-ok: the read's own flag names, not a page word list
-  if (report.simple === true && 'questions' in report) read.questions = Array.isArray(report.questions) ? report.questions.filter(label => typeof label === 'string' && label.trim()).map(label => label.trim().slice(0, 120)).slice(0, 30) : null;   // null: the page refused the question read   // L2b: the required questions, for the one match
+  if (readsQuestions(read) && 'questions' in report) read.questions = Array.isArray(report.questions) ? report.questions.filter(label => typeof label === 'string' && label.trim()).map(label => label.trim().slice(0, 120)).slice(0, 30) : null;   // null: the page refused the question read   // L2b: the required questions, for the one match
   return read;
 }

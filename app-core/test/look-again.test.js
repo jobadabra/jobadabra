@@ -9,7 +9,9 @@ const steps = fs.readFileSync(new URL('../../extension/fill-flow-steps.js', impo
 const reads = fs.readFileSync(new URL('../../extension/page-reads.js', import.meta.url), 'utf8');   // pageShape (moved out of fill-flow.js)
 
 test('the page shape counts visible frames, and a frame that appears later makes the page be judged again', () => {
-  assert.match(reads, /frames: \[\.\.\.document\.querySelectorAll\('iframe'\)\]\.filter\(el => \{ const box = el\.getBoundingClientRect\(\); return box\.width > 40 && box\.height > 40; \}\)\.length/);
+  // Why (14 Nov 2026, #4325): the visible frames are one list (`seen`) that feeds frames, formFrames and frameHosts.
+  assert.match(reads, /const seen = \[\.\.\.document\.querySelectorAll\('iframe'\)\]\.filter\(el => \{ const box = el\.getBoundingClientRect\(\); return box\.width > 40 && box\.height > 40; \}\);/);
+  assert.match(reads, /frames: seen\.length,/);
   assert.match(flow, /const hadHosts = seenHosts === null \? \(await pageShape\(tab\.id\)\)\?\.frameHosts \|\| \[\] : seenHosts/);
   assert.match(steps, /watchForFields\(tab, jobUrl, undefined, botCheck \? 60 : 10, counts\?\.frameHosts \|\| \[\], \(\) => markPage\(tab\.id, role, pressed, kind\)\)/, 'the baseline is what the judgment saw');
   assert.match(flow, /const newHost = \(shape\?\.frameHosts \|\| \[\]\)\.some\(host => !hadHosts\.includes\(host\)\);/, 'a frame whose host shows up later is new');

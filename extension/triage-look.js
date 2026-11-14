@@ -59,10 +59,10 @@ export async function lookAtForm(step, parts = {}) {
   return reportOf({look, simple, why}, step, parts);
 }
 
-/** The report for a finished verdict: unreadable for a form this read cannot see, the bare verdict for a form that is not simple, and for a simple one also its required questions (null when the tab moved on meanwhile). */
+/** The report for a finished verdict: unreadable for a form this read cannot see, the bare verdict for a page that is not a form to fill, and for a form (simple, or one that may need a check) also its required questions (null when the tab moved on meanwhile). */
 async function reportOf({look, simple, why}, step, parts) {
   if (why === 'unknown' || why === 'frame') return {unreadable: true, why, look};   // a page whose form this read cannot see is "not checked", never a guess
-  if (!simple) return {look, simple, why};
+  if (!simple && why !== 'check') return {look, simple, why};   // Why (14 Nov 2026, #4325): a form that may need a check still has its questions read, so the app can say which answers are missing
   const gone = what => step.flow.late(step.tab, step.gen, what);
   if (gone('triage questions')) return null;
   const questions = await requiredQuestions(step.tab.id, parts);

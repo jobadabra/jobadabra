@@ -18,8 +18,9 @@ export function verdictOf(kind, counts) {
   if (kind.role !== 'form') return kind.kind === 'posting' && !['email', 'other'].includes(kind.applyBy) ? {simple: false, why: 'posting'} : {simple: false, why: 'no form'};
   if (controlsOf(counts) === 0) return {simple: false, why: (Number(counts?.frames) || 0) > 0 ? 'frame' : 'no form'};
   if ((Number(counts?.passwords) || 0) > 0) return {simple: false, why: 'account'};   // a password box on an application page is an account to make or a login, whatever the answer said
-  // Why (7 Nov 2026, review of #3519): the page-kind prompt tells the AI that a robot check among the form's own fields is NOT a bot check (it only answers true for a check that covers the page), so a form with a captcha beside its Submit
-  // arrives as role form, botCheck false. The floor can only demote: a visible frame among the form's controls is "may need a check" (the shape the prompt's FORM_CHECK_RULE names), never a simple form.
-  if ((Number(counts?.frames) || 0) > 0) return {simple: false, why: 'check'};
+  // Why (7 Nov 2026, review of #3519; 14 Nov 2026, #4325): the page-kind prompt tells the AI that a robot check among the form's own fields is NOT a bot check (it only answers true for a check that covers the page), so a form with a
+  // captcha beside its Submit arrives as role form, botCheck false. The floor can only demote: a visible frame among the form's controls is "may need a check" (the shape the prompt's FORM_CHECK_RULE names), never a simple form.
+  // A frame pinned to the screen (the corner badge of an invisible check, which asks nothing of the person) is not among them: `formFrames` (page-reads.js) leaves it out; an older extension sends only `frames`.
+  if ((Number(counts?.formFrames ?? counts?.frames) || 0) > 0) return {simple: false, why: 'check'};
   return {simple: true, why: ''};
 }

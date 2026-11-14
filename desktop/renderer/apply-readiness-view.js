@@ -29,7 +29,7 @@ function missingOf(read) {
   if (read.login === true) out.push(t('pagesReadinessTab.signIn'));
   else if (read.accountCreation === true) out.push(t('pagesReadinessTab.account'));
   if (read.captcha === true) out.push(t('pagesReadinessTab.personCheck'));
-  for (const item of read.match?.missing || []) if (item?.name) out.push(String(item.name));
+  for (const item of read.match?.missing || []) if (item?.label) out.push(String(item.label));   // Why (14 Nov 2026, #4325): the match's items are {kind, label} (lib/triage-match.js missingOf); a read of `name` listed none
   return out;
 }
 

@@ -6,6 +6,7 @@
 // Why (7 Nov 2026, owner: "we should combine all of these 3 steps into one. One step does all 3 of them" · "I think it stays stable for the whole period of the job posting being active" · "the store" decides where it is kept).
 import * as engine from './store/engine.js';
 import {matchReads} from './triage-match.js';
+import {readsQuestions} from '../renderer/apply-triage-mode.js';
 
 export const VERSION = 1;
 /** Notion's text column holds 2000 characters: a stored check stays under this (the questions go first, then the match's names). */
@@ -13,7 +14,7 @@ export const MAX_CHARS = 1800;
 const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why'];   // words-ok: the field names of our own read (lib/triage-reader.js), not page words
 
 /** A read worth keeping: not unreadable, and a simple form either has no question to match or has its match with every question judged (a form the AI never judged is "answers not checked", never stored as done). Pure. */
-export const storable = read => !!read && read.unreadable !== true && !(read.simple === true && read.questions?.length && (!read.match || read.match.unjudged !== 0));
+export const storable = read => !!read && read.unreadable !== true && !(readsQuestions(read) && read.questions?.length && (!read.match || read.match.unjudged !== 0));
 
 /** The compact JSON kept on the record, or '' when it cannot fit (then nothing is stored). Pure. */
 export function pack(read, {posted = '', now = new Date()} = {}) {
