@@ -360,7 +360,7 @@ jobs:
           # Why (14 Nov 2026, owner: "see the outcome results as a PR comment"; #4175's comment was lost to a moved head): a head that moved only by files the search does not read leaves these numbers true,
           #   so they are written for it (newer=0) and the comment says so; any other move (search files, a compare that is not a plain "ahead", an empty or cut file list) is a newer head: its own pair writes its comment.
           now="$(jq -r .headRefOid view.json)"; echo '{}' > compare.json
-          if [ "$STATE" != MERGED ] && [ "$now" != "$HEAD" ]; then gh api "repos/$GITHUB_REPOSITORY/compare/$HEAD...$now" --jq '{status, files: [.files[].filename]}' > compare.json || echo '{}' > compare.json; fi
+          if [ "$STATE" != MERGED ] && [ "$now" != "$HEAD" ]; then gh api "repos/$GITHUB_REPOSITORY/compare/$HEAD...$now" --jq '{status, count: (.files | length), files: [.files[] | .filename, (.previous_filename // empty)]}' > compare.json || echo '{}' > compare.json; fi
           read -r moved newer <<< "$(python3 tools/persona-search/pair.py head "$STATE" "$HEAD" "$now" compare.json)"   # the decision is pair.head_verdict (tested), not shell
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; comment_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR"
           ids="$(echo "$PEOPLE" | jq -c '[.[].id]')"

@@ -55,6 +55,18 @@ class AMovedHeadKeepsTheNumbersOnlyWhenTheSearchFilesDidNotChange(unittest.TestC
         self.assertEqual(pair.head_verdict('OPEN', MEASURED, NOW, {}), (True, True), 'the compare could not be read')
         self.assertEqual(self.verdict([f'docs/{n}.md' for n in range(300)]), (True, True), 'a list cut at 300 may hide a search file')
 
+    def test_a_search_file_renamed_out_of_a_search_path_counts_by_its_old_name(self):   # Gitar on #4195: compare gives the new name in filename, the old one in previous_filename
+        self.assertEqual(pair.head_verdict('OPEN', MEASURED, NOW, {'status': 'ahead', 'count': 1, 'files': ['docs/found_boards.py', 'src/sources/found_boards.py']}), (True, True))
+        self.assertIn('previous_filename', WORKFLOW, 'the workflow lists the old names')
+
+    def test_an_unreadable_current_head_is_a_doubt_not_unchanged(self):
+        self.assertEqual(pair.head_verdict('OPEN', MEASURED, '', {}), (True, True))
+        self.assertEqual(pair.head_verdict('MERGED', MEASURED, '', {}), (False, False))
+
+    def test_the_cut_counts_the_compares_files_not_the_longer_list_with_old_names(self):
+        self.assertEqual(pair.head_verdict('OPEN', MEASURED, NOW, {'status': 'ahead', 'count': 150, 'files': [f'docs/{n}.md' for n in range(300)]}), (True, False))
+        self.assertEqual(pair.head_verdict('OPEN', MEASURED, NOW, {'status': 'ahead', 'count': 300, 'files': ['docs/a.md']}), (True, True))
+
     def test_a_merged_pr_has_no_head_to_follow(self):
         self.assertEqual(self.verdict(['src/sources/x.py'], state='MERGED'), (False, False))
 

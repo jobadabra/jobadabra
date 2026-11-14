@@ -258,13 +258,16 @@ def search_changed(files):
 
 
 def head_verdict(state, measured, now, compare):
-    """(moved, newer) for the pair that measured `measured` while the PR's head is `now`: `compare` is GitHub's `{status, files}` for measured...now ({} when it could not be read).
+    """(moved, newer) for the pair that measured `measured` while the PR's head is `now`: `compare` is `{status, count, files}` for measured...now ({} when it could not be read): files lists every new name AND every renamed file's old name, so a search file moved out of a search path still counts.
     A move that changed no file the search reads leaves the numbers true (moved, not newer). Everything else is newer, so a doubt never writes numbers for code nobody measured:
     a compare that is not a plain "ahead" (a rebase, a force push), an empty file list (nothing to prove it), a list cut at 300 files, a search file in it. A merged PR has no head to follow."""
-    if state == 'MERGED' or not now or now == measured:
+    if state == 'MERGED' or now == measured:
         return False, False
+    if not now:
+        return True, True   # an unreadable head is a doubt, not "unchanged" (Gitar on #4195)
     files = list(compare.get('files') or [])
-    known = compare.get('status') == 'ahead' and 0 < len(files) < 300
+    count = compare.get('count', len(files))   # the compare's own file count: `files` also lists each renamed file's old name (Gitar on #4195), so its length is not the count
+    known = compare.get('status') == 'ahead' and 0 < count < 300
     return True, not known or search_changed(files)
 
 
