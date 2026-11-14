@@ -1,7 +1,7 @@
 // LinkedIn jobs on every Find jobs (owner, 31 Oct 2026, spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the ONE consent dialog behind every door (the Settings row, the ask on
-// the 1st and 2nd Find jobs press, the Suggestions entry, ⌘K) and the window's copy of the switch's state. "Sign in to LinkedIn" opens a Jobadabra window on LinkedIn's own page and the answer
-// comes back when it ends; "Use my Chrome sign-in" (only while the extension is connected) opens the extension's own consent page in Chrome instead, and this module watches until the app
-// has the session (lib/linkedin-handlers.js). The window never holds a cookie.
+// the 1st and 2nd Find jobs press, the Suggestions entry, ⌘K) and the window's copy of the switch's state. A sign-in door asks how (owner, 14 Nov 2026: "Ask, Chrome first"): "Continue" with the
+// window way picked opens a Jobadabra window on LinkedIn's own page and the answer comes back when it ends; with the Chrome way picked (only while the extension is connected) it opens the
+// extension's own consent page in Chrome instead, and this module watches until the app has the session (lib/linkedin-handlers.js). The window never holds a cookie.
 // Invariants: one dialog at a time; the ask is counted when shown, "Not now" only from the ask; the words are renderer/linkedin-words.js. Guard: test/unit/renderer/linkedin-consent.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';

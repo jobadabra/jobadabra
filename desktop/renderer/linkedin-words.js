@@ -15,7 +15,7 @@ const WAYS = {title: t('helperFlow.linkedinWays'), chrome: t('helperFlow.linkedi
 export const CONSENT = {
   ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
   'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
-  // #3911: the way to renew a dead sign-in (⌘K, the card's Renew); its yes signs in here, the Chrome shortcut copies Chrome's.
+  // #3911: the way to renew a dead sign-in (⌘K, the card's Renew); the same choice as turning on: Chrome's sign-in copied, or a Jobadabra window.
   renew: {title: t('pagesLinkedinServices.renewTitle'), lead: t('pagesLinkedinServices.renewLead'), line: '', yes: t('helperFlow.continue'), no: t('pagesCommon.close'), ways: WAYS},
   // Why (owner, 14 Nov 2026: "make sure this popup make sense from all the states perspective"): Easy Apply's door (pages/easy-apply-consent.js, "LinkedIn jobs first") says why it asks for LinkedIn.
   'easy-apply': {title: t('pagesLinkedinServices.easyFirstTitle'), lead: t('pagesLinkedinServices.easyFirstLead'), line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},

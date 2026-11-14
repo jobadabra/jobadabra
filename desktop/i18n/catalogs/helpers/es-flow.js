@@ -16,7 +16,7 @@ export const messages = {
   "turnOff": "Desactivar",
   "keepOn": "Mantener activado",
   "linkedinSuggestion": "Busca también en LinkedIn",
-  "linkedinSuggestionDetail": "En segundo plano, sin ventanas. Inicia sesión una vez en LinkedIn en una ventana de Jobadabra.",
+  "linkedinSuggestionDetail": "En segundo plano, sin ventanas. Inicia sesión una vez en LinkedIn: con la sesión de Chrome o en una ventana de Jobadabra.",
   "linkedinSuggestionEvidence": "La búsqueda LinkedIn está desactivada, así que Buscar empleo no lee tus búsquedas de LinkedIn.",
   "extensionNeeded": "Se necesita la extensión de Chrome",
   "linkedinExtensionHelp": "LinkedIn usa la extensión Chrome de Jobadabra. Conéctala en Ajustes → Conexiones → Extensión de Chrome y vuelve a intentarlo.",

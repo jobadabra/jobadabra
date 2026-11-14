@@ -15,6 +15,7 @@ test('the Suggestions entry: one row while off, with the one-click action and No
   assert.equal(entry.key, KEY);
   assert.deepEqual(entry.actions, [{label: 'Sign in to LinkedIn', do: 'turn_on_linkedin'}]);
   assert.deepEqual(entry.answers, ['Not now']);
+  assert.match(entry.detail, /with Chrome's sign-in, or in a Jobadabra window/, 'the entry opens the choice, so it names both ways');
   assert.equal(entry.home, 'focus');
   assert.deepEqual(linkedinEntries({view: {...off, on: true}}), [], 'on: no entry');
   assert.deepEqual(linkedinEntries({view: {...off, loaded: false}}), [], 'state not read yet: no flash of an offer');

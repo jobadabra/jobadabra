@@ -16,7 +16,7 @@ export const messages = {
   "turnOff": "Выключить",
   "keepOn": "Оставить включённым",
   "linkedinSuggestion": "Ищите также в LinkedIn",
-  "linkedinSuggestionDetail": "В фоне, без окна. Войдите один раз в LinkedIn в окне Jobadabra.",
+  "linkedinSuggestionDetail": "В фоне, без окна. Войдите в LinkedIn один раз: через вход в Chrome или в окне Jobadabra.",
   "linkedinSuggestionEvidence": "Поиск LinkedIn выключен, поэтому «Найти вакансии» не читает ваши поиски в LinkedIn.",
   "extensionNeeded": "Нужно расширение Chrome",
   "linkedinExtensionHelp": "LinkedIn использует расширение Jobadabra для Chrome. Подключите его в Настройки → Подключения → Расширение Chrome и повторите.",
