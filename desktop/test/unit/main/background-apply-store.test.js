@@ -21,7 +21,7 @@ function rig({now, realNow} = {}) {
     if (entity === 'events' && method === 'add') { const old = events.find(e => e.source_id === args.source_id); if (old) return old; const row = {...args, id: `e${++id}`}; events.push(row); return row; }
     throw new Error(`unexpected ${entity}.${method}`);
   };
-  const make = (storage = {}) => createBackgroundApplyStore(storage, {call, now: now || (() => time), realNow: realNow || (() => time), uuid: () => `attempt-${++id}`});
+  const make = (storage = {}, stopped = () => false) => createBackgroundApplyStore(storage, {call, now: now || (() => time), realNow: realNow || (() => time), uuid: () => `attempt-${++id}`, stopped});
   const add = (suffix = '1', company = 'Fictional Cloud') => {
     const job = {id: `job-${suffix}`, url: `https://jobs.example.test/${suffix}`, fit: 90, company, stage: 'Kit ready'};
     apps.set(job.url, job);
@@ -117,6 +117,21 @@ test('a LinkedIn job sends only with its own "LinkedIn may send" stamp, and its 
   assert.equal(landed.reason, 'linkedin_not_confirmed', 'the page landed on LinkedIn');
   const unreadable = await prepared(s, s.add('odd'), 'auto', LINKEDIN, settingsOf());
   assert.equal((await unreadable.store.reserve(unreadable.job.url, unreadable.session, 'owned-browser', {...ready, page: 'not an address'}, LINKEDIN)).reason, 'send_not_allowed_here');
+});
+
+// Gitar on #4240: an address that cannot be read is no send on LinkedIn either, and a Stop that cancels the permit after the reservation spends none of the day's 15.
+test('a LinkedIn job whose page address cannot be read is handed over, and a Stop after the reservation counts no press', async () => {
+  const r = rig(), storage = settingsOf();
+  const odd = await onLinkedin(r, '1', LINKEDIN, storage);
+  assert.equal((await press(odd, {...ready, page: 'not an address'})).reason, 'send_not_allowed_here');
+  assert.equal(storage.mine.easyApply.cap, undefined, 'no press counted');
+
+  const late = await onLinkedin(r, '2', LINKEDIN, storage);
+  let asks = 0;
+  const stopping = r.make(storage, () => ++asks > 1);   // the Stop lands between the reservation and the permit
+  const cancelled = await stopping.reserve(late.url, late.session, 'owned-browser', ready, LINKEDIN);
+  assert.deepEqual([cancelled.submit, cancelled.reason], [false, 'stopped']);
+  assert.equal(storage.mine.easyApply.cap, undefined, 'a cancelled permit spends none of the day\'s 15 and starts no 2 min gap');
 });
 
 test('LinkedIn sends wait 2 min apart and for tomorrow after 15; the filled form stays ready meanwhile', async () => {

@@ -142,8 +142,9 @@ test('the press waits for the site to reserve its one attempt; a refused or fail
 test('the Mac\'s Full automation and the cloud gate share one proof and eligibility check', () => {
   const lib = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../lib');
   const store = fs.readFileSync(path.join(lib, 'background-apply-store.js'), 'utf8');
-  assert.match(store, /import \{kitAllows, linkedinAddress, proofOk, sendAllowedAt\} from '\.\/submit-proof\.js'/);
-  assert.match(store, /if \(!onLinkedin && !sendAllowedAt\(url, proof\?\.page\)\) return stop\('send_not_allowed_here'\)/, 'an unreadable address is refused by the same rule as the cloud');
+  assert.match(store, /import \{kitAllows, linkedinAddress, proofOk, readableAddress, sendAllowedAt\} from '\.\/submit-proof\.js'/);
+  assert.match(store, /if \(!readableAddress\(url\) \|\| \(proof\?\.page && !readableAddress\(proof\.page\)\)\) return stop\('send_not_allowed_here'\);\n(?:.*\n)?\s+if \(!onLinkedin && !sendAllowedAt\(url, proof\?\.page\)\) return stop\('send_not_allowed_here'\)/,
+    'an unreadable address is refused first, LinkedIn or not (Gitar on #4240), then the cloud\'s rule');
   // Plan 4b-1 (owner, 14 Nov 2026): on LinkedIn the Mac asks LinkedIn's own turn (the item's stamp, 15 a day, 2 min apart); the cloud keeps refusing it (sendAllowedAt above).
   assert.match(store, /const linkedin = onLinkedin \? sendTurn\(storage, state, new Date\(now\(\)\)\) : \{go: true\};\n\s+if \(linkedin\.stop\) return stop\(linkedin\.stop\);/, 'a LinkedIn press goes through its own turn');
   assert.doesNotMatch(store, /const proofOk\s*=/, 'a second copy of the proof check drifts');

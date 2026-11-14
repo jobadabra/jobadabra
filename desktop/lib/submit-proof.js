@@ -29,8 +29,12 @@ export function kitAllows({stage, kit, allowIneligible}) {
  * sessions/credentials windows/mac only"); the Mac's gate asks LinkedIn's own turn instead (lib/background-apply-store.js reserve, lib/easy-apply-limits.js sendTurn).
  */
 export function sendAllowedOn(url) {
-  try { new URL(String(url)); } catch { return false; }   // no readable address: no press
-  return !linkedinAddress(url);
+  return readableAddress(url) && !linkedinAddress(url);   // no readable address: no press
+}
+
+/** Pure: can `url` be read as an address at all? An automatic press never goes to an address that cannot be read, on LinkedIn or anywhere (Gitar on #4240). */
+export function readableAddress(url) {
+  try { return Boolean(new URL(String(url))); } catch { return false; }
 }
 
 /** Pure: is the job's address on LinkedIn (linkedin.com or a subdomain)? An address that cannot be read is not. The one LinkedIn address rule: the send gate and Easy Apply's batches (lib/easy-apply-batch.js). */

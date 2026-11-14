@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {canStart, STARTABLE_STAGES} from './apply-eligibility.js';
 import {backgroundWaitNow} from './background-apply-clock.js';
 import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
-import {kitAllows, linkedinAddress, proofOk, sendAllowedAt} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
+import {kitAllows, linkedinAddress, proofOk, readableAddress, sendAllowedAt} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
 import {notePress, sendTurn} from './easy-apply-limits.js';
 
 export const BACKGROUND_SECTION = 'Background Apply';
@@ -107,8 +107,10 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       // Why (7 Nov 2026, owner, #3363): the item's own mode and confirmation decide, not what Settings says now; an item queued without a confirmation (an older build) is handed over, never pressed.
       if (state.mode !== 'auto' || !state.chosenAt || !state.autoConfirmedAt) return stop('mode_changed_or_not_opted_in');
       // LinkedIn, queued or landed on (Gitar on #4054): its own turn (lib/easy-apply-limits.js sendTurn: the item's "LinkedIn may send" stamp, Easy Apply on, no pause, 15 a day, 2 min apart).
+      // An address that cannot be read is refused first, whichever turn it would take (Gitar on #4240: a LinkedIn job whose page address was unreadable reached the turn).
+      if (!readableAddress(url) || (proof?.page && !readableAddress(proof.page))) return stop('send_not_allowed_here');
       const onLinkedin = linkedinAddress(url) || linkedinAddress(proof?.page);
-      if (!onLinkedin && !sendAllowedAt(url, proof?.page)) return stop('send_not_allowed_here');   // an address that cannot be read
+      if (!onLinkedin && !sendAllowedAt(url, proof?.page)) return stop('send_not_allowed_here');
       const linkedin = onLinkedin ? sendTurn(storage, state, new Date(now())) : {go: true};
       if (linkedin.stop) return stop(linkedin.stop);
       if (!proofOk(proof) || proof.signature !== state.signature) return stop('page_changed_or_incomplete');
@@ -125,10 +127,11 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       const attempt = uuid();
       // Why (2026-10-27, owner): reserve before the click; a crash or lost reply consumes the attempt and never creates a retry (the daily and per-employer limits are gone, 29 Oct 2026).
       await ask('events', 'add', {app_id: app.id, kind: RESERVED, at: new Date(now()).toISOString(), source: 'Full automation', source_id: `background:${session}:${attempt}`, changes: {session, attempt}});
-      // Counted with the reservation, before the click: like the attempt, a press whose answer is lost still counts (D2: a refused send counts too), so the cap can only err low.
-      if (onLinkedin) notePress(storage, new Date(now()));
       const next = await save(app, {...state, state: 'submitting', attempt, submittedAt: now()});
       if (stopped()) return stop('stopped');
+      // Counted as the permit goes out, before the click (Gitar on #4240: not when a Stop cancels it first): a press whose answer is lost still counts (D2: a refused send counts too),
+      // so the cap can only err low.
+      if (onLinkedin) notePress(storage, new Date(now()));
       return {submit: true, attempt, state: next.state, control: proof.submitControl, signature: proof.signature};
     });
   }
