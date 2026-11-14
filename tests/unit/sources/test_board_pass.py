@@ -278,6 +278,29 @@ class TheLastPass(unittest.TestCase):
                 workers[0].join(timeout=30)
                 self.assertFalse(workers[0].is_alive())
 
+    def test_a_hung_place_round_returns_a_cut_result_and_per_board_lines(self):
+        """Gitar #4311: synchronous placement never reached the bounded title join or per-board diagnostics."""
+        at(164.9)
+        feeds._triaged()[feeds.ASKED] = True
+        held, workers, result = threading.Event(), [], []
+
+        def places(*args, **kwargs):
+            workers.append(threading.current_thread())
+            held.wait(timeout=30)
+
+        with mock.patch('src.sources.feed_places.place_jobs', places):
+            judging = threading.Thread(target=lambda: result.append(board_pass.judge([board()[1]])), daemon=True)
+            judging.start()
+            try:
+                judging.join(timeout=10)
+                self.assertFalse(judging.is_alive(), 'both rounds are bounded by the existing run end')
+                self.assertIsNotNone(result[0].got, 'a place worker still out is a cut pass')
+                self.assertTrue(any(line.startswith('Board pass: board.example.test places asked') for line in self.said))
+            finally:
+                held.set()
+                judging.join(timeout=30)
+                workers[0].join(timeout=30)
+
     def test_a_pass_cut_at_the_deadline_lists_what_both_answers_cover(self):
         """Pair 43604153744 (14 Nov 2026, d05): the pass was cut at the deadline and every answer it had was dropped ("not run: it had not ended")."""
         at(100)
@@ -389,6 +412,20 @@ class TheLastPass(unittest.TestCase):
         self.assertTrue(all(job['status'] == 'new' for job in shown), 'no second record turns a new match into seen')
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0)
         self.assertIn('Board pass: owed 3 · listed 3 · refused 0 · waiting 0 (posting not read 0 · no answer by the deadline 0)', self.said)
+
+    def test_both_pass_summaries_count_a_job_a_group_listed_before_the_hand_over(self):
+        """Gitar #4311: said counted only newly delivered matches; accounted counted all owed matches."""
+        at(100)
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        self.pass_time(lane)
+        lane.done_pass = board_pass.cut(lane.track)
+        lane._queue([board()[0]])
+        lane.deliver(self.db, shown.extend)
+        self.assertEqual(len(shown), 1, 'a group listed one owed job before the hand-over')
+        lane.last_pass(self.db, shown.extend)
+        self.assertEqual(len(shown), 3)
+        self.assertIn('Board pass: owed 3 · listed 3 · refused 0 · waiting 0 (posting not read 0 · no answer by the deadline 0)', self.said)
+        self.assertIn(f'Board pass: answered 1 of 1 place(s), 3 of 3 title(s) by the deadline, listed 3, at {PASS} s', self.said)
 
     def test_a_job_the_pass_refuses_leaves_the_queues_list(self):
         at(100)

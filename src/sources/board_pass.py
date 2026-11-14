@@ -75,13 +75,15 @@ def judge(jobs, track=None):
     with time_budget.to_the_end():
         sorting = threading.Thread(target=slots.carry(lambda: (_titles(waiting), said('titles'))), name='boards-pass-titles', daemon=True)
         sorting.start()
-        feed_places.place_jobs(unplaced, chosen=True, land=True)
-        said('places')
-        # Why (Gitar on #4300; 14 Nov 2026): a title call that never returns cannot hold the pass past the search's clock;
-        # a worker still out when the join ends is a cut pass, so its summary reports partial answers, never completion
-        sorting.join(timeout=max(0.0, end - time_budget.now()))
+        placing = threading.Thread(target=slots.carry(lambda: (feed_places.place_jobs(unplaced, chosen=True, land=True), said('places'))),
+                                   name='boards-pass-places', daemon=True)
+        placing.start()
+        # Why (Gitar on #4300 and #4311; 14 Nov 2026): neither a title nor a place call may hold the pass's diagnostics past the search's clock;
+        # either worker still out after its join means a cut pass, so its summary reports partial answers, never completion
+        for worker in (sorting, placing):
+            worker.join(timeout=max(0.0, end - time_budget.now()))
     _say(unplaced, [job for job in waiting if job.get('title')])
-    if sorting.is_alive():
+    if sorting.is_alive() or placing.is_alive():
         return cut(track)
     return Done([job for job, place, title in _answers(waiting) if place or title is not None], at, places, titles, None, owed=waiting)
 

@@ -292,16 +292,17 @@ class Beside:
         done = self.done_pass if self.passed.is_set() else board_pass.cut(self.track) if self.track is not None else None
         listed = 0
         if done is not None:
-            before = len(self.matched)
             again = board_pass.listable(done)
             if again:
                 self._queue(again)
                 self.deliver(feed_db, on_jobs)
-            listed = len({job.get('url') for job in done.owed} & {item.get('url') for item in self.matched[before:]})
+            # Why (Gitar on #4311): both pass summaries count all owed URLs now listed, including a group's earlier delivery, once
+            kept = {item.get('url') for item in self.matched}
+            listed = len({job.get('url') for job in done.owed} & kept)
             # Why (Gitar on #4187; 14 Nov 2026): every refused job leaves waiting, even when all places are vague and none can be listed
-            waiting_jobs.listed(feed_db, board_pass.settled(done, {item.get('url') for item in self.matched}))
-        if done is not None and not done.why:
-            print(done.accounted({item.get('url') for item in self.matched}), flush=True)
+            waiting_jobs.listed(feed_db, board_pass.settled(done, kept))
+            if not done.why:
+                print(done.accounted(kept), flush=True)
         print(done.said(listed) if done is not None else 'Board pass: not run: ' + ('the search has no time budget' if at is None
               else 'it had not begun by the deadline'), flush=True)
         if end is not None and not self.done.is_set() and read_budget.seconds_left(end):
