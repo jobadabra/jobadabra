@@ -81,7 +81,7 @@ def extract(db_path, out, *, include_urls=False):
         db.close()
         shown = shown_mod.keys(db_path)   # what the app's Jobs list shows once the search has ended (shown.py); None = unknown, no `shown` field
         rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', 'kind': kind or '', 'also': [[name, kinds.get(name) or ''] for name in re.findall(r'also on (.+?)(?= · also on |$)', notes or '')],
-                 'first_seen': first_seen or '', **({'url': url or ''} if include_urls else {}), **shown_mod.field(url, shown)}
+                 'first_seen': first_seen or '', **({'url': url or ''} if include_urls else {}), **shown_mod.host_field(kind, url), **shown_mod.field(url, shown)}
                 for t, c, loc, source, url, kind, notes, first_seen in selected]
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
