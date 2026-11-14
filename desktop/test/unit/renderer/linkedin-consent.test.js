@@ -45,7 +45,7 @@ test('each door turns LinkedIn jobs on: window in main, Chrome after its copy ar
         linkedinJobsSignIn: async options => handlers.get('linkedinJobsSignIn')({}, options),
         linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(),
         linkedinJobsOn: async () => { if (!chrome) throw new Error('renderer closed before another IPC'); return handlers.get('linkedinJobsOn')(); },
-        easyApplyOn: async options => (await import('../../../lib/easy-apply-switch.js')).turnOn(storage, options)};
+        easyApplyOn: async options => (await import('../../../lib/easy-apply-switch.js')).turnOn(storage, {...options, keychain})};   // the test's own fake Keychain, never the real one
       await consent.refreshLinkedin();
       if (mode === 'easy-apply') await easy.openEasyApply();
       else await consent.openLinkedinConsent({mode});
@@ -160,13 +160,13 @@ test('every sign-in door asks how to sign in, Chrome first; Manage asks nothing 
     assert.equal(ways.window, 'Sign in in a Jobadabra window');
     assert.equal(yes, 'Continue', `${mode}: the choice decides the way, so the button only continues`);
   }
-  for (const mode of ['manage', 'manage-easy-apply']) assert.equal(CONSENT[mode].ways, undefined, `${mode} signs nobody in`);
+  assert.equal(CONSENT.manage.ways, undefined, 'manage signs nobody in');
   assert.match(CONSENT['easy-apply'].title, /for Easy Apply/);
   assert.match(CONSENT['easy-apply'].lead, /also turns on LinkedIn jobs/, 'it says what else turning on does');
   assert.doesNotMatch(CONSENT.manage.lead, /Easy Apply/);
-  assert.match(CONSENT['manage-easy-apply'].lead, /Easy Apply uses the same sign-in, so it stops too/);
+  assert.equal(CONSENT['manage-easy-apply'], undefined, 'Gitar on #4393: Manage never says Easy Apply stops; it keeps the shared sign-in');
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
-  assert.match(page, /mode === 'manage' && view\.easyApply \? CONSENT\['manage-easy-apply'\]/, 'Manage names Easy Apply only while it is on');
+  assert.doesNotMatch(page, /manage-easy-apply/, 'one Manage text');
   const door = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
   assert.equal(door.match(/Promise\.all\(\[refreshEasyApply\(\), refreshLinkedin\(\)\]\)/g)?.length, 2, 'Gitar on #4263: Easy Apply on and off re-read LinkedIn jobs\' view, so Manage never reads a stale easyApply');
   const easy = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');

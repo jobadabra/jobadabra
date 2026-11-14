@@ -58,7 +58,7 @@ test('a LinkedIn warning pauses all LinkedIn 24 h; the second turns Easy Apply o
   assert.equal(state(storage).on, false, 'a second stop turns the switch off');
   assert.equal(pausedUntil(storage), at(15, 11).getTime(), 'and the pause stays after it goes off');
   assert.equal(storage.mine.linkedinJobs.on, true, 'LinkedIn jobs itself is not switched off');
-  assert.deepEqual(turnOn(storage, {now: at(16, 9)}), {ok: true}, 'warned once already: on again');
+  assert.deepEqual(turnOn(storage, {now: at(16, 9), keychain: {read: () => JSON.stringify({li_at: 'fake-token'})}}), {ok: true}, 'warned once already: on again');
   assert.equal(storage.mine.easyApply.stops, 0, 'a new yes counts stops from 0');
   assert.equal(noteStop(storage, at(16, 10)).off, false, 'so the next warning only pauses');
 });

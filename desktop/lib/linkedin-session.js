@@ -5,12 +5,12 @@
 // AskUserQuestion: "Yes, this design (Recommended)", then "Simplify, then reopen (Recommended)", then "One sign-in state (Recommended)" after Gitar's 3rd round on #4358): this module owns
 // LinkedIn jobs' switch (`on`) and the ONE sign-in state (`login`, the Keychain item beside it). States: none (nothing kept) → waiting (a Chrome way opened while off; WANTED_MS, then none
 // again) → kept (a copy kept: the window, the Chrome way, or a refresh). A Chrome sign-out deletes the item and writes none while the switch stays on, as before; "lost" (inactive on screen) is 5/5.
-// A sign-in turns no switch on: the press that asked turns its own switch on once `kept`. Switching off deletes the sign-in (none); Easy Apply uses it only through LinkedIn jobs
-// (lib/easy-apply-switch.js), so it goes off too. Settings: settings.linkedinJobs = {on, login: {state, at}, asked, declined, …} (not settings.linkedin: that is the profile import's,
+// A sign-in turns no switch on: the press that asked turns its own switch on once `kept`. Switching off deletes the sign-in (none) unless Easy Apply is on: it uses the same sign-in
+// (lib/easy-apply-switch.js), which goes when both are off. Settings: settings.linkedinJobs = {on, login: {state, at}, asked, declined, …} (not settings.linkedin: that is the profile import's,
 // lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
-import {linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
+import {easyApplyOn, linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
 
 export const SERVICE = realKeychain.TWIN_LINKEDIN_SESSION;   // one owner of the item's name: lib/keychain.js (Gitar on #4246)
 export const ACCOUNT = 'linkedin-jobs';
@@ -84,8 +84,13 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
+/**
+ * The ONE answer to "is the kept sign-in in use?": LinkedIn jobs is on, or Easy Apply is (its switch and a kept sign-in, so a saved yes with no sign-in behind it uses nothing). Taking a copy, refreshing it,
+ * its read verdict and the clean-up all ask this, never their own condition (owner, 14 Nov 2026: one sign-in, two switches; "One 'in use' rule" after Gitar's 3rd review of 5a, #4391 #4393 #4395).
+ */
+export const inUse = storage => state(storage).on || easyApplyOn(storage.settings());
 /** True when a copy from the extension is taken, and so the extension keeps its LinkedIn grants: a Chrome way waits for it, a sign-in is kept, or LinkedIn jobs is on (a refresh, also after a Chrome sign-out). One rule, no second name (Gitar on #4380). */
-export const takesCopy = (storage, deps = {}) => state(storage).on || loginOf(storage, deps).state !== 'none';
+export const takesCopy = (storage, deps = {}) => inUse(storage) || loginOf(storage, deps).state !== 'none';
 /**
  * The Chrome way was opened with LinkedIn jobs off: the sign-in waits for its copy (WANTED_MS). A sign-in already kept with its item there stays as it is: the press turns its switch on
  * with it (owner, 14 Nov 2026: "he should never login 2 times"; Gitar on #4350, #4365: nothing is deleted, so an expired wait leaves no orphan and no working sign-in is lost).
@@ -97,11 +102,20 @@ export const openSignin = (storage, deps = {}) => {
 
 /**
  * At start, with LinkedIn jobs off: a sign-in no press can still turn on is deleted, so no unused credential stays (Gitar on #4350): a wait that ran out, or a copy kept more than
- * WANTED_MS ago (Gitar on #4354: a fresh one may still be turned on by the press that asked). Easy Apply needs LinkedIn jobs on here, so it uses none.
+ * WANTED_MS ago (Gitar on #4354: a fresh one may still be turned on by the press that asked). Never while Easy Apply is on: it uses the sign-in.
  */
 export function forgetUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
   const login = loginOf(storage, {now});
-  if (state(storage).on || !storage.settings().linkedinJobs?.login || login.state === 'waiting' || (login.state === 'kept' && now() - login.at <= WANTED_MS)) return;
+  if (login.state === 'kept' && now() - login.at <= WANTED_MS) return;   // a fresh one may still be turned on by the press that asked
+  releaseUnused(storage, {keychain, now});
+}
+
+/**
+ * The sign-in goes when no switch uses it: LinkedIn jobs off, Easy Apply off (or with no sign-in behind it), and no Chrome way waiting for a copy. The one place that deletes an unused sign-in,
+ * for the start-up clean-up and for the moment Easy Apply goes off (Gitar on #4393), so a waiting Chrome way is never cut short by it.
+ */
+export function releaseUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
+  if (inUse(storage) || !storage.settings().linkedinJobs?.login || loginOf(storage, {now}).state === 'waiting') return;
   keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {login: undefined, keptAt: undefined});
 }
@@ -113,15 +127,16 @@ export function turnOn(storage, {keychain = realKeychain} = {}) {
   return {ok: true};
 }
 
-/** Switch off: the Keychain item and its mark go, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
+/**
+ * Switch off: the ask counters and the shared pause stay. The Keychain item and its mark go with it unless Easy Apply is on, which uses the same sign-in and keeps working (owner, 14 Nov 2026:
+ * "Once logged in, then we should share it for the other"; replaces Gitar on #4008, where Easy Apply went off with LinkedIn jobs). Repeatable.
+ */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
-  keychain.remove(SERVICE, {account: ACCOUNT});
   // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; keptAt and the sign-in state cleared too, 14 Nov 2026; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
   // since the guest read runs while it is off (lib/linkedin-guest-on.js); a new yes starts with no old result, but LinkedIn's wait still holds.
+  if (easyApplyOn(storage.settings())) { save(storage, {on: false, last: undefined, noticedAt: undefined}); return {ok: true}; }   // the sign-in and its mark stay for Easy Apply
+  keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {on: false, login: undefined, last: undefined, signin: undefined, noticedAt: undefined, keptAt: undefined});   // a waiting Chrome way ends with `login` (Gitar on #4340)
-  // Why (Gitar on #4008, 13 Nov 2026): LinkedIn Easy Apply (lib/easy-apply-switch.js) uses this sign-in; its saved yes goes with it, so LinkedIn jobs back on never revives it (warnedAt stays: warned once).
-  const easy = storage.settings().easyApply;
-  if (easy?.on) storage.saveSettings({easyApply: {...easy, on: false}});
   return {ok: true};
 }
 
@@ -147,7 +162,7 @@ export function nextSignin(prev, verdict) {
  * -> {event, why}: 'needs-you' (this press ended in Needs you: raise the notice, again at every such press), 'renewed' (Needs you, then a read that worked), or null; always null while the switch is off.
  */
 export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}, {log = appLog} = {}) {
-  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = state(storage).on;
+  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = inUse(storage);   // Gitar on #4395: an Easy-Apply-only sign-in has verdicts too
   const ended = live && ENDED_BY_LINKEDIN.has(String(verdict)) ? endedAfter(storage, at) : null;
   save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live ? {signin: next} : {}), ...(ended ? {keptAt: undefined} : {})});
   if (ended) log('linkedin-jobs', 'sign-in ended by LinkedIn', {why: String(verdict), hours: ended.hours});

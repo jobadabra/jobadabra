@@ -11,20 +11,20 @@ export {view};
 
 /** Read the switch from the app; tells the pages ('easy-apply-changed') when what they draw changed. */
 export async function refreshEasyApply() {
-  const before = `${view.on}:${view.linkedinOn}:${view.offered}`;
+  const before = `${view.on}:${view.signedIn}:${view.offered}`;
   Object.assign(view, await window.pilot.easyApplyState(), {loaded: true});
-  if (before !== `${view.on}:${view.linkedinOn}:${view.offered}`) window.dispatchEvent(new Event('easy-apply-changed'));
+  if (before !== `${view.on}:${view.signedIn}:${view.offered}`) window.dispatchEvent(new Event('easy-apply-changed'));
   return view;
 }
 
-// Easy Apply reads as on only while LinkedIn jobs is on (lib/easy-apply-switch.js state), so a change of that switch is re-read here.
+// Easy Apply reads as on only while a sign-in is kept (lib/easy-apply-switch.js state), so a change of that switch is re-read here.
 window.addEventListener('linkedin-changed', () => { refreshEasyApply().catch(() => {}); });
 
 async function turnOn(warned) {
   const answer = await window.pilot.easyApplyOn({warned}).catch(() => null);
   await Promise.all([refreshEasyApply(), refreshLinkedin()]).catch(() => {});   // Gitar on #4263: LinkedIn jobs' Manage names Easy Apply from its own view, so both views move together
   if (answer?.ok) say(t('pagesEasyApply.onTitle'), t('pagesEasyApply.onBody'), NO_PLACE.itself, 'good');
-  else say(t('pagesEasyApply.stayedOff'), answer?.reason === 'needs-linkedin' ? t('pagesEasyApply.needsLinkedin') : '', NO_PLACE.itself, 'warn');
+  else say(t('pagesEasyApply.stayedOff'), answer?.reason === 'needs-signin' ? t('pagesEasyApply.needsLinkedin') : '', NO_PLACE.itself, 'warn');
 }
 
 /** The one flow behind every door: manage while on; else LinkedIn jobs first when it holds no sign-in, then the warning once, then on. Resolves when its last step is done. */

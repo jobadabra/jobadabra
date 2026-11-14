@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {EASY_APPLY, commandOf, nextStep, rowOf} from '../../../renderer/easy-apply-words.js';
 
-const view = extra => ({loaded: true, on: false, linkedinOn: true, warned: false, offered: true, ...extra});
+const view = extra => ({loaded: true, on: false, signedIn: true, warned: false, offered: true, ...extra});
 
 test('the warning is the owner\'s D4 text, word for word, with "Turn on" / "Not now"', () => {
   assert.equal(EASY_APPLY.warn.line, "Easy Apply sends applications from your own LinkedIn account. LinkedIn's terms do not allow automated applying, and LinkedIn may limit or restrict your account. "
@@ -17,8 +17,8 @@ test('the warning is the owner\'s D4 text, word for word, with "Turn on" / "Not 
 
 test('a press: manage while on, LinkedIn jobs first without its sign-in, the warning once, then straight on', () => {
   assert.equal(nextStep(view({on: true})), 'manage');
-  assert.equal(nextStep(view({linkedinOn: false})), 'linkedin-first');
-  assert.equal(nextStep(view({linkedinOn: false, warned: true})), 'linkedin-first', 'the sign-in comes before anything else');
+  assert.equal(nextStep(view({signedIn: false})), 'linkedin-first');
+  assert.equal(nextStep(view({signedIn: false, warned: true})), 'linkedin-first', 'the sign-in comes before anything else');
   assert.equal(nextStep(view()), 'warn');
   assert.equal(nextStep(view({warned: true})), 'turn-on');
 });
@@ -27,7 +27,7 @@ test('the Connections row: only where offered, and it says why it is off', () =>
   assert.equal(rowOf(view({offered: false})).shown, false, 'packaged build: no row until sending lands');
   assert.equal(rowOf({loaded: false}).shown, false, 'not read yet: no row');
   assert.deepEqual(rowOf(view()), {shown: true, on: false, words: 'Off'});
-  assert.deepEqual(rowOf(view({linkedinOn: false})), {shown: true, on: false, words: 'Needs LinkedIn jobs on'});
+  assert.deepEqual(rowOf(view({signedIn: false})), {shown: true, on: false, words: 'Needs a LinkedIn sign-in'});
   assert.equal(rowOf(view({on: true})).on, true);
 });
 

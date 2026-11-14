@@ -98,7 +98,7 @@ async function turnOff() {
  * -> a promise that resolves when the dialog closed and what it chose is done: true when LinkedIn jobs turned on (or off for Manage, or the sign-in was kept for a renewal); false when it is already open.
  */
 export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
-  const words = mode === 'manage' && view.easyApply ? CONSENT['manage-easy-apply'] : CONSENT[mode] || CONSENT['turn-on'];   // Why (owner, 14 Nov 2026): turning LinkedIn jobs off also stops Easy Apply, and says so
+  const words = CONSENT[mode] || CONSENT['turn-on'];   // Why (14 Nov 2026, owner; Gitar on #4393): Easy Apply keeps the shared sign-in when LinkedIn jobs goes off, so Manage no longer warns that it stops
   const shown = showConsent(words, {chrome: !!(words.ways && view.extension)});   // the Chrome way can be picked only while the Chrome extension is connected
   if (!shown) return Promise.resolve(false);
   const wanted = mode === 'renew' ? 'renew' : 'jobs';   // Easy Apply's door asks for LinkedIn jobs first (owner, 13 Nov 2026: "LinkedIn jobs first")

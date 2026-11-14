@@ -3,7 +3,7 @@
 // checkpoint or sign-in page (noteStop); the Mac's Submit gate (lib/background-apply-store.js reserve) asks sendTurn() and notes every press of LinkedIn's send button (notePress).
 // Settings: settings.easyApply.cap = {day, sent, lastAt} (day = the computer's local date; a new date starts at 0) and settings.easyApply.stops. The pause itself is LinkedIn's one shared pause
 // (lib/linkedin-session.js notePause / pausedUntil), so a stop here also stops both LinkedIn reads, and their pause stops Easy Apply. Guard: test/unit/main/easy-apply-limits.test.js.
-import {notePause, pausedUntil} from './linkedin-session.js';
+import {notePause, pausedUntil, releaseUnused} from './linkedin-session.js';
 import {state} from './easy-apply-switch.js';
 
 export const CAP = 15;                    // D2: at most 15 sends a day per install
@@ -61,12 +61,13 @@ export function notePress(storage, now) {
  * the second stop since Easy Apply was last turned on turns it off (the pause stays). LinkedIn jobs' own switch is not touched. `countedTo`: the newest hand-off this stop covers
  * (the store's time; default `now`). -> {until: epoch ms, off}.
  */
-export function noteStop(storage, now, countedTo = now.getTime()) {
+export function noteStop(storage, now, countedTo = now.getTime(), {keychain} = {}) {
   const until = now.getTime() + STOP_MS;
   notePause(storage, new Date(until).toISOString());
   const stops = (Number(mine(storage).stops) || 0) + 1;
   const off = stops >= STOPS_TO_OFF;
   save(storage, {stops, stopAt: countedTo, ...(off ? {on: false} : {})});
+  if (off) releaseUnused(storage, {keychain});   // the second way Easy Apply goes off: with LinkedIn jobs off too, the sign-in goes (Gitar on #4393)
   return {until, off};
 }
 
