@@ -17,7 +17,8 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-from . import ats, board_round_log, careers_parse, host_pace, page_bytes
+from . import ats, careers_parse, host_pace, page_bytes
+from . import board_round_log
 from ..press import stage
 
 MAX_BYTES = 2_000_000
