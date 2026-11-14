@@ -40,7 +40,7 @@ class Stalled(TimeoutError, urllib.error.URLError):
     Why (14 Nov 2026, sa, StepStone read from CI): every one of these printed the bare "TimeoutError", so a site that stalled 20 s could not be told
     from the search's own cut (0 s) nor from the phase that stalled."""
 
-    def __init__(self, phase, seconds=None):
+    def __init__(self, phase, seconds=None):   # seconds: the wait as measured from the start of the read, None for the read cut (no page asked)
         urllib.error.URLError.__init__(self, phase)
         self.phase, self.seconds = phase, seconds
 
@@ -49,7 +49,9 @@ def why(error):
     """The short reason a round's page was not read: the phase of a `Stalled` wait, else the error's class name (NameNotResolved and an HTTP code are told by the caller)."""
     if not isinstance(error, Stalled):
         return type(error).__name__
-    return f'timed out {error.phase} ({error.seconds:g} s)' if error.seconds is not None else f'not asked, {error.phase}'
+    if error.seconds is None:
+        return f'not asked, {error.phase}'
+    return f"timed out {error.phase} ({error.seconds:.0f} s)" if error.seconds >= 1 else f"timed out {error.phase} ({error.seconds:.1f} s)"   # the wait as measured, not the socket limit (Gitar, #4177)
 
 
 UNCOUNTED = object()   # Why (Gitar on #4052): the search form way hands back only a relevant read, so a "0 job(s)" for it would be made up

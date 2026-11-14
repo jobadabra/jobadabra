@@ -8,7 +8,18 @@ import unittest
 import urllib.error
 from unittest import mock
 
+from src.press import stage
 from src.sources import ats, board_round_log, careers, found_boards
+
+_READER = careers.READER
+
+
+def setUpModule():   # no test here reaches a real model through a page read (guard: tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 BOARD = {'name': 'Slow board', 'host': '127.0.0.1', 'search_url': 'http://127.0.0.1:{port}/jobs/{role}', 'countries': ['Austria'],
          'kinds': ['any'], 'source_kind': 'general'}
@@ -61,19 +72,19 @@ class ARoundSaysWhichPhaseStalled(unittest.TestCase):
     def test_a_site_that_never_answers_is_told_as_waiting_for_the_answer(self):
         lines = self.round_line(careers.get_text, self.stalled_site('silent'))
         self.assertEqual(len(lines), 1, lines)
-        self.assertRegex(lines[0], r"page not read \(timed out waiting for the answer \(0\.4 s\)\)")
+        self.assertRegex(lines[0], r"page not read \(timed out waiting for the answer \(0\.\d s\)\)")
 
     def test_a_site_that_stops_sending_is_told_as_reading_the_page(self):
         lines = self.round_line(careers.get_text, self.stalled_site('half'))
         self.assertEqual(len(lines), 1, lines)
-        self.assertRegex(lines[0], r"page not read \(timed out reading the page \(0\.4 s\)\)")
+        self.assertRegex(lines[0], r"page not read \(timed out reading the page \(0\.\d s\)\)")
 
     def test_a_connection_that_is_never_made_is_told_as_connecting(self):
         def never_connects(request, timeout=15, **kwargs):
             raise urllib.error.URLError(TimeoutError('timed out'))
         with mock.patch.object(careers.host_pace, 'open', side_effect=never_connects):
             lines = self.round_line(careers.get_text)
-        self.assertRegex(lines[0], r"page not read \(timed out connecting \(0\.4 s\)\)")
+        self.assertRegex(lines[0], r"page not read \(timed out connecting \(0\.\d s\)\)")
 
     def test_the_searchs_read_cut_is_not_told_as_a_stalled_site(self):
         """positive control: the cut still ends the read at once, with no page asked; only its word changed."""
@@ -91,6 +102,17 @@ class ARoundSaysWhichPhaseStalled(unittest.TestCase):
         self.assertIsInstance(error, TimeoutError)
         self.assertIsInstance(error, urllib.error.URLError)
         self.assertEqual(board_round_log.why(ValueError('x')), 'ValueError')
+
+    def test_the_stalls_wait_is_the_measured_one_not_the_socket_limit(self):
+        """Gitar, #4177: a body that trickles bytes can run far past the socket limit before one read times out; the line says the wait as measured."""
+        self.assertEqual(board_round_log.why(board_round_log.Stalled('reading the page', 63.4)), 'timed out reading the page (63 s)')
+        self.assertEqual(board_round_log.why(board_round_log.Stalled('connecting', 0.43)), 'timed out connecting (0.4 s)')
+
+    def test_a_run_counts_a_stall_under_the_old_word_so_failure_counts_do_not_split(self):
+        """Gitar, #4177: stage.guard keys `failed <stage>: <reason>` on the class name; tests/unit/press/test_run.py expects 'TimeoutError'."""
+        with stage.guard('job boards first', details=mock.MagicMock()) as caught:
+            raise board_round_log.Stalled('waiting for the answer', 20)
+        self.assertEqual(caught.reason, 'TimeoutError')
 
 
 if __name__ == '__main__':

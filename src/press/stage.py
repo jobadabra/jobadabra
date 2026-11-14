@@ -52,7 +52,7 @@ def guard(where, details=None):
     try:
         yield caught
     except Exception as error:  # noqa: BLE001 — the search path's one catch-all: the run goes on, the failure is counted (C2)
-        caught.error, caught.reason = error, type(error).__name__
+        caught.error, caught.reason = error, 'TimeoutError' if isinstance(error, TimeoutError) else type(error).__name__   # Why (14 Nov 2026, Gitar on #4177): a TimeoutError subclass (sources.board_round_log.Stalled) counts under the old word, so failure counts do not split
         if details is None:
             from .. import run_details as details
         details.failed(where, caught.reason)
