@@ -35,6 +35,12 @@ class Claims:
         print(f"Job boards: {board['name']} is already being read in this search; not read twice", flush=True)
         return False
 
+    def hand_over(self, host, early):
+        """The entry of a FINISHED early read of `host`, taken out for the full read that follows it; None for an early read, a host never read early, or
+        one still being read (pages None): its claim stays until it ends (Gitar on #4145)."""
+        entry = self.held.get(host)
+        return self.held.pop(host, None) if not early and entry is not None and entry[1] is not None else None
+
     def first(self, boards, early=True):
         """`boards` that this early read takes, in order (a host repeated in the list is read once)."""
         return [board for board in boards if self.take(board, early)]
