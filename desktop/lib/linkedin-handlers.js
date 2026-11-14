@@ -16,7 +16,7 @@ export function linkedinRoutes(storage, deps = {}) {
       if (!session.takesCopy(storage, deps)) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
       return session.saveSession(storage, payload?.cookies, deps);   // the press that asked turns its own switch on once the window's watch sees `login` kept (renderer/pages/linkedin-consent.js)
     },
-    // Why (#4312, Gitar on #4358): the grants follow the same state, so a Chrome consent still waiting, a kept sign-in or LinkedIn jobs on keeps them (also after a Chrome sign-out); a Find jobs press asks for a fresh copy.
+    // Why (#4312, Gitar on #4358): the grants follow the same state, so a Chrome consent still waiting, a kept sign-in or LinkedIn jobs on keeps them (also after a Chrome sign-out); a Find jobs press asks for a fresh copy whichever switch uses the sign-in (LinkedIn jobs or Easy Apply: `inUse`, Gitar on #4395).
     pending: () => ({revoke: !session.takesCopy(storage, deps), refresh: session.inUse(storage) && note.look()}),   // Gitar on #4395: the shared sign-in is refreshed whichever switch uses it
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
