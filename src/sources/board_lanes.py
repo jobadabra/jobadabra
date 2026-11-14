@@ -85,27 +85,26 @@ def said(key):
     print(f"Job boards: {key} sent nothing for {QUIET_S} s; its lane went to the next board (#4255)", flush=True)
 
 
-_CLAIMED = {'lane': None, 'hosts': {}}   # {host: the read that took it} while one search's boards' lane (boards_first.Beside) is open
-_CLAIM_LOCK = threading.Lock()
-
-
 def open_search(lane):
-    """The boards' lane `lane` of a new search began (boards_first.Beside): no host is taken yet."""
-    with _CLAIM_LOCK:
-        _CLAIMED['lane'], _CLAIMED['hosts'] = lane, {}
+    """The boards' lane `lane` of a new search began (boards_first.Beside): no host is taken yet. The claims are the run's, on its one clock
+    (time_budget.CLOCK, Run.clock): contract C1, no module state on the search path (tests/guards/rules/test_run_state_only_shrinks.py)."""
+    from .. import time_budget
+    time_budget.CLOCK.board_hosts = {'lane': lane, 'hosts': {}}
 
 
 def close_search(lane):
-    """`lane` ended: reads after it (the full read, a scout's) claim nothing."""
-    with _CLAIM_LOCK:
-        if _CLAIMED['lane'] is lane:
-            _CLAIMED['lane'], _CLAIMED['hosts'] = None, {}
+    """`lane` ended: reads after it (the scout's, a test's) claim nothing."""
+    from .. import time_budget
+    if (time_budget.CLOCK.board_hosts or {}).get('lane') is lane:
+        time_budget.CLOCK.board_hosts = None
 
 
 def claim(host, read):
-    """True when `read` (any object naming one found_boards.read call) may read `host`: no other read of the open lane took it. No lane
-    open (a read outside Find jobs' lane, tests): every read is its own."""
-    with _CLAIM_LOCK:
-        if _CLAIMED['lane'] is None:
-            return True
-        return _CLAIMED['hosts'].setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)
+    """True when `read` (any object naming one found_boards.read call) may read `host`: no other read of the open lane's search took it. No lane
+    open (a read outside Find jobs' lane, tests): every read is its own. dict.setdefault is one step under the GIL: two reads asking at once get
+    one owner."""
+    from .. import time_budget
+    open_ = time_budget.CLOCK.board_hosts
+    if open_ is None:
+        return True
+    return open_['hosts'].setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)

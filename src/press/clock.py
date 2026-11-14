@@ -89,6 +89,7 @@ class Clock:
         self._local = [0]
         self.FEED = budget.value('time_budget.FEED')   # local titles a call still sorts in scoring's share while the jobs waiting for a score keep their time: one batch feeds scoring (local_titles)
         self._lock = threading.Lock()
+        self.board_hosts = None   # {board host: the read that took it} while a search's boards' lane is open (src/sources/board_lanes.py claim)
         self.SHARE = budget.group('time_budget.SHARE')
         self.PACE = budget.group('time_budget.PACE')   # job: read and scored, end to end; *_rounds: per round of calls
 
