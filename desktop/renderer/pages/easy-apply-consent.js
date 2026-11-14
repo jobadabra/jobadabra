@@ -22,7 +22,7 @@ window.addEventListener('linkedin-changed', () => { refreshEasyApply().catch(() 
 
 async function turnOn(warned) {
   const answer = await window.pilot.easyApplyOn({warned}).catch(() => null);
-  await refreshEasyApply().catch(() => {});
+  await Promise.all([refreshEasyApply(), refreshLinkedin()]).catch(() => {});   // Gitar on #4263: LinkedIn jobs' Manage names Easy Apply from its own view, so both views move together
   if (answer?.ok) say(t('pagesEasyApply.onTitle'), t('pagesEasyApply.onBody'), NO_PLACE.itself, 'good');
   else say(t('pagesEasyApply.stayedOff'), answer?.reason === 'needs-linkedin' ? t('pagesEasyApply.needsLinkedin') : '', NO_PLACE.itself, 'warn');
 }
@@ -43,7 +43,7 @@ export async function openEasyApply() {
   if (answer !== 'default') return;
   if (step === 'warn') return turnOn(true);
   await window.pilot.easyApplyOff();
-  await refreshEasyApply();
+  await Promise.all([refreshEasyApply(), refreshLinkedin()]);   // Gitar on #4263: LinkedIn jobs' Manage must stop naming Easy Apply
   say(t('pagesEasyApply.offTitle'), t('pagesEasyApply.offBody'), NO_PLACE.itself, 'info');
 }
 
