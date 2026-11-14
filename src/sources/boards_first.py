@@ -45,6 +45,9 @@ class Beside:
         self.search, self.groups, self.matched, self.done, self.shortened, self.failed = search, queue.SimpleQueue(), [], threading.Event(), False, False
         self.notify = None   # set by the thread that owns the job cache while it waits elsewhere (the first-jobs step's hub): called after each group
         self.arrived = threading.Event()   # Why (13 Nov 2026, eo): wakes the job-cache thread's wait for the full board read when a group lands (boards_ahead.Ahead.wait)
+        self.step_ended = threading.Event()   # set when the first-jobs step ends (daily_search); a lane with no such step (no `listed`) goes on at once
+        if listed is None:
+            self.step_ended.set()
         end = read_budget.run_end()
         reads = [(self._known, None)] + ([(lambda _wait: self._listed(listed), slots.FIRST)] if listed else [])   # the slice's boards kept its FIRST level
         self.count, self.left = threading.Lock(), len(reads)
@@ -59,16 +62,62 @@ class Beside:
         """One group source of the lane in its own thread, to the lane's end; the lane is done when every source has ended."""
         from ..ai import batch_scope, slots
         try:
-            with slots.in_lane(end), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
+            with slots.in_lane(end, self.go_on), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
                 read(wait)
             if caught:   # the full board read reads them
                 print(f'Warning: job boards first skipped: {caught.reason}: {caught.error}', flush=True)
         finally:
-            with self.count:
-                self.left -= 1
-                if not self.left:
-                    self.done.set()
-            self._notify()
+            self._ended()
+
+    def _ended(self):
+        """One of the lane's reads (a group source, a board's read-on) ended; the lane is done when none is open."""
+        with self.count:
+            self.left -= 1
+            if not self.left:
+                self.done.set()
+        self._notify()
+
+    def go_on(self, read_on, name):
+        """A lane board's read past its first jobs (found_boards.read_board): read_on(on_round) -> its jobs, run in its own thread once the
+        first-jobs step has ended, at most to the lane's end; its jobs are handed as the board's slice's were. The lane stays open until it ends.
+        Why (Gitar, #4200): read inside the board's own read it held one of the boards' workers while it waited for the step (a later board's
+        slice started late) and the board was kept only once it ended (a read-on cut at the lane's end lost the board's record and pages)."""
+        import threading
+        from ..ai import slots
+        with self.count:
+            if self.done.is_set():   # the lane has ended: nobody would take its jobs
+                print(f'Job boards: {name}: next pages and other words not asked (the boards\' lane has ended)', flush=True)
+                return
+            self.left += 1
+        threading.Thread(target=slots.carry(self._read_on, slots.NORMAL), args=(read_on, name), name='boards-read-on', daemon=True).start()
+
+    def _read_on(self, read_on, name):
+        # Why (sa, 14 Nov 2026, pairs 1-2 of #4180): at NORMAL, the known boards' level, never the slice's FIRST, and only after the first-jobs
+        # step (its title batches waited 21 s behind read-on calls already in a slot; a level cannot take a slot back)
+        from ..ai import batch_scope
+        from . import read_budget
+        try:
+            self.step_ended.wait(read_budget.seconds_left(read_budget.lane_end()))
+            if read_budget.past_cut():
+                print(f'Job boards: {name}: next pages and other words not asked (time is up)', flush=True)
+                return
+            # the lane's reader, as its source threads (_read): its title and place answers and its groups' views are the lane's (Gitar, #4208)
+            with batch_scope.reader(self.NAME), stage.guard('found boards: read on') as caught:   # a failure keeps what its rounds handed
+                self._hand_new(read_on(self._hand_new))
+            if caught:
+                print(f'Warning: {name}: its read did not go on: {caught.reason}: {caught.error}', flush=True)
+        finally:
+            self._ended()
+
+    def _hand_new(self, found):
+        """Of a read-on's jobs, the ones the lane has not handed yet (its slice's, its earlier rounds', another board's), handed as _hand does.
+        Claimed in the same lock that picks them (Gitar, #4210): read-ons run at once, and two could pick the same job."""
+        with self.count:
+            new = list({job.get('url'): job for job in found or [] if job.get('url') not in self.urls}.values())
+            self.handed.update((id(job), job) for job in new)
+            self.urls.update(job.get('url') for job in new)
+        if new:
+            self._put(new)
 
     def _known(self, wait):
         """The boards known for this field, then the web search's, waited for to the lane's end (its declared need, reader_rows LANES)."""
@@ -170,8 +219,9 @@ class Beside:
         return self._in_list_order(self.matched)
 
     def _in_list_order(self, matched):
-        """`matched` in the order the boards' groups list their jobs, whichever board ended first; jobs of a group still being read, or of
-        `listed`, after them in the order they came. The list's order, not a priority (src/press/rank.py orders what a person sees).
+        """`matched` in the order the boards' groups list their jobs, whichever board ended first; jobs of a group still being read, of
+        `listed`, or of a board's read-on (go_on: a second read, after the first-jobs step, in no group), after them in the order they came.
+        The list's order, not a priority (src/press/rank.py orders what a person sees).
         Why (#3892, 12 Nov 2026, its CI): handed board by board, the gather's jobs followed the threads' timing, and the boards' reader
         contract (tests/unit/sources/test_board_reader.py) reads that order."""
         with self.count:
