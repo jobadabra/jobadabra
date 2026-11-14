@@ -215,7 +215,7 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
 
 def carried(gh, repo, last, sha):
     """The `carried` event: the earlier head's row title kept on this head, with the earlier row's verdict: a red stays red (a docs-only commit never turns a lost pair green), anything else is neutral.
-    Why (14 Nov 2026, found reading #4225 for sa's live proof of the gate): `carried` was always neutral, and the PR verdict now reads this row (tools/pr_verdict_pair_gate.py)."""
+    Why (14 Nov 2026, found reading #4225 for sa's live proof of the gate): `carried` was always neutral, and the PR verdict reads this row (the reader lands with #4237)."""
     was = row_on(gh, repo, last['sha'])
     title = (was.get('title') or 'its pair ran').strip()
     red = was.get('conclusion') == 'failure'
