@@ -39,7 +39,7 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
-NO_LANE, TAKEN = ([], 'no lane', None), ([], 'taken', None)   # a board that got no lane before the search's cut (board_lanes): not read, not stamped
+NO_LANE, TAKEN = ((), 'no lane', None), ((), 'taken', None)   # not read: no lane before the cut / another read has the host; () shares nothing (Gitar, #4273)
 _early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
 
 

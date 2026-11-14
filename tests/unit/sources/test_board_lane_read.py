@@ -130,6 +130,22 @@ class OneHostOneRead(unittest.TestCase):
                               fetch=lambda url: '')
         self.assertEqual(read, ['b2.example', 'b1.example', 'b3.example'], 'b2.example read once; the next spare reads in its place')
 
+    def test_a_refused_host_is_not_asked_again_by_another_read_of_the_search(self):
+        """Gitar on #4273 asked to give a refused spare's host back; a refusal can be a 403 or a bot check, and CLAUDE.md never retries a 401/403."""
+        read = []
+
+        def read_board(b, search, fetch, route=None, early=False, show=None):
+            read.append(b['host'])
+            return ([], 'browser', None) if b['host'] in ('b1.example', 'b2.example') else ([{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None)
+        with mock.patch.object(found_boards, 'read_board', read_board):
+            found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2), board(3)], is_relevant=list, dead=set(), fetch=lambda url: '')
+            found_boards.read(SEARCH, [board(2), board(4)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+        self.assertEqual(read, ['b1.example', 'b2.example', 'b3.example', 'b4.example'], 'b2.example refused once and is not asked again')
+
+    def test_a_board_that_was_not_read_shares_nothing_with_the_next_search(self):
+        """Gitar on #4273: the not-read results were one list for every search; a consumer extending it would change them all."""
+        self.assertEqual((found_boards.NO_LANE[0], found_boards.TAKEN[0]), ((), ()))
+
     def test_a_new_search_reads_the_board_again(self):
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'))
         self.assertFalse(board_lanes.claim('delucru.md', 'read 2'))
