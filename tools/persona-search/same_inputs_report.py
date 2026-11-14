@@ -56,11 +56,11 @@ for s in SIDES:
 L = {s: set(listed[s]) for s in SIDES}
 # Why (14 Nov 2026, sa, owner's pair rule): "the search's time was up before Claude Code had a free slot" (src/ai/providers/cli_base.py) is the engine's own clock rule, hit alike by both sides, not a fault: it is a count per side, flagged only when the sides differ by more than 3.
 # A pair is NOT VALID for any other failed call (plan refused, no valid JSON, no answer in N s) and for one whose text is not in the log (a build without the same-inputs text capture).
-CLOCK = "the search's time was up before Claude Code had a free slot"
+from src.ai.providers.cli_base import CLOCK_UP as CLOCK  # noqa: E402  (the engine owns the words of its clock rule)
 failed = {}
 for s in SIDES:
     texts = [open(os.path.join(d, f), errors='replace').read() for d, _, files in os.walk(os.path.join(work, s)) for f in files if f == 'run-1.log']
-    failed[s] = [line for text in texts for line in text.splitlines() if re.search(r'Technical: .*(Cli|Ai)\w*(Error|Limit|Unavailable)\b', line)]
+    failed[s] = [line for text in texts for line in text.splitlines() if 'Technical: ' in line]   # every line contract.detail writes is a failed AI call, whatever its exception class (RuntimeError, JSONDecodeError, an SDK error)
 clock = {s: [line for line in failed[s] if CLOCK in line] for s in SIDES}
 other = {s: [line for line in failed[s] if CLOCK not in line] for s in SIDES}
 gap = abs(len(clock['a']) - len(clock['b']))

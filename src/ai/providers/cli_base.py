@@ -25,6 +25,9 @@ TIMEOUTS_BEFORE_STOP = 2  # in a row: the CLI is not answering at all, so the ru
 EXT = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'application/pdf': 'pdf'}
 
 
+CLOCK_UP = "the search's time was up before"   # the clock rule's message starts here; tools/persona-search/same_inputs_report.py counts it apart from faults (one owner of the words)
+
+
 class CliError(AiError):
     """The CLI didn't give an answer (timeout, a crash, unreadable output)."""
 
@@ -120,7 +123,7 @@ class CliAdapter(Adapter):
                 # in time and waited past it is not started; its caller takes it as any failed call (the item waits for the next search).
                 from ... import time_budget
                 if time_budget.ended(now=began) and not time_budget.ended(now=asked):
-                    raise CliError(f"the search's time was up before {self.tool} had a free slot")
+                    raise CliError(f"{CLOCK_UP} {self.tool} had a free slot")
                 reached = True
                 try:
                     out = self.ask(args, prompt, folder, wait, key)
