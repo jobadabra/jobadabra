@@ -5,8 +5,8 @@
 // AskUserQuestion: "Yes, this design (Recommended)", then "Simplify, then reopen (Recommended)", then "One sign-in state (Recommended)" after Gitar's 3rd round on #4358): this module owns
 // LinkedIn jobs' switch (`on`) and the ONE sign-in state (`login`, the Keychain item beside it). States: none (nothing kept) → waiting (a Chrome way opened while off; WANTED_MS, then none
 // again) → kept (a copy kept: the window, the Chrome way, or a refresh). A Chrome sign-out deletes the item and writes none while the switch stays on, as before; "lost" (inactive on screen) is 5/5.
-// A sign-in turns no switch on: the press that asked turns its own switch on once `kept`. Switching off deletes the sign-in (none); Easy Apply uses it only through LinkedIn jobs
-// (lib/easy-apply-switch.js), so it goes off too. Settings: settings.linkedinJobs = {on, login: {state, at}, asked, declined, …} (not settings.linkedin: that is the profile import's,
+// A sign-in turns no switch on: the press that asked turns its own switch on once `kept`. Switching off deletes the sign-in (none) unless Easy Apply is on: it uses the same sign-in
+// (lib/easy-apply-switch.js), which goes when both are off. Settings: settings.linkedinJobs = {on, login: {state, at}, asked, declined, …} (not settings.linkedin: that is the profile import's,
 // lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
@@ -102,7 +102,16 @@ export const openSignin = (storage, deps = {}) => {
  */
 export function forgetUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
   const login = loginOf(storage, {now});
-  if (state(storage).on || easyOn(storage) || !storage.settings().linkedinJobs?.login || login.state === 'waiting' || (login.state === 'kept' && now() - login.at <= WANTED_MS)) return;
+  if (login.state === 'kept' && now() - login.at <= WANTED_MS) return;   // a fresh one may still be turned on by the press that asked
+  releaseUnused(storage, {keychain, now});
+}
+
+/**
+ * The sign-in goes when no switch uses it: LinkedIn jobs off, Easy Apply off (or with no sign-in behind it), and no Chrome way waiting for a copy. The one place that deletes an unused sign-in,
+ * for the start-up clean-up and for the moment Easy Apply goes off (Gitar on #4393), so a waiting Chrome way is never cut short by it.
+ */
+export function releaseUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
+  if (state(storage).on || easyOn(storage) || !storage.settings().linkedinJobs?.login || loginOf(storage, {now}).state === 'waiting') return;
   keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {login: undefined, keptAt: undefined});
 }

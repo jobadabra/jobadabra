@@ -20,7 +20,6 @@ export const CONSENT = {
   // Why (owner, 14 Nov 2026: "make sure this popup make sense from all the states perspective"): Easy Apply's door (pages/easy-apply-consent.js, "LinkedIn jobs first") says why it asks for LinkedIn.
   'easy-apply': {title: t('pagesLinkedinServices.easyFirstTitle'), lead: t('pagesLinkedinServices.easyFirstLead'), line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
   manage: {title: t('helperFlow.linkedinOn'), lead: t('helperFlow.linkedinManage'), line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
-  'manage-easy-apply': {title: t('helperFlow.linkedinOn'), lead: `${t('helperFlow.linkedinManage')} ${t('pagesLinkedinServices.manageEasyApply')}`, line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
 };
 
 /** The Suggestions entry while the switch is off; `view` is the window's read of the state (pages/linkedin-consent.js), `hidden`/`held` the keys answered Not now. */

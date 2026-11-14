@@ -2,7 +2,7 @@
 // once, the first time it is turned on; on only while a LinkedIn sign-in is kept (owner, 14 Nov 2026: each switch on its own, one shared sign-in; replaces "LinkedIn jobs first" of 13 Nov 2026).
 // Settings: settings.easyApply = {on, warnedAt}. Invariant: nothing here writes settings.linkedinJobs, so turning Easy Apply off keeps LinkedIn's shared 24 h pause and its session (spec "One LinkedIn pause").
 // Guard: test/unit/main/easy-apply-switch.test.js.
-import {readSession, signedIn, state as linkedinState} from './linkedin-session.js';
+import {readSession, releaseUnused, signedIn} from './linkedin-session.js';
 import * as realKeychain from './keychain.js';
 import {easyApplyOn} from '../renderer/apply-settings-model.js';   // the one rule, shared with the window's Full automation confirmation
 
@@ -16,7 +16,7 @@ const save = (storage, patch) => storage.saveSettings({easyApply: {...(storage.s
 /** What the window draws. `offered`: the row and ⌘K entry exist. Why (owner, 13 Nov 2026: "Dev builds only until 4/5"): nothing sends before the controller (plan 4/5), so a packaged build shows no switch that does nothing. */
 export const viewOf = (storage, {packaged}) => {
   const mine = state(storage);
-  return {on: mine.on, linkedinOn: linkedinState(storage).on, warned: !!mine.warnedAt, offered: !packaged};
+  return {on: mine.on, signedIn: signedIn(storage), warned: !!mine.warnedAt, offered: !packaged};
 };
 
 /**
@@ -32,8 +32,12 @@ export function turnOn(storage, {warned = false, now = new Date(), packaged = fa
   return {ok: true};
 }
 
-/** Turn the switch off. Only settings.easyApply.on changes: LinkedIn jobs, its session and its pause stay as they are. Repeatable. */
-export function turnOff(storage) {
+/**
+ * Turn the switch off. settings.easyApply.on changes, and LinkedIn's pause stays. The sign-in goes too when LinkedIn jobs is off as well, so no unused credential stays (Gitar on #4393, the rule of forgetUnused);
+ * with LinkedIn jobs on it stays. Repeatable.
+ */
+export function turnOff(storage, {keychain, now} = {}) {
   save(storage, {on: false});
+  releaseUnused(storage, {keychain, now});   // nothing uses the sign-in any more (a waiting Chrome way is left alone)
   return {ok: true};
 }

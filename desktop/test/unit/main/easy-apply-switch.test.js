@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import {registerEasyApplyHandlers} from '../../../lib/easy-apply-handlers.js';
 import {state, turnOff, turnOn, viewOf} from '../../../lib/easy-apply-switch.js';
 import * as linkedin from '../../../lib/linkedin-session.js';
+import {noteStop} from '../../../lib/easy-apply-limits.js';
 import {easyApplyOn} from '../../../renderer/apply-settings-model.js';
 
 const NOW = new Date('2026-11-13T18:00:00.000Z');
@@ -19,7 +20,7 @@ const linkedinOn = (extra = {}) => ({linkedinJobs: {on: true, asked: 1, declined
 
 test('off by default, and the view says so for a fresh install', () => {
   assert.deepEqual(state(store()), {on: false, warnedAt: ''});
-  assert.deepEqual(viewOf(store(), {packaged: false}), {on: false, linkedinOn: false, warned: false, offered: true});
+  assert.deepEqual(viewOf(store(), {packaged: false}), {on: false, signedIn: false, warned: false, offered: true});
 });
 
 test('turning on needs a kept sign-in, not LinkedIn jobs: with none it says needs-signin', () => {
@@ -51,7 +52,7 @@ test('turning off keeps LinkedIn jobs as it was: its switch, its 24 h pause and 
 test('with no sign-in kept Easy Apply reads as off, whatever was saved', () => {
   const storage = store({linkedinJobs: {on: false, login: {state: 'none', at: 0}}, easyApply: {on: true, warnedAt: NOW.toISOString()}});
   assert.equal(state(storage).on, false);
-  assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, linkedinOn: false, warned: true, offered: true});
+  assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, signedIn: false, warned: true, offered: true});
 });
 
 // Owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times" (replaces Gitar on #4008, where Easy Apply went off with LinkedIn jobs).
@@ -81,7 +82,7 @@ test('LinkedIn jobs off with Easy Apply off deletes the sign-in, and Easy Apply 
 test('forgetUnused and a Chrome copy leave a sign-in alone while Easy Apply is on', () => {
   const storage = store({...keptOnly({login: {state: 'kept', at: 1}}), easyApply: {on: true, warnedAt: NOW.toISOString()}});
   const removed = [], keychain = {read: () => ITEM, remove: key => removed.push(key)};
-  linkedin.forgetUnused(storage, {keychain, now: () => Date.now()});
+  linkedin.forgetUnused(storage, {keychain, now: () => NOW.getTime()});
   assert.deepEqual(removed, [], 'an old kept sign-in is not deleted while Easy Apply uses it');
   assert.equal(linkedin.takesCopy(storage), true);
   const idle = store(keptOnly({login: {state: 'none', at: 0}}));
@@ -108,7 +109,7 @@ test('the three channels: demo mode touches no settings; a real turn-on passes t
   registerEasyApplyHandlers({DEMO: false, ipcMain, storage: real, packaged: false, clock: () => NOW, keychain: keptItem()});
   assert.deepEqual(await handlers.easyApplyOn({}, {}), {ok: false, reason: 'not-warned'});
   assert.deepEqual(await handlers.easyApplyOn({}, {warned: true}), {ok: true});
-  assert.deepEqual(await handlers.easyApplyState(), {on: true, linkedinOn: true, warned: true, offered: true});
+  assert.deepEqual(await handlers.easyApplyState(), {on: true, signedIn: true, warned: true, offered: true});
   assert.deepEqual(await handlers.easyApplyOff(), {ok: true});
   assert.equal((await handlers.easyApplyState()).on, false);
 });
@@ -123,9 +124,26 @@ test('a saved Easy Apply yes with no sign-in holds nothing: no copy, the Chrome 
   linkedin.openSignin(open, {keychain: {read: () => null}});
   assert.equal(linkedin.loginOf(open).state, 'waiting', 'the Chrome way waits for its copy');
   const orphan = withItem();
-  linkedin.forgetUnused(lost(), {keychain: orphan.keychain, now: () => Date.now()});
+  linkedin.forgetUnused(lost(), {keychain: orphan.keychain, now: () => NOW.getTime()});
   assert.equal(orphan.removed.length, 1, 'the orphaned item is cleaned up at start');
   const jobs = store({linkedinJobs: {on: true, login: {state: 'none', at: 0}}, easyApply: {on: true, warnedAt: NOW.toISOString()}}), gone = withItem();
   linkedin.turnOff(jobs, {keychain: gone.keychain});
   assert.equal(gone.removed.length, 1, 'LinkedIn jobs off deletes the item: nothing uses it');
+});
+
+// Gitar on #4393: Easy Apply going off is the other moment the sign-in can lose its last user; both ways (the switch, a second LinkedIn stop) release it by the one rule.
+test('Easy Apply off deletes the sign-in when LinkedIn jobs is off; keeps it while LinkedIn jobs is on or a Chrome way waits', () => {
+  const run = (settings, off) => { const removed = []; off(store(settings), {read: () => ITEM, remove: key => removed.push(key)}, removed); return removed.length; };
+  const easy = {on: true, warnedAt: NOW.toISOString()};
+  const viaSwitch = (storage, keychain) => turnOff(storage, {keychain, now: () => NOW.getTime()});
+  assert.equal(run({...keptOnly(), easyApply: easy}, viaSwitch), 1, 'LinkedIn jobs off: nothing uses it, it goes');
+  assert.equal(run({...linkedinOn({login: {state: 'kept', at: 1}}), easyApply: easy}, viaSwitch), 0, 'LinkedIn jobs on: it stays');
+  assert.equal(run({linkedinJobs: {on: false, login: {state: 'waiting', at: NOW.getTime()}}, easyApply: easy}, viaSwitch), 0, 'a Chrome way waiting is not cut short');
+  const second = store({...keptOnly(), easyApply: easy});
+  second.mine.easyApply.stops = 1;
+  const removed = [];
+  noteStop(second, new Date('2026-11-14T10:00:00.000Z'), undefined, {keychain: {read: () => ITEM, remove: key => removed.push(key)}});   // a fake Keychain, never the real one
+  assert.equal(second.mine.easyApply.on, false, 'the second stop turned it off');
+  assert.equal(removed.length, 1, 'and with LinkedIn jobs off the sign-in item went with it');
+  assert.equal(second.mine.linkedinJobs.login, undefined, 'and its mark');
 });
