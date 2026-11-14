@@ -56,7 +56,7 @@ def _page(url, listing, plain=False):
         return f'<html><script type="application/ld+json">{json.dumps(job)}</script><body>x</body></html>'
     if '/section-' in url:
         return f'<html><body><h1>{slug}</h1><p>About the site.</p>{FOOTER}</body></html>'
-    return listing
+    return listing(url) if callable(listing) else listing
 
 
 class LayoutYieldTests(unittest.TestCase):
@@ -81,10 +81,10 @@ class LayoutYieldTests(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
 
-    def read(self, board, listing, plain=False):
+    def read(self, board, listing, plain=False, words=('developer',)):
         out = io.StringIO()
         with redirect_stdout(out):
-            jobs, state, _ = found_boards.read_board(board, SEARCH, fetch=lambda url: _page(url, listing, plain))
+            jobs, state, _ = found_boards.read_board(board, {**SEARCH, 'jobs_board_search_queries': list(words)}, fetch=lambda url: _page(url, listing, plain))
         self.out = out.getvalue().splitlines()
         return jobs, [line for line in self.out if 'layout' in line]
 
@@ -94,10 +94,9 @@ class LayoutYieldTests(unittest.TestCase):
         """edutalent.es: 36 navigation links then 38 jobs on one page, served {'links', prefix ''}: the first 40 held 4 postings (4 jobs vs the usual read's 38)."""
         jobs, said = self.read({**BOARD, 'layout': ROOT}, _listing(36, 38))
         self.assertEqual(len(jobs), 38, 'the usual read finds every job; the layout gave 4')
-        self.assertEqual(len(said), 1, f'one line for the read, not one per page: {said}')
-        self.assertIn('named 74 links', said[0])
-        self.assertIn('4 gave a posting', said[0])
-        self.assertTrue(self.asked, 'the link questions are back for this read')
+        self.assertEqual(len(said), 1, f'one line for the page: {said}')
+        self.assertRegex(said[0], r'named 74 links.* 4 gave a posting of the 40 read .* found 38 jobs')
+        self.assertTrue(self.asked, 'the link questions are back for this page')
 
     def test_below_one_third_postings_the_usual_read_decides_and_a_tie_keeps_the_layout(self):
         """The bound is the one a layout passed at learn time (page_recipes.MAX_FACTOR: it may name at most 3x the jobs): postings x 3 < pages read asks the usual read."""
@@ -120,9 +119,38 @@ class LayoutYieldTests(unittest.TestCase):
         jobs, said = self.read({**BOARD, 'layout': ROOT}, _listing(0, 12))
         self.assertEqual((len(jobs), said, self.asked), (12, [], []))
 
+    def test_one_short_page_reads_the_usual_way_and_keeps_the_layout_for_the_next(self):
+        """Gitar on #4143: one sparse page, or a judge's run-to-run difference, must not retire a layout that works on the board's other pages."""
+        listing = lambda url: _listing(36, 38) if 'q=developer' in url else _listing(0, 12)   # the first word's page is navigation first, the second word's is clean
+        jobs, said = self.read({**BOARD, 'layout': ROOT}, listing, words=('developer', 'engineer'))
+        self.assertEqual(len(jobs), 38, 'the usual read of the first page: the second page names 12 of the same jobs')
+        self.assertEqual(len(said), 1, said)
+        self.assertIn('read the usual way for this page', said[0])
+        self.assertEqual(len(self.asked), len(set(self.asked)), 'no link asked twice: the second page was read by the layout, with no question')
+
+    def test_the_layout_is_retired_on_the_second_short_page_and_board_discovery_notes_it_stale(self):
+        notes = {}
+        jobs, said = self.read({**BOARD, 'layout': ROOT, 'learn': notes}, _listing(36, 38), words=('developer', 'engineer', 'coder'))
+        self.assertEqual(len(said), 2, said)
+        self.assertIn('for this page', said[0])
+        self.assertIn('for the rest of this read', said[1])
+        self.assertIs(notes['layout'], False, 'board discovery publishes no layout for this board')
+
+    def test_a_job_page_is_fetched_once_for_the_layout_read_and_the_check(self):
+        """Gitar on #4143: the check reads the usual way with the layout read's own pages, so a job page costs one fetch."""
+        fetched = []
+        listing = _listing(36, 38)
+
+        def counting(url):
+            fetched.append(url)
+            return _page(url, listing)
+        with redirect_stdout(io.StringIO()):
+            found_boards.read_board({**BOARD, 'layout': ROOT}, SEARCH, fetch=counting)
+        self.assertEqual(len(fetched), len(set(fetched)), 'no address fetched twice')
+
     # ---- (a) learn time: board discovery keeps a layout only if it reads what the usual read found
 
-    def learned(self, listing, folder=''):
+    def learned(self, listing):
         notes = {}
         jobs, _ = self.read({**BOARD, 'learn': notes}, listing)
         return jobs, notes
