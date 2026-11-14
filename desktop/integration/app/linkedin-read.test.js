@@ -56,7 +56,7 @@ function standInBrowser() {
 }
 
 /**
- * LinkedIn and the extension behind each tab: `kind` per search ('list' | 'login' | 'check' | 'limited' | 'hold'). A list sets LinkedIn's own cookies (a rotated li_at on the www host,
+ * LinkedIn and the extension behind each tab: `kind` per search ('list' | 'login' | 'loop' | 'check' | 'limited' | 'hold'). A list sets LinkedIn's own cookies (a rotated li_at on the www host,
  * a tracker, a host-only one) and the extension reports what it read; a wall reports its page kind; a 429 is the document's response; 'hold' never answers (for Stop).
  */
 function standInLinkedin(browser, kinds, storage) {
@@ -80,7 +80,8 @@ function standInLinkedin(browser, kinds, storage) {
           for (const c of [{name: 'li_at', value: 'rotated', domain: '.www.linkedin.com', path: '/'}, {name: 'bcookie', value: 'b', domain: '.linkedin.com', path: '/'},
             {name: 'lidc', value: 'l', url: 'https://www.linkedin.com/jobs', path: '/jobs'}]) browser.put(c);
           visits.done({ticket, url, jobs: SERVED, added: SERVED, pages: 2});
-        } else visits.done({ticket, url, jobs: 0, added: 0, pages: 0, blocked: kind === 'login' ? 'login' : 'check', stopped: `LinkedIn showed its ${kind} page`});
+        } else if (kind === 'loop') visits.done({ticket, url: url.split('#')[0], jobs: 0, pages: 0, unreachable: 'TOO_MANY_REDIRECTS', stopped: 'the site could not be reached: it sent the browser round in a redirect loop (ERR_TOO_MANY_REDIRECTS)'});   // extension/visit.js siteUnreachable
+        else visits.done({ticket, url, jobs: 0, added: 0, pages: 0, blocked: kind === 'login' ? 'login' : 'check', stopped: `LinkedIn showed its ${kind} page`});
         return {};
       },
     };
@@ -171,6 +172,8 @@ test('LinkedIn on: a press reads the guest list in the app\'s hidden browser wit
 
 for (const [kind, verdict, words, name] of [
   ['login', 'signed-out', /sign in again in Chrome \(⌘K → Renew LinkedIn sign-in\)/, 'LinkedIn sends the read to its sign-in page: one search is opened, the read stops and says to sign in again'],
+  // Why (14 Nov 2026, the twin's 3 of 3 searches): a kept session LinkedIn no longer accepts sends the tab round in a redirect loop, not to the sign-in page; it is the same verdict.
+  ['loop', 'signed-out', /sign in again in Chrome \(⌘K → Renew LinkedIn sign-in\)/, 'LinkedIn sends the read round in a redirect loop: one search is opened, the read stops and says to sign in again'],
   ['check', 'check', /asked for a check: not answered/, 'LinkedIn shows a check: one search is opened, the read stops, the check is not answered'],
   ['limited', 'limited', /asked us to slow down/, 'LinkedIn answers 429: one search is opened, LinkedIn is left alone for a day and the next press asks it for nothing'],
 ]) {

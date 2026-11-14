@@ -356,7 +356,10 @@ export async function autoRead(tabId, url, {board = false} = {}) {
 const UNREACHABLE = {NAME_NOT_RESOLVED: 'no such address', NAME_RESOLUTION_FAILED: 'no such address', CONNECTION_REFUSED: 'it refused the connection',
   CONNECTION_TIMED_OUT: 'it did not answer', TIMED_OUT: 'it did not answer', ADDRESS_UNREACHABLE: 'it did not answer', CONNECTION_RESET: 'it dropped the connection',
   SSL_PROTOCOL_ERROR: 'its secure connection failed', CERT_COMMON_NAME_INVALID: 'its security certificate is not valid', CERT_DATE_INVALID: 'its security certificate is not valid',
-  CERT_AUTHORITY_INVALID: 'its security certificate is not valid'};
+  CERT_AUTHORITY_INVALID: 'its security certificate is not valid',
+  // Why (14 Nov 2026, the LinkedIn read in the twin: 3 of 3 searches sat 30 s on "waiting for the page to load" behind Chrome's "redirected you too many times" page): a loop is what a
+  // site does with a sign-in it no longer accepts, so it is said at once, with its code, for the caller to judge (lib/linkedin-headless.js endOf).
+  TOO_MANY_REDIRECTS: 'it sent the browser round in a redirect loop'};
 export function unreachableWhy(error) {
   const code = String(error || '').replace(/^net::ERR_/, '');
   return UNREACHABLE[code] || '';
@@ -367,7 +370,7 @@ export async function siteUnreachable(tabId, url, error) {
   if (!found || !why || started.has(tabId)) return;   // a reading in progress says it itself; an aborted load (a redirect) is not an error
   const ticket = found[3] || '';
   await api(await settings(), '/extension/visit-done', {method: 'POST', body: JSON.stringify({url: url.slice(0, -found[0].length), ticket, jobs: 0, pages: 0,
-    stopped: `the site could not be reached: ${why} (${String(error).replace(/^net::/, '')})`})}).catch(() => {});
+    stopped: `the site could not be reached: ${why} (${String(error).replace(/^net::/, '')})`, unreachable: String(error).replace(/^net::ERR_/, '')})}).catch(() => {});
   await chrome.storage.session.remove(`readmark:${tabId}`).catch(() => {});
   await chrome.tabs.remove(tabId).catch(() => {});
 }

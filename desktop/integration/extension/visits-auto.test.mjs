@@ -91,3 +91,19 @@ test('a marked tab whose site redirects by script and drops the mark is still re
     assert.equal(report.jobs, 3);
   });
 });
+
+test('a marked tab whose site redirects in a loop is reported at once as a redirect loop, with its ticket, and closed', async () => {
+  const {app, context} = rig;
+  app.calls.length = 0;
+  await withGrant(async () => {
+    const tab = await context.newPage();
+    await assert.rejects(tab.goto(`https://${ALLOWED}/loop-0#jp-read-10095eed`), /ERR_TOO_MANY_REDIRECTS/, 'the stand-in site did not loop (the control)');
+    const reported = await until(() => doneCalls().length > 0, 20000);
+    assert.ok(reported, `no done report after a redirect loop (the app would wait 30 s on "waiting for the page to load"); calls: ${app.calls.map(call => call.path).join(', ')}`);
+    const report = doneCalls()[0].payload;
+    assert.equal(report.ticket, '10095eed', 'the app could not match the report to the run');
+    assert.equal(report.unreachable, 'TOO_MANY_REDIRECTS', 'the app cannot tell a redirect loop (a sign-in no longer accepted) from any other stop');
+    assert.match(report.stopped, /redirect/);
+    assert.ok(await until(() => tab.isClosed(), 10000), 'the tab stayed open');
+  });
+});

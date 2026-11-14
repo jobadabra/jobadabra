@@ -55,7 +55,7 @@ export const routes = {
   '/extension/visit-unblock': {auth: 'token', open: 'a page', handles: [L('ext-server-handlers.js'), L('visits.js')], request: {ticket: 'string?'}, response: {}},
   '/extension/visit-recipe': {auth: 'token', handles: [L('ext-server-handlers.js'), L('visits.js')], request: {url: 'string', forget: 'boolean?', missed: 'boolean?'}, response: {recipe: 'any?', forgot: 'any?'}},
   '/extension/visit-jobpage': {auth: 'token', handles: [L('ext-server-handlers.js'), L('visits.js')], request: {url: 'string', html: 'string', ticket: 'string?'}, response: {}},
-  '/extension/visit-done': {auth: 'token', open: true, handles: [L('ext-server-handlers.js'), L('visits.js')], request: {url: 'string', ticket: 'string?', jobs: 'number?', pages: 'number?', stopped: 'any?'}, response: {}},
+  '/extension/visit-done': {auth: 'token', open: true, handles: [L('ext-server-handlers.js'), L('visits.js')], request: {url: 'string', ticket: 'string?', jobs: 'number?', pages: 'number?', stopped: 'any?', unreachable: 'string?'}, response: {}},
   '/extension/visit-waiting': {auth: 'token', handles: [L('ext-server-handlers.js'), L('visits.js')], request: {url: 'string', ticket: 'string?', why: 'string'}, response: {}},
   '/extension/visit-state': {auth: 'token', handles: [L('ext-server-handlers.js'), L('visits.js')], request: {ticket: 'string', words: 'string'}, response: {}},
   '/extension/posting': {auth: 'token', open: 'a posting page', handles: [L('ext-server-handlers.js'), L('visits.js')], request: {ticket: 'string?'}, response: {saved: 'any?'}},
