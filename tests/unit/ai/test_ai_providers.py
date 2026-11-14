@@ -335,6 +335,9 @@ class TechnicalLineText(unittest.TestCase):
         self.assertNotIn('no free slot in time', self.line(False))
 
 
+CLOCK = "the search's time was up before Claude Code had a free slot"
+
+
 class PairValidity(unittest.TestCase):
     """Guard: release: a same-inputs pair says valid only when every failed call is the engine's own clock rule (or none), read from the lines contract.detail really writes."""
 
@@ -364,14 +367,23 @@ class PairValidity(unittest.TestCase):
         self.assertEqual(self.verdict(self.clock(1), self.clock(2)), 'valid')
 
     def test_a_gap_of_four_is_flagged_and_three_is_not(self):
-        self.assertEqual(self.verdict([], self.clock(3)), 'valid')
-        self.assertTrue(self.verdict([], self.clock(4)).startswith('valid, clock-rule gap'))
+        self.assertEqual(self.verdict(['[1s] ok'], self.clock(3)), 'valid')
+        self.assertTrue(self.verdict(['[1s] ok'], self.clock(4)).startswith('valid, clock-rule gap'))
 
     def test_another_text_is_not_valid(self):
-        self.assertEqual(self.verdict(self.lines(RuntimeError('plan refused: (x)')), []), 'NOT VALID')
+        self.assertEqual(self.verdict(self.lines(RuntimeError('plan refused: (x)')), ['[1s] ok']), 'NOT VALID')
 
     def test_a_line_with_no_text_is_not_valid(self):
-        self.assertEqual(self.verdict([], self.lines(RuntimeError('boom'), shared=False)), 'NOT VALID')
+        self.assertEqual(self.verdict(['[1s] ok'], self.lines(RuntimeError('boom'), shared=False)), 'NOT VALID')
+
+    def test_a_side_with_no_log_lines_is_not_valid(self):
+        self.assertEqual(self.verdict([], self.clock(1)), 'NOT VALID')
+
+    def test_a_quoted_technical_phrase_is_not_a_failed_call(self):
+        self.assertEqual(self.verdict(['job title: see Technical: notes', '[12s] Technical: x' + ' || text: ' + CLOCK], self.clock(1)), 'valid')
+
+    def test_the_log_time_prefix_is_still_read(self):
+        self.assertEqual(self.verdict(['[124s] ' + self.lines(RuntimeError('boom'))[0]], self.clock(1)), 'NOT VALID')
 
 
 # Each engine: the environment that picks it, and the adapter class it builds.
