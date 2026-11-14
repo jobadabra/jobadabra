@@ -3,11 +3,14 @@ Why: 24 Oct 2026 the board pass was merged without ever running its path; CI sho
 used a name before its import. This drives scout.main's --publish-index branch, so both would have failed here. Skill: check-central-scout-locally."""
 import contextlib
 import io
+import json
 import os
+import sqlite3
 import sys
 import tempfile
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -92,6 +95,20 @@ class PublishPathTest(unittest.TestCase):
 
     def test_without_the_flag_the_index_is_published(self):
         self.assertIn('board_facts', self.run_main(lambda db, **kwargs: []))
+
+    def test_a_board_fact_goes_up_with_the_day_it_was_read(self):
+        """Why (14 Nov 2026, zb for sa, #4346): a fact went up with no read day and the site stored the publish date, so a board board discovery read on 13 Nov
+        was served dated 14 Nov and every publish moved its day forward. Played through the publish over board discovery's own database (SCOUT_BOARD_DB)."""
+        read = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        with tempfile.TemporaryDirectory() as tmp:
+            beside = str(Path(tmp) / 'boards.sqlite')
+            with sqlite3.connect(beside) as db:
+                scout_boards.ensure(db)
+                db.execute('INSERT INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                           ('board.example', 'hr', 'https://board.example/posao/{role}', 'marketing_social', 7, read, json.dumps({'marketing_social': 7})))
+            with mock.patch.dict(os.environ, {'SCOUT_BOARD_DB': beside}), contextlib.redirect_stdout(io.StringIO()):
+                seen = self.run_main(lambda db, **kwargs: [])
+        self.assertEqual([(fact['host'], fact.get('day')) for fact in seen['board_facts']], [('board.example', read)])
 
 
 if __name__ == '__main__':
