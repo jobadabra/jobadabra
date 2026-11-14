@@ -320,6 +320,16 @@ class TechnicalLineText(unittest.TestCase):
             contract.detail('decide link-kind', RuntimeError('no free slot in time'))
         return out.getvalue()
 
+    def test_a_key_shaped_text_is_scrubbed_like_error_facts(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_TAPE_SHARED': '/tmp/x'}), contextlib.redirect_stdout(out):
+            contract.detail('page read', RuntimeError('refused: Bearer abc123secret and sk-live-0123456789 and ' + 'x' * 40))
+        self.assertNotIn('abc123secret', out.getvalue())
+        self.assertNotIn('sk-live-0123456789', out.getvalue())
+        self.assertNotIn('x' * 40, out.getvalue())
+
     def test_text_only_in_a_same_inputs_run(self):
         self.assertIn('no free slot in time', self.line(True))
         self.assertNotIn('no free slot in time', self.line(False))
