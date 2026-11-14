@@ -20,9 +20,10 @@ def named(later, join):
 def join(named, pick, hosts, free, start):
     """The futures of the boards named later that join the read: picked like the first ones, not being read already, as many as places are left."""
     new = [board for board in pick(named or []) if board['host'] not in hosts][:max(0, free)]
-    if new:
-        print(f"Job boards: also reading {', '.join(board['name'] for board in new)}, named for your search meanwhile", flush=True)
-    return [future for future in (start(board) for board in new) if future is not None]   # start gives None for a board another read took meanwhile
+    started = [(board, start(board)) for board in new]   # start gives None for a board another read took meanwhile: it is not said, not read
+    if any(future is not None for _, future in started):
+        print(f"Job boards: also reading {', '.join(board['name'] for board, future in started if future is not None)}, named for your search meanwhile", flush=True)
+    return [future for _, future in started if future is not None]
 
 
 def start(read_item, reads, hosts, order, by_turn, futures, submit):

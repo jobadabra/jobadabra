@@ -37,7 +37,7 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
-_early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched; an early read enters it when it STARTS, with none yet
+_early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched; an early read enters it when it STARTS, as (time, None)
 _claims = board_claims.Claims(_early, EARLY_MINUTES * 60)   # one early read per board per press (board_claims.py): the same registry, no second state
 
 
@@ -331,7 +331,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
     proposed = boards if boards is not None else board_ideas.ideas(search)
     todo = _claims.first(board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
-                                      kept, since, handed=set(_early)), early)   # web=False: these only; a board read early in this run reads on; one early read per board (board_claims.py)
+                                      kept, since, handed={host for host, (_, pages) in _early.items() if pages is not None}), early)   # web=False: these only; a board read early in this run reads on; one early read per board (board_claims.py)
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
 
     def item(board):
@@ -343,7 +343,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             board = {**board, 'rendered': True}
         board = {**board, **({'charset': entry['charset']} if entry.get('charset') else {})}   # its search words in its own charset (board_paths.read)
         handed = None if early else _early.pop(board['host'], None)   # Why (14 Nov 2026, #4145): an early read leaves the registry to the full read, and to the claims it holds
-        return (board, entry, handed[1] if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 else {}, {}, proposed)
+        return (board, entry, (handed[1] or {}) if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 else {}, {}, proposed)
     reads = [item(board) for board in todo]
     late_pages = {} if early else {board['host']: page for board in todo if (page := late_reads.take('board', board['host'])) is not None}
     if late_pages:
