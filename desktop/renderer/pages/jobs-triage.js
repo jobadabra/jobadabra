@@ -9,7 +9,7 @@ import {listReady} from './jobs-state.js';
 import {heldAfterList} from '../apply-readiness-read.js';
 import {readsQuestions} from '../apply-triage-mode.js';
 import {shared} from './shared.js';
-import {STEP_KEYS, addStep, beginCheck, endSteps, moveStep, startSteps, stepText} from '../readiness-steps.js';
+import {STEP_KEYS, addStep, beginCheck, endSteps, linesOf, moveStep, startSteps, stepText} from '../readiness-steps.js';
 
 // The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
 const reads = new Map();
@@ -102,7 +102,7 @@ function paint() {
   set('triage-progress-text', el => { el.textContent = words; el.title = state.job?.title || ''; });
   const stepWords = state.matching || state.stopping || !state.log?.current ? '' : t(`helperTail.${STEP_KEYS[state.log.current]}`);
   set('triage-elapsed', el => { el.textContent = state.stopping ? '' : [stepWords, clock(Date.now() - (state.matching ? state.startedAt : state.log?.at || Date.now()))].filter(Boolean).join(' · '); });
-  set('triage-steps', el => el.replaceChildren(...(state.matching || !state.log ? [] : state.log.steps).map(({step, ms}) => stepLine(t(`helperTail.${STEP_KEYS[step]}`), Math.round(ms / 1000)))));
+  set('triage-steps', el => el.replaceChildren(...(state.matching || !state.log ? [] : linesOf(state.log.steps)).map(({words, seconds}) => stepLine(words, seconds))));
   set('triage-track', el => el.classList.toggle('is-sliding', state.seen === 0 || state.matching));
   set('triage-bar', el => { el.style.width = state.seen === 0 || state.matching ? '' : `${Math.round((state.seen / state.total) * 100)}%`; });
 }
