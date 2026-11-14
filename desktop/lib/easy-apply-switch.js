@@ -13,10 +13,10 @@ export function state(storage) {
 }
 const save = (storage, patch) => storage.saveSettings({easyApply: {...(storage.settings().easyApply || {}), ...patch}});
 
-/** What the window draws. `offered`: the row and ⌘K entry exist. Why (owner, 13 Nov 2026: "Dev builds only until 4/5"): nothing sends before the controller (plan 4/5), so a packaged build shows no switch that does nothing. */
+/** What the window draws: `on` is the saved switch and `signedIn` the sign-in, so on without a sign-in is on but inactive (easy-apply-words.js inactive). `offered`: the row and ⌘K entry exist. Why (owner, 13 Nov 2026: "Dev builds only until 4/5"): nothing sends before the controller (plan 4/5), so a packaged build shows no switch that does nothing. */
 export const viewOf = (storage, {packaged}) => {
   const mine = state(storage);
-  return {on: mine.on, signedIn: signedIn(storage), warned: !!mine.warnedAt, offered: !packaged};
+  return {on: storage.settings().easyApply?.on === true, signedIn: signedIn(storage), warned: !!mine.warnedAt, offered: !packaged};   // the saved switch: on without a sign-in is drawn as on but inactive (owner, 14 Nov 2026)
 };
 
 /**

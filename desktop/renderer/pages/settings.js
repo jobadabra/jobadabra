@@ -98,7 +98,7 @@ function statusFrom({extension, google}) {
   const needs = signinLine(linkedinView);   // #3911: LinkedIn jobs is on but its sign-in needs the person: the card says so, never "Connected"
   const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': needs || t('pagesCommon.off'), 'linkedin-easy-apply': easyApplyRow(easyApplyView).words, ai: ai.words};
   const checking = {google: !google, extension: extension.checking};
-  return {on, detail, words, checking, needsYou: {'linkedin-jobs': !!needs}, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
+  return {on, detail, words, checking, needsYou: {'linkedin-jobs': !!needs, 'linkedin-easy-apply': easyApplyRow(easyApplyView).needs}, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }
 // The extension's state: renderer/service-status.js extensionFrom (a kept record is judged at the time it was kept).
 // The extension card's first paint reads the same kept record (pages/extension-setup.js), so there is one copy.
