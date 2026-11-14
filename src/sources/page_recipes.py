@@ -113,13 +113,20 @@ def replay(recipe, markup, base):
     return out
 
 
+def standing(pairs, titles, links):
+    """How many (title, address) pairs stand for a job of the list `titles` / `links`: the title (any case) is one of the titles, or the address, without fragment or trailing slash, is one of the links.
+    The one counter of "does this link stand for a job" (`_fits` counts the jobs a recipe reads back, board_layout counts the links a layout names); Why (14 Nov 2026, Gitar on #4154 and #4167): two
+    matchers drew opposite findings (by address, by title), and a posting's own address can differ from the link it was read through."""
+    bare = lambda address: address.split('#')[0].rstrip('/')
+    titles, links = {t.lower() for t in titles}, {bare(link) for link in links if link}
+    return sum(1 for title, link in pairs if (title or '').lower() in titles or (link and bare(link) in links))
+
+
 def _fits(recipe, markup, base, titles, links):
     got = replay(recipe, markup, base)
     if not got or len(got) > MAX_FACTOR * max(len(titles), 1):
         return False
-    got_titles, got_links = {t.lower() for t, _ in got}, {u for _, u in got if u}
-    hits = sum(1 for title, link in zip(titles, links) if title.lower() in got_titles or (link and link in got_links))
-    return hits >= MATCH_SHARE * len(titles)
+    return standing(zip(titles, links), (t for t, _ in got), (u for _, u in got)) >= MATCH_SHARE * len(titles)
 
 
 def derive(markup, base, jobs):
