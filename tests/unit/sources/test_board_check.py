@@ -138,7 +138,7 @@ class ReadTests(unittest.TestCase):
         self.data, self.said, self.kinds = {'boards': {}}, [], {'b1.example': ('one employer', HAULIER), 'b2.example': ('gone', '')}
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(board_ideas, 'load', side_effect=lambda: self.data),
                       mock.patch.object(board_ideas, 'save'), mock.patch.object(found_boards, '_dead', return_value=set()),
-                      mock.patch.object(found_boards.board_employers, 'note'),
+                      mock.patch.object(found_boards.board_employers, 'note'), mock.patch.object(careers, 'READER', 'auto'),   # kind is faked
                       mock.patch.object(board_check, 'kind', side_effect=lambda b, fetch, term='': self.kinds.get(b['host'], ('job board', PORTAL))),
                       mock.patch('builtins.print', lambda *a, **k: self.said.append(' '.join(map(str, a))))):
             patch.start()
@@ -191,15 +191,33 @@ class ReadTests(unittest.TestCase):
         self.assertFalse(any('is not a job board' in line or 'refuses automated reading' in line for line in self.said), self.said)
         self.assertEqual(board_check.kind.call_args.args[2], 'Berufskraftfahrer', "the search page asked with the search's first word")
 
-    def test_a_not_a_board_verdict_is_asked_again_on_its_retry_and_follows_the_answer(self):
-        # Why (14 Nov 2026, owner via sa): a wrong 'other' was read again every 30 days but never judged again, so it never cleared
+    def test_a_not_a_board_verdict_whose_retry_read_gives_jobs_becomes_a_board_without_asking(self):
+        # Why (#4209, Gitar): the jobs read are the proof; asking again could call it 'other' and drop the jobs just read
         from datetime import datetime, timedelta, timezone
         day = datetime(2026, 11, 14, 9, tzinfo=timezone.utc)
         self.data['boards']['b4.example'] = {'site_kind': 'other', 'state': 'empty', 'last_read': (day - timedelta(days=31)).isoformat()}
+        self.kinds['b4.example'] = ('other', '')   # what a wrong judge would say again
         jobs = self.read([board(4)], now=day)
         self.assertEqual([job['url'] for job in jobs], ['https://b4.example/1'], 'its retry was due: read, and its list shows jobs')
-        self.assertEqual(self.data['boards']['b4.example']['site_kind'], 'job board', 'the stored kind follows the new answer')
+        self.assertEqual((board_check.kind.call_count, self.data['boards']['b4.example']['site_kind']), (0, 'job board'))
         self.assertEqual([b['host'] for b in board_yield.pick([board(4)], self.data['boards'])], ['b4.example'], 'and stays a board')
+
+    def test_a_not_a_board_verdict_whose_retry_read_is_empty_is_asked_again_and_follows_the_answer(self):
+        # Why (14 Nov 2026, owner via sa): a wrong 'other' was read again every 30 days but never judged again, so it never cleared
+        from datetime import datetime, timedelta, timezone
+        day = datetime(2026, 11, 14, 9, tzinfo=timezone.utc)
+        self.data['boards']['b3.example'] = {'site_kind': 'other', 'state': 'empty', 'last_read': (day - timedelta(days=31)).isoformat()}
+        self.read([board(3)], now=day)
+        self.assertEqual((board_check.kind.call_count, self.data['boards']['b3.example']['site_kind']), (1, 'job board'))
+
+    def test_the_page_reader_off_keeps_a_not_a_board_verdict_on_its_retry(self):
+        # Why (#4209, Gitar): with no page reader there is no judge, so no answer is not a new verdict
+        from datetime import datetime, timedelta, timezone
+        day = datetime(2026, 11, 14, 9, tzinfo=timezone.utc)
+        self.data['boards']['b3.example'] = {'site_kind': 'other', 'state': 'empty', 'last_read': (day - timedelta(days=31)).isoformat()}
+        with mock.patch.object(careers, 'READER', None):
+            self.read([board(3)], now=day)
+        self.assertEqual((board_check.kind.call_count, self.data['boards']['b3.example']['site_kind']), (0, 'other'))
 
     def test_a_not_a_board_verdict_with_no_answer_on_its_retry_is_dropped(self):
         from datetime import datetime, timedelta, timezone
