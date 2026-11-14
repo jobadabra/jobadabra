@@ -9,7 +9,7 @@ import {listReady} from './jobs-state.js';
 import {heldAfterList} from '../apply-readiness-read.js';
 import {readsQuestions} from '../apply-triage-mode.js';
 import {shared} from './shared.js';
-import {STEP_KEYS, addStep, endSteps, keptSteps, moveStep, startSteps, stepText} from '../readiness-steps.js';
+import {STEP_KEYS, addStep, endSteps, moveStep, startSteps, stepText} from '../readiness-steps.js';
 
 // The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
 const reads = new Map();
@@ -124,11 +124,6 @@ async function matchChecked(jobs, match, rows) {
   }
 }
 
-/** Each read job's step log is kept with its stored check (lib/apply-readiness.js keepSteps; a job with no stored check keeps none). Never throws. */
-async function keepLogs(urls) {
-  for (const url of urls) if (readOf(url) && keptSteps(url).length) await Promise.resolve(wired.keep(url, keptSteps(url))).catch(() => false);
-}
-
 /**
  * Runs the checks on the picked jobs, one at a time, through `read(job)` (the hidden-browser read). The dialog names the job in flight from the first moment, counts its seconds, and lists
  * each finished job's result as it lands; Stop ends before the next one. Resolves with {read, failed}: how many were read and how many could not be.
@@ -159,7 +154,6 @@ export async function runTriage(jobs, read, match = null) {
       paint();
     }
     if (match && !cancelled) await matchChecked(jobs, match, rows);   // Stop ends the check where it is: no match runs, so the simple forms read so far say "answers not checked" (apply-triage-mode.js), never "can apply automatically"
-    await keepLogs([...rows.keys()]);
   } finally {
     clearInterval(ticker);
     Object.assign(state, {running: false, stopping: false, matching: false, job: null, log: null});
@@ -170,7 +164,7 @@ export async function runTriage(jobs, read, match = null) {
 
 // The default read reads nothing (a window with no hidden browser behind it): the person is told so.
 const notYetRead = async () => null;
-let wired = {read: notYetRead, match: null, keep: () => false, rerender: () => {}, toast: () => {}};   // what wireTriage was given, so one job is checked and told the same way
+let wired = {read: notYetRead, match: null, rerender: () => {}, toast: () => {}};   // what wireTriage was given, so one job is checked and told the same way
 
 /** Says how a check ended, in the same words for the batch and for one job: `done` read, `failed` could not be read, of `total`. Why (7 Nov 2026, owner: three statuses with a sub-status; coordinator's "Checked 7 of 10, 3 couldn't be read"): a read that could not be made is said, never silently counted away. */
 function say(toast, done, failed, total) {
@@ -196,10 +190,10 @@ export async function checkJob(job) {
 }
 
 /** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended, `onStep(fn)` hands the read's steps to the dialog. Takes the callbacks; a missing dialog wires nothing. */
-export function wireTriage({read = notYetRead, match = null, keep = () => false, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
+export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
-  wired = {read, match, keep, rerender, toast};
+  wired = {read, match, rerender, toast};
   onStep(heardStep);
   $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
   $('triage-close').addEventListener('click', () => dialog.close());

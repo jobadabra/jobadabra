@@ -24,6 +24,7 @@ import {extensionReady} from './extension-ready.js';
 import * as sitePassword from './site-password.js';
 import * as terminals from './terminals.js';
 import {backgroundApplyFor} from './background-apply-controller.js';
+import {readStepListeners} from './server-hooks.js';
 import {createCheckFirst} from './apply-check-first.js';
 import fs from 'node:fs';
 import {GOOGLE_KEYCHAIN, GOOGLE_SCOPES_KEYCHAIN} from './google-keys.js';
@@ -70,6 +71,7 @@ export function registerApplyHandlers(ctx) {
   const matchLogged = asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });   // one matcher and one log line for every caller
   const readiness = keepReadiness(storage, createReadiness({storage, prepareKit: (code, name, {notices = 'none'} = {}) => prepareKitFor(code, name, KIT_NOTICES[notices] || KIT_NOTICES.none).then(refusedOrDrafted), readForm: job => cloudReadOf(storage)?.readForm(job) ?? triageReadOrNull(background.triageRead, job.url), log: appLog,
     match: asked => matchLogged(asked), onStep: step => toWindow('triageStep', step)}));
+  readStepListeners.add(step => readiness.heard(step));   // the check's own timer hears the reader's steps (lib/readiness-step-log.js)
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
   const named = job => [job?.title, job?.company].filter(Boolean).join(' · ');   // the kit's notices name the job as "Role · Employer", as the old draft did
   const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});
@@ -82,8 +84,6 @@ export function registerApplyHandlers(ctx) {
     const asked = askedOf(reads);
     return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
-  // A check's step log (renderer/readiness-steps.js), kept with the job's stored check so it survives a restart; the demo stores nothing.
-  ipcMain.handle('applyReadinessSteps', (_, url, steps) => (DEMO ? false : readiness.keepSteps(String(url || ''), steps)));
   // The held batch's own match (lib/apply-check-first.js matchAll): the same call, without readiness's store step, so it never clears the form-check dialog's waiting reads.
   const matchHeld = reads => { const asked = askedOf(reads); return DEMO ? demoTriageMatch(storage.settings(), asked) : matchLogged(asked); };
   ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });

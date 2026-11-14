@@ -1,6 +1,6 @@
 // The steps of one Apply readiness check of a job, each with its own seconds, kept per job for the drawer: the one owner of that log (jobs-triage.js writes it, the drawer reads it).
 // Why (14 Nov 2026, #4325, owner: "I should have * Getting started * Reading the form ... Each of them with seconds of how much it took. and then I should see the end result, the outcome";
-// chose "Plain steps + seconds (Recommended)"; asked via AskUserQuestion, "Yes, store it (Recommended)": the log survives a restart). Timed here; stored by lib/apply-readiness.js with the check.
+// chose "Plain steps + seconds (Recommended)"; asked via AskUserQuestion, "Yes, store it (Recommended)": the log survives a restart). Timed here for the live list; the app times its own copy and stores it with the check (lib/readiness-step-log.js).
 import {t} from '../i18n/index.js';
 
 /** Each step the app or the dialog names -> its words' key (helperTail). The read's later steps (judging, planning) read as "Reading the form", so they join that line. */
@@ -38,9 +38,6 @@ export function addStep(url, step, ms) {
 
 /** One finished step as the person reads it: "✓ Reading the form · 8 s" (the dialog's list; the one place the line's shape lives). */
 export const stepText = (words, seconds) => `✓ ${words} · ${t('helperTail.triageStepSeconds', {count: seconds})}`;
-
-/** A job's last check in this window as [{step, ms}] ([] when none): what the app stores with the check (lib/apply-readiness.js keepSteps). */
-export const keptSteps = url => kept.get(url) || [];
 
 /**
  * A job's last check as lines: [{words, seconds}] in order. This window's log first, else `stored` (the steps kept with the stored check, so they survive a restart); a step this app does not name is
