@@ -34,11 +34,14 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
         self.field_asked, self.field_release, self.reads, store = threading.Event(), threading.Event(), [], {}
         self.country = list(COUNTRY)
 
+        self.field_asks, self.field_fails = [], False
+
         def ask(system, content, client=None):
             if system == board_ideas.FIELD_SYSTEM:
+                self.field_asks.append(1)
                 self.field_asked.set()
                 self.field_release.wait(10)
-                return list(FIELD)
+                return None if self.field_fails else list(FIELD)
             return list(self.country)
         for name, value in (('_ask', ask), ('proven', lambda search, limit=2: []), ('slices', lambda search: [ASKED]),
                             ('asked_for', lambda search: ASKED), ('load', lambda: store), ('save', lambda data: None),
@@ -96,6 +99,16 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
             later = out['later']()
         self.assertIn('f0.test', [b['host'] for b in later], "the field's boards are offered to the read's places left")
         self.assertEqual(len(self.reads), 1, 'one read, never a second one')
+
+    def test_a_field_call_with_no_answer_is_asked_once_and_leaves_the_countrys_boards(self):
+        self.field_fails = True
+        thread, out = self.start_slice()
+        self.assertFalse(thread.is_alive(), "the country's boards read while the field is asked")
+        self.field_release.set()
+        with mock.patch('builtins.print'):
+            later = out['later']()
+        self.assertEqual(len(self.field_asks), 1, 'a field call with no answer is not asked again')
+        self.assertEqual(sorted(b['host'] for b in later), sorted(b['search_url'].split('/')[2] for b in COUNTRY), "only the country's boards")
 
     def test_no_country_board_waits_for_the_field(self):
         self.country = []

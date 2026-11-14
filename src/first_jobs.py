@@ -69,9 +69,8 @@ def board_jobs(say=print, search=None, on_board=None):
         proposed = _proposed(board_ideas, search, field=False)
         if proposed:
             later = lambda: _named_meanwhile(board_ideas, search)
-        else:   # no country board: the field's are the read
-            _wait_early(search)
-            proposed = _proposed(board_ideas, search)
+        else:   # no country board: the field's are the read (one with no answer is not asked again)
+            proposed = _proposed(board_ideas, search, field=_wait_early(search) is not False)
         top, spare = proposed[:SLICE_BOARDS], proposed[SLICE_BOARDS:2 * SLICE_BOARDS]
         if not top:
             return []
@@ -113,40 +112,41 @@ def propose_early(search=None):
 
 
 def _whole(board_ideas, search, country):
-    """The whole proposal (board_ideas.ideas) once the field's call, asked here beside the countries' one, and the countries' have answered:
-    both are cached then, so ideas asks the AI nothing again. A failed or late field call leaves the countries' boards."""
-    try:
-        board_ideas.field_ideas(search)
-    finally:
-        country.exception()
-    return board_ideas.ideas(search)
+    """Ask the field's call here, beside the countries' one, and wait for both: their answers are cached, so the list built when the boards
+    are read (_named_meanwhile) asks the AI nothing again. -> whether the field answered: one with no answer (None, not cached) is left
+    out of that list, so it is asked once (Gitar on #4403). Only the answers are taken early, never the list (#2218)."""
+    of_field = board_ideas.field_ideas(search)
+    country.exception()
+    return of_field is not None
 
 
 def _wait_early(search, part='future'):
     """The early proposal of this same search ended (waited for until the read cut at most), so the slice's own ask finds its answers
     cached instead of asking again; nothing for another search or none started. part: 'future' (the whole proposal, taken once) or
-    'country' (the countries' call only; the whole stays to be taken by the boards named later)."""
+    'country' (the countries' call only; the whole stays to be taken by the boards named later). -> the future's result, None when none
+    was started or it was late or failed."""
     if _early.get('search') != search:
         _early.clear()
-        return
+        return None
     future = _early.get(part)
     if part == 'future':
         _early.clear()
     if future is None:
-        return
+        return None
     from .sources import read_budget
     try:
-        future.result(timeout=read_budget.seconds_left(read_budget.cut_at()))
+        return future.result(timeout=read_budget.seconds_left(read_budget.cut_at()))
     except Exception:  # noqa: BLE001 — late or failed: the slice asks itself (a late answer is cached when it comes)
-        pass
+        return None
 
 
 def _named_meanwhile(board_ideas, search):
     """The boards the AI proposed while the measured boards were being read (propose_early), for the places they left; none once the
     search's read cut has come: nothing is asked or started past it."""
     from .sources import read_budget
-    _wait_early(search)
-    return [] if read_budget.past_cut() else _proposed(board_ideas, search)
+    field_answered = _wait_early(search)
+    # Why (Gitar on #4403): a field call that got no answer is not cached; asking ideas() with the field would ask it again
+    return [] if read_budget.past_cut() else _proposed(board_ideas, search, field=field_answered is not False)
 
 
 def _refused(board_ideas):
