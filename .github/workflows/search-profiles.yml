@@ -230,7 +230,11 @@ jobs:
         if: always()
         env:
           PROFILE: ${{ matrix.profile }}
-        run: python3 tools/persona-search/profiles.py row "$PROFILE" out
+        run: |
+          python3 tools/persona-search/profiles.py row "$PROFILE" out
+          # Why (14 Nov 2026, owner via sa: "let's fix also this"): the stage lines are logged by default for the per-search table (tools/persona-search/board_funnel.py); a report only, its failure never reds the run and leaves out/funnel.err.
+          python3 tools/persona-search/board_funnel.py out > out/funnel.md 2> out/funnel.err || echo "Funnel table failed for $PROFILE: see funnel.err in the artifact" >> "$GITHUB_STEP_SUMMARY"
+          if [ -s out/funnel.md ]; then { echo "<details><summary>Where the jobs were lost: $PROFILE</summary>"; echo; cat out/funnel.md; echo; echo "</details>"; } >> "$GITHUB_STEP_SUMMARY"; fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
