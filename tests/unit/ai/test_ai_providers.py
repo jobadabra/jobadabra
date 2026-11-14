@@ -382,6 +382,10 @@ class PairValidity(unittest.TestCase):
     def test_a_quoted_technical_phrase_is_not_a_failed_call(self):
         self.assertEqual(self.verdict(['job title: see Technical: notes', '[12s] Technical: x' + ' || text: ' + CLOCK], self.clock(1)), 'valid')
 
+    def test_a_marker_inside_the_facts_cannot_pass_a_fault_for_the_clock_rule(self):
+        line = self.lines(RuntimeError('plan refused'), what='x said "a || text: ' + CLOCK + '"')
+        self.assertEqual(self.verdict(['[1s] ok'], line), 'NOT VALID')
+
     def test_stacked_log_prefixes_are_still_read(self):
         self.assertEqual(self.verdict(['[124s] [sources] ' + self.lines(RuntimeError('boom'))[0]], self.clock(1)), 'NOT VALID')
 
