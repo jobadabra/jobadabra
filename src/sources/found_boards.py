@@ -83,7 +83,7 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)
 
 
-def _read(board, search, fetch, route, early, show=None, ai=None):
+def _read(board, search, fetch, route, early, show=None, ai=None):  # noqa: C901 (Why (#4180, ab): 19 on main and 19 after; only the `ai` tally passes in, no new branch; splitting _read is its own change)
     """ai: {'asks': the AI page reader's reads so far, 'words': the words it read a page for}, one per board read (read_board), so a word's page
     is read by the AI once and AI_ASKS holds for the whole read."""
     jobs, state, asked_routes, ai = [], 'empty', False, {'asks': 0, 'words': set()} if ai is None else ai
