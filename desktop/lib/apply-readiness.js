@@ -7,6 +7,7 @@
 import * as engine from './store/engine.js';
 import {matchReads} from './triage-match.js';
 import {readsQuestions} from '../renderer/apply-triage-mode.js';
+import {createStepLogs} from './readiness-step-log.js';
 
 export const VERSION = 1;
 /** Notion's text column holds 2000 characters: a stored check stays under this (the questions go first, then the match's names). */
@@ -55,7 +56,8 @@ export function rowCheck(job) {
  */
 export function createReadiness({storage, prepareKit, readForm, match = asked => matchReads(storage, asked), call = engine.call, clock = () => new Date(), log = () => {}, onStep = () => {}}) {
   let cancels = 0;   // counts Stops, so a check that was drafting a kit can tell one arrived before it opens the browser
-  const waiting = new Map();   // url → {job, read}: fresh simple forms whose questions the check's one match has not judged yet
+  const waiting = new Map();   // url → {job, read, steps}: fresh simple forms whose questions the check's one match has not judged yet
+  const logs = createStepLogs(() => +clock());   // each check's steps with their seconds, stored in the same write as the check (Why: lib/readiness-step-log.js)
   const recordOf = url => call(storage, 'applications', 'get', {url}).catch(error => { log('apply', 'readiness: the record was not read', {error: String(error?.message || error).slice(0, 200)}); return null; });
 
   /**
@@ -75,8 +77,8 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
     return updated;
   }
 
-  async function save(job, read) {
-    const text = pack(read, {posted: job.posted_at, now: clock()});
+  async function save(job, read, steps) {
+    const text = pack(steps ? {...read, steps} : read, {posted: job.posted_at, now: clock()});
     const record = text ? await recordOf(job.url) : null;
     if (!record?.id) return false;   // no Applications row yet: the kit step makes it, the next check stores
     await call(storage, 'applications', 'update', {app_id: record.id, fields: {apply_readiness: text}}).catch(error => log('apply', 'readiness: the check was not stored', {error: String(error?.message || error).slice(0, 200)}));
@@ -89,50 +91,37 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
    */
   async function applyReadiness(job, {notices = 'none'} = {}) {
     const asked = cancels;
+    logs.start(job.url);
     // Why (14 Nov 2026, #4325, owner: "40s just to get ready?"): the kit draft is its own step with its own seconds, never hidden inside "Getting started".
-    if (!job.kit && job.code) onStep({url: job.url, step: 'drafting'});
+    if (!job.kit && job.code) { onStep({url: job.url, step: 'drafting'}); logs.move(job.url, 'drafting'); }
     const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job', {notices}).catch(error => ({ok: false, error: String(error?.message || error)}));
     // Why (8 Nov 2026, red main after #3573): a kit draft that ran and failed no longer blocks the form read; the read is still worth showing (kept only once a row exists), and the kit's reason travels with the result.
     if (kit.ok === false) log('apply', 'readiness: the kit was not drafted', {error: String(kit.error || kit.reason || '').slice(0, 200), refused: kit.refused === true});
-    if (kit.refused === true) return {kit, check: null, stored: false};   // Why (8 Nov 2026, Gitar on #3578): a gate (Notion, move, allowance, no AI) starts nothing, neither the browser nor the match
-    if (cancels !== asked) return {kit, check: null, stored: false, cancelled: true};
+    if (kit.refused === true) { logs.drop(job.url); return {kit, check: null, stored: false}; }   // Why (8 Nov 2026, Gitar on #3578): a gate (Notion, move, allowance, no AI) starts nothing: no browser, no match, and no step log (#4360)
+    if (cancels !== asked) { logs.drop(job.url); return {kit, check: null, stored: false, cancelled: true}; }
     const stored = await storedCheck(job);
-    if (stored) return {kit, check: stored, stored: true};
+    if (stored) { logs.drop(job.url); return {kit, check: stored, stored: true}; }   // a stored check keeps its own stored timings, never rewritten (Gitar on #4349)
     const read = await readForm(job);
-    if (!read && cancels !== asked) return {kit, check: null, stored: false, cancelled: true};   // a read Stop cut short is not a result (jobs-triage.js)
-    if (storable(read)) await save(job, read);
-    else if (read && read.unreadable !== true) waiting.set(job.url, {job, read});
+    if (!read && cancels !== asked) { logs.drop(job.url); return {kit, check: null, stored: false, cancelled: true}; }   // a read Stop cut short is not a result (jobs-triage.js)
+    const steps = logs.finish(job.url);
+    if (storable(read)) await save(job, read, steps);
+    else if (read && read.unreadable !== true) waiting.set(job.url, {job, read, steps});
     return {kit, check: read, stored: false};
   }
 
   /** The check's one match of the fresh simple forms; each matched form is then stored with its match. → {[url]: {missing, unjudged}}. Never throws. */
   async function settle(asked) {
+    const began = +clock();
     const found = await match(asked).catch(() => ({}));
+    const share = Math.round((+clock() - began) / Math.max(1, asked.length));   // one call served every form: each gets its share of the seconds, never the whole
     for (const [url, matched] of Object.entries(found || {})) {
       const entry = waiting.get(url);
       const merged = entry && {...entry.read, match: matched};
-      if (merged && storable(merged)) await save(entry.job, merged);   // a match with a question nobody judged is not stored: the next check asks again
+      if (merged && storable(merged)) await save(entry.job, merged, [...(entry.steps || []), {step: 'matching', ms: share}]);   // a match with a question nobody judged is not stored: the next check asks again
     }
     waiting.clear();   // a form left unmatched (Stop, a failed match) is not stored
     return found || {};
   }
 
-  /**
-   * Keeps a check's step log ([{step, ms}], renderer/readiness-steps.js) with the job's stored check, so "Took" and the check log survive a restart. Only a check already stored gets one, for the
-   * same posting and time it was stored at; a malformed log is cut to at most 8 named steps. -> true when kept. Never throws.
-   * Why (14 Nov 2026, #4325, owner asked via AskUserQuestion: "Yes, store it (Recommended)").
-   */
-  async function keepSteps(url, steps) {
-    const clean = (Array.isArray(steps) ? steps : []).filter(item => /^[a-z]{1,20}$/.test(String(item?.step)) && Number.isFinite(Number(item?.ms))).slice(0, 8)
-      .map(({step, ms}) => ({step, ms: Math.min(600000, Math.max(0, Math.round(Number(ms))))}));
-    if (!clean.length) return false;
-    const record = await recordOf(url);
-    const entry = unpack(record?.apply_readiness);
-    if (!record?.id || !entry) { log('apply', 'readiness: no stored check to keep the steps with', {}); return false; }
-    const text = pack({...entry.read, steps: clean}, {posted: entry.posted, now: Number.isNaN(Date.parse(entry.at)) ? clock() : new Date(entry.at)});
-    if (!text) return false;
-    return call(storage, 'applications', 'update', {app_id: record.id, fields: {apply_readiness: text}}).then(() => true, error => { log('apply', 'readiness: the steps were not stored', {error: String(error?.message || error).slice(0, 200)}); return false; });
-  }
-
-  return {storedCheck, applyReadiness, settle, keepSteps, cancel: () => { cancels += 1; waiting.clear(); }};
+  return {storedCheck, applyReadiness, settle, heard: ({url, step}) => logs.move(String(url || ''), String(step || '')), cancel: () => { cancels += 1; waiting.clear(); }};
 }

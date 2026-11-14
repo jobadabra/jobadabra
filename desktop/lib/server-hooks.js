@@ -8,6 +8,8 @@ export let notify = () => {};
 export const setNotifier = fn => { notify = fn; };
 export let tellWindow = () => {};   // (channel, payload) -> the open window
 export const setWindowSignal = fn => { tellWindow = fn; };
+/** Hears each hidden-browser read step ({url, step}) as the reader starts it, beside the window: Apply readiness times its check's steps from these (lib/readiness-step-log.js). */
+export const readStepListeners = new Set();
 export const jobName = job => job ? `${job.title} · ${job.company}` : 'this job';
 export let tabsHandler = () => {};
 export let appliedHook = () => {};   // the app counts an application the extension saw submitted (lib/analytics.js)
