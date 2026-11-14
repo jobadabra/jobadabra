@@ -9,6 +9,7 @@ import {listReady} from './jobs-state.js';
 import {heldAfterList} from '../apply-readiness-read.js';
 import {readsQuestions} from '../apply-triage-mode.js';
 import {shared} from './shared.js';
+import {STEP_KEYS, addStep, beginCheck, endSteps, linesOf, moveStep, startSteps, stepText} from '../readiness-steps.js';
 
 // The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
 const reads = new Map();
@@ -49,13 +50,10 @@ const rememberTiming = seconds => { timings = [...timings, seconds].slice(-KEEP_
 //   stopping -> Stop is pressed: the same view says "Stopping…" and Stop is disabled until the read in flight has ended.
 //   matching -> every read is in: the simple forms' required questions are matched against Your details in ONE call (L2b); the words say so, Stop is gone (a call cannot be stopped), then done.
 //   done     -> back to idle; the rows' chips and the toast say what was read.
-const state = {picking: false, running: false, stopping: false, matching: false, total: 0, seen: 0, job: null, startedAt: 0, step: 'ready', stepAt: 0};
-// The words of each step of a read; a step the dialog does not know keeps the one before it.
-const STEP_WORDS = {ready: 'triageStepReady', opening: 'triageStepOpening', looking: 'triageStepLooking', pressing: 'triageStepPressing', landed: 'triageStepLanded', judging: 'triageStepLooking', planning: 'triageStepLooking'};
+const state = {picking: false, running: false, stopping: false, matching: false, total: 0, seen: 0, job: null, startedAt: 0, log: null};   // log: the job in flight's steps (readiness-steps.js)
 /** The read's step for the job in flight ({url, step} from the app, which sends the job's address back unchanged): its words and its own seconds start now. Another job's step, or one the dialog does not know, changes nothing. */
 export function heardStep({url, step} = {}) {
-  if (!state.running || !state.job || url !== state.job.url || !STEP_WORDS[step] || step === state.step) return false;
-  Object.assign(state, {step, stepAt: Date.now()});
+  if (!state.running || !state.job || url !== state.job.url || !moveStep(state.log, step, Date.now())) return false;
   paint();
   return true;
 }
@@ -66,6 +64,13 @@ let cancelled = false, ticker = null;   // one run at a time: a second Start whi
 const choiceNow = () => ({n: Math.max(1, Math.floor(Number($('triage-n')?.value) || 10)), isChecked: job => { const read = readOf(job.url); return read !== null && read.unreadable !== true; }});
 const busy = () => state.picking || state.running;
 const clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+/** One finished step of the job in flight: "✓ Reading the form · 5 s". */
+export function stepLine(words, seconds) {
+  const li = document.createElement('li');
+  li.textContent = stepText(words, seconds);
+  return li;
+}
 
 // One finished job on the list: who it was and the chip of what its read said (a read that gave nothing says "Not checked", like its row).
 function resultRow(job, read) {
@@ -95,8 +100,9 @@ function paint() {
   }
   const words = state.matching ? t('helperTail.triageMatching') : state.stopping ? t('pagesControlStatus.stoppingDots') : [t('pagesShortJobs.m203', {"seen": Math.min(state.seen + 1, state.total), "length": state.total}), state.job?.title, state.job?.company].filter(Boolean).join(' · ');
   set('triage-progress-text', el => { el.textContent = words; el.title = state.job?.title || ''; });
-  const stepWords = state.matching || state.stopping ? '' : t(`helperTail.${STEP_WORDS[state.step]}`);
-  set('triage-elapsed', el => { el.textContent = state.stopping ? '' : [stepWords, clock(Date.now() - (state.matching ? state.startedAt : state.stepAt))].filter(Boolean).join(' · '); });
+  const stepWords = state.matching || state.stopping || !state.log?.current ? '' : t(`helperTail.${STEP_KEYS[state.log.current]}`);
+  set('triage-elapsed', el => { el.textContent = state.stopping ? '' : [stepWords, clock(Date.now() - (state.matching ? state.startedAt : state.log?.at || Date.now()))].filter(Boolean).join(' · '); });
+  set('triage-steps', el => el.replaceChildren(...(state.matching || !state.log ? [] : linesOf(state.log.steps)).map(({words, seconds}) => stepLine(words, seconds))));
   set('triage-track', el => el.classList.toggle('is-sliding', state.seen === 0 || state.matching));
   set('triage-bar', el => { el.style.width = state.seen === 0 || state.matching ? '' : `${Math.round((state.seen / state.total) * 100)}%`; });
 }
@@ -107,7 +113,9 @@ async function matchChecked(jobs, match, rows) {
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null, startedAt: Date.now()});
   paint();
-  const found = await match(asked).catch(() => ({}));   // a failed match leaves every form as it was read, never a guess
+  const found = await match(asked).catch(error => { Promise.resolve(window.pilot?.uiLog?.('triage: the question match failed, the forms stay "answers not checked"', {forms: asked.length, error: String(error?.message || error).slice(0, 200)})).catch(() => {}); return null; });   // the log's own failure never replaces the fallback (Gitar on #4384)   // a failed match leaves every form as it was read, never a guess; the log says why (Gitar on #4373)
+  // Why (14 Nov 2026, Gitar on #4342, #4353, #4373): a "Matching" step is a measured time only when the one call served ONE form; a batch's call has no per-form seconds, so a batch adds no such step, never an invented share.
+  if (asked.length === 1 && found?.[asked[0].url]) addStep(asked[0].url, 'matching', Date.now() - state.startedAt);
   for (const {url} of asked) {
     if (!found?.[url]) continue;
     setRead(url, {...readOf(url), match: found[url]});
@@ -123,6 +131,7 @@ export async function runTriage(jobs, read, match = null) {
   if (state.running) return {read: 0, failed: 0};
   Object.assign(state, {picking: false, running: true, stopping: false, total: jobs.length, seen: 0, job: null});
   cancelled = false;
+  beginCheck();
   $('triage-results')?.replaceChildren();
   ticker = setInterval(paint, 1000);   // Why (#3519): one read takes about a minute; the seconds are the proof it is alive between its steps
   let done = 0, failed = 0;
@@ -130,10 +139,11 @@ export async function runTriage(jobs, read, match = null) {
   try {
     for (const job of jobs) {
       if (cancelled) break;
-      Object.assign(state, {job, startedAt: Date.now(), step: 'ready', stepAt: Date.now()});
+      Object.assign(state, {job, startedAt: Date.now(), log: startSteps(job.url, Date.now())});
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
+      endSteps(state.log, Date.now(), {keep: !!result && !result.stored});   // Why (14 Nov 2026, Gitar on #4342, #4349): a read Stop cut short, or a check taken from the store (its own log is stored with it), leaves the job's last log as it was
       if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { if (!result.stored) rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;
@@ -146,7 +156,7 @@ export async function runTriage(jobs, read, match = null) {
     if (match && !cancelled) await matchChecked(jobs, match, rows);   // Stop ends the check where it is: no match runs, so the simple forms read so far say "answers not checked" (apply-triage-mode.js), never "can apply automatically"
   } finally {
     clearInterval(ticker);
-    Object.assign(state, {running: false, stopping: false, matching: false, job: null});
+    Object.assign(state, {running: false, stopping: false, matching: false, job: null, log: null});
     paint();
   }
   return {read: done, failed};
