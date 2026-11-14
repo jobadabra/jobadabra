@@ -1,5 +1,6 @@
 """Is a same-inputs pair valid? The pure classification of each side's failed calls (the "Technical:" lines contract.detail writes), used by same_inputs_report.py.
 Why (14 Nov 2026, sa, owner's pair rule): a failed call whose text starts with the engine's clock-rule words (cli_base.CLOCK_UP) is the press clock's own drop, counted per side and flagged only when the sides differ by more than 3; any other failed call, or one with no text, makes the pair NOT VALID."""
+import difflib
 import json
 import os
 import re
@@ -91,3 +92,39 @@ def page_flags(reads, lines):
 def against_spread(difference, spread):
     """'inside' when a pair's difference in a count is no bigger than the person's own same-code spread (a control pair's difference), else 'outside'."""
     return 'inside' if abs(difference) <= abs(spread) else 'outside'
+
+
+def read_requests(folder):
+    """The request texts the shared layer kept (<work>/logs/req/<key>.req) -> {key: text}."""
+    found = {}
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if name.endswith('.req'):
+            with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as file:
+                found[name[:-4]] = file.read()
+    return found
+
+
+def request_differences(logs, sides, texts, limit=5, around=40):
+    """AI requests only one side asked live, each with the first place its text differs from the nearest request of the other side for the same step: [line, ...].
+    A request is 'alone' when its key is in no row of the other side. Nearest = highest difflib ratio among that side's requests of the same step.
+    Why (14 Nov 2026, sa): two same-code sides asked different AI keys and nothing said what differed in the request text."""
+    keys = {side: {row['url'] for row in logs.get(sides[side], []) if str(row.get('kind', '')).startswith('ai_') and row.get('url', '').startswith('ai-')} for side in ('a', 'b')}
+    steps = {side: {row['url']: row.get('step', '') for row in logs.get(sides[side], []) if row.get('url', '').startswith('ai-')} for side in ('a', 'b')}
+    out = []
+    for side, other in (('a', 'b'), ('b', 'a')):
+        for row in logs.get(sides[side], []):
+            key = row.get('url', '')
+            if row.get('kind') != 'ai_live' or key in keys[other] or key not in texts:
+                continue
+            near = [k for k in keys[other] if steps[other].get(k) == row.get('step', '') and k in texts]
+            if not near:
+                out.append(f'{side.upper()} asked live alone: step {row.get("step") or "?"} "{row.get("head", "")}": {other.upper()} has no request of that step')
+            else:
+                best = max(near, key=lambda k: difflib.SequenceMatcher(None, texts[key][:4000], texts[k][:4000]).quick_ratio())
+                here, there = texts[key], texts[best]
+                at = len(os.path.commonprefix([here, there]))
+                out.append(f'{side.upper()} asked live alone: step {row.get("step") or "?"} "{row.get("head", "")}": first difference at char {at}: '
+                           f'{side.upper()} ...{here[max(0, at - 10):at + around]!r} | {other.upper()} ...{there[max(0, at - 10):at + around]!r}')
+            if len(out) >= limit:
+                return out
+    return out
