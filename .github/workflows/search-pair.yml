@@ -291,8 +291,9 @@ jobs:
           files=(); for out in out/*--*; do files+=("$out/jobs.json" "$out/judged.json"); done
           if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py --pooled "$N" "${files[@]}" > out/judge.log 2>&1
           else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge-pooled "$ID" "${files[@]}" > out/judge.log 2>&1; fi
+          judge_rc=$?   # one log for both sides, out/judge.log (no copy per side folder: nothing of the pair reads a side's judge.log, and a copy would show each side the other side's calls)
+          if [ "$judge_rc" -ne 0 ]; then { echo "The pooled judge failed for ${{ matrix.person.id }} (exit $judge_rc): no side has verdicts, so no side counts. out/judge.log says why."; echo '```'; tail -n 5 out/judge.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
           for out in out/*--*; do
-            cp out/judge.log "$out/judge.log"   # each side's folder keeps the one judge log (the report reads judge.log per folder)
             python3 tools/persona-search/pair.py side "$out" "$(basename "$out" | sed -E 's/.*--(main|pr)-[0-9]+$/\1/')"
             printf '{"own_draft": %s}\n' "$OWN" > "$out/person.json"
           done

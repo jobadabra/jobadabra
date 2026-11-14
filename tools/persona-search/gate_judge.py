@@ -113,11 +113,22 @@ def judge_pooled(n, runs, asker=ask):
 def main(argv):
     if argv and argv[0] == '--pooled':   # --pooled <n> <jobs.json> <judged.json> [<jobs.json> <judged.json> ...]: the side comes from the folder name <person>--main-1 / <person>--pr-1
         n, files = argv[1], argv[2:]
+        if not files or len(files) % 2:
+            raise SystemExit('--pooled takes <jobs.json> <judged.json> pairs (Gitar on #4213: an odd list used to drop its last jobs file)')
+
+        def side(path):
+            found = re.search(r'--(main|pr)-\d+$', Path(path).resolve().parent.name)
+            if not found:
+                raise SystemExit(f'--pooled: the folder of {path} must be named <person>--main-<k> or <person>--pr-<k>')
+            return found.group(1)
         paths = list(zip(files[::2], files[1::2]))
-        side = lambda path: re.search(r'--(main|pr)-\d+$', Path(path).resolve().parent.name).group(1)   # noqa: E731
+        runs = [(side(jobs), json.loads(Path(jobs).read_text(encoding='utf-8'))) for jobs, _ in paths]   # every folder checked before any output folder or judge call
         for _, out in paths:
             Path(out).parent.mkdir(parents=True, exist_ok=True)
-        verdicts = judge_pooled(n, [(side(jobs), json.loads(Path(jobs).read_text(encoding='utf-8'))) for jobs, _ in paths])
+        try:
+            verdicts = judge_pooled(n, runs)
+        except Exception as error:   # Why (Gitar on #4213): one batch that fails now fails every side, so the log and the step summary say so; no judged.json is written for any side
+            raise SystemExit(f'the pooled judge failed ({type(error).__name__}: {str(error)[:300]}): no side has verdicts') from error
         for (jobs, out), verdict in zip(paths, verdicts):
             Path(out).write_text(json.dumps(verdict, ensure_ascii=False, indent=1), encoding='utf-8')
             print(f"p{n} {Path(jobs).resolve().parent.name}: judged once for both sides ({verdict['pooled']['distinct']} distinct jobs, {verdict['pooled']['shown_on_both']} shown on both); "

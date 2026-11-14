@@ -96,6 +96,35 @@ class OneVerdictPerJob(unittest.TestCase):
         self.assertEqual(verdict_of(main['rows'], 'Statistician'), verdict_of(pr['rows'], 'Statistician'))
         self.assertIn('2 shown on both', said.getvalue())
 
+    def test_a_failing_judge_writes_no_verdict_for_any_side_and_says_so(self):
+        """Gitar on #4213: one batch that fails now fails both sides, so it must be said, and neither side may keep a half result."""
+        def refuses(profile, jobs):
+            raise ValueError('the judge requires the local Codex relay')
+        real = gate_judge.judge_pooled
+        with tempfile.TemporaryDirectory() as folder:
+            paths = []
+            for name in ('b08--main-1', 'b08--pr-1'):
+                Path(folder, name).mkdir()
+                Path(folder, name, 'jobs.json').write_text(json.dumps(MAIN))
+                paths += [str(Path(folder, name, 'jobs.json')), str(Path(folder, name, 'judged.json'))]
+            with mock.patch.object(gate_judge, 'judge_pooled', lambda n, runs: real(n, runs, refuses)):
+                with self.assertRaises(SystemExit) as stopped:
+                    gate_judge.main(['--pooled', '1', *paths])
+            self.assertIn('no side has verdicts', str(stopped.exception))
+            self.assertFalse(list(Path(folder).glob('*/judged.json')))
+
+    def test_a_folder_name_that_is_no_side_and_an_odd_file_list_are_refused_before_anything_is_written(self):
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, 'b08--nope').mkdir()
+            Path(folder, 'b08--nope', 'jobs.json').write_text('[]')
+            with self.assertRaises(SystemExit) as stopped:
+                gate_judge.main(['--pooled', '1', str(Path(folder, 'b08--nope', 'jobs.json')), str(Path(folder, 'out', 'judged.json'))])
+            self.assertIn('<person>--main-<k>', str(stopped.exception))
+            self.assertFalse(Path(folder, 'out').exists(), 'no output folder is made for a refused list')
+            with self.assertRaises(SystemExit) as odd:
+                gate_judge.main(['--pooled', '1', 'a/jobs.json', 'a/judged.json', 'b/jobs.json'])
+            self.assertIn('pairs', str(odd.exception))
+
     def test_the_commands_prompt_ai_and_answers_are_the_ones_the_night_uses(self):
         """Nothing of the locked measure changes: the pooled call is gate_judge.judge() itself (its prompt, 3 answers, the majority), not a second judge."""
         source = (ROOT / 'tools' / 'persona-search' / 'gate_judge.py').read_text()
@@ -139,6 +168,8 @@ class TheTableAndTheWorkflow(unittest.TestCase):
         self.assertIn('profiles.py judge-pooled "$ID" "${files[@]}"', step)
         self.assertIsNone(re.search(r'gate_judge\.py "\$N" "\$out/jobs\.json"', step), 'a per-side judge call is the flip this guard exists for')
         self.assertIsNone(re.search(r'profiles\.py judge "\$ID"', step))
+        self.assertIn('judge_rc=$?', step, 'a failed pooled judge is said in the step summary')
+        self.assertNotIn('cp out/judge.log', step, 'one judge log for both sides: a copy per side would show each side the other side\'s calls')
 
 
 if __name__ == '__main__':
