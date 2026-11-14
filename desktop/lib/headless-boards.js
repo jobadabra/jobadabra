@@ -84,23 +84,27 @@ const line = (name, answer) => {
   return `Job boards: ${name}: ${answer?.why || 'not read'}`;
 };
 
+// CI only: a page the shared mark did not let this search open: skipped with its reason, or its jobs another CI search read today reused (nothing sent). -> true (the step goes on).
+async function skipTurn(item, name, verdict, {outcome, tee, skipped, pace}, total) {
+  // Why (Gitar on #4306, #4307): a skip or a reuse sends nothing: it neither spends MAX_BOARDS (pages opened) nor waits the gap, and is asked once a press
+  skipped.add(item.url);
+  pace.last = false;
+  const reused = verdict.cards ? await outcome({url: item.url, status: 200, html: '', title: '', final: item.url, step: 'headless', cards: verdict.cards}).catch(() => null) : null;
+  if (reused) { total.jobs += reused.jobs || 0; total.fits += reused.fits || 0; total.reused += 1; }
+  const by = verdict.from ? ` (${verdict.from})` : '';
+  tee(reused ? `Job boards: ${name}: ${reused.jobs ? `${reused.jobs} job(s)` : 'no job'} from the read another CI search made today${by}, nothing sent`
+    : verdict.cards ? `Job boards: ${name}: not read (no answer from the engine for the jobs another CI search read${by})` : `Job boards: ${name}: ${verdict.why || 'not read'}`);
+  return true;
+}
+
 // One board in its turn: today's share spent for it first, its page loaded, the engine's answer counted and said. -> false when the share is used (the step ends).
-async function readTurn(item, {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee, skipped, pace}, total, tried, begun) {
+async function readTurn(item, seams, total, tried, begun) {
+  const {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee, pace} = seams;
   const name = item.name || new URL(item.url).hostname;
   // CI only (tools/persona-search/beside.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)"): `ask` says whether this search may send the request or
   // reuses the jobs another CI search read on this page today (cards, nothing fetched); no answer is a skip. The app passes no `ask`: its path is unchanged.
   const verdict = ask ? await ask(item, signal).catch(() => ({go: false, why: 'the shared CI mark did not answer: not read'})) : {go: true};
-  if (!verdict.go) {
-    // Why (Gitar on #4306, #4307): a skip or a reuse sends nothing: it neither spends MAX_BOARDS (pages opened) nor waits the gap, and is asked once a press
-    skipped.add(item.url);
-    pace.last = false;
-    const reused = verdict.cards ? await outcome({url: item.url, status: 200, html: '', title: '', final: item.url, step: 'headless', cards: verdict.cards}).catch(() => null) : null;
-    if (reused) { total.jobs += reused.jobs || 0; total.fits += reused.fits || 0; total.reused += 1; }
-    const by = verdict.from ? ` (${verdict.from})` : '';
-    tee(reused ? `Job boards: ${name}: ${reused.jobs ? `${reused.jobs} job(s)` : 'no job'} from the read another CI search made today${by}, nothing sent`
-      : verdict.cards ? `Job boards: ${name}: not read (no answer from the engine for the jobs another CI search read${by})` : `Job boards: ${name}: ${verdict.why || 'not read'}`);
-    return true;
-  }
+  if (!verdict.go) return skipTurn(item, name, verdict, seams, total);
   if (!(await begin(item).catch(() => false))) { tee(WORDS.spent); return false; }   // spent before the page loads: a read killed mid-way is not repeated today
   tried.add(item.url);
   pace.last = true;
