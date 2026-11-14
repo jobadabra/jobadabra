@@ -189,3 +189,23 @@ test('a later, shorter pause never shortens a longer one (spec "One LinkedIn pau
   noteRun(settings, {state: 'limited', jobs: 0, at: '2026-11-13T12:00:00.000Z', pauseUntil: '2026-11-14T00:00:00.000Z'});
   assert.equal(pausedUntil(settings), Date.parse('2026-11-15T12:00:00.000Z'), 'a read\'s own 429 pause goes through the same rule');
 });
+
+// Owner, 14 Nov 2026 (asked via AskUserQuestion: "Measure, then Chrome-first (Recommended)"): how long a kept LinkedIn sign-in lasts before LinkedIn ends it, from our own states, never a value.
+test('a kept sign-in is stamped, and when LinkedIn ends it one line says how many hours it lasted', () => {
+  const settings = store(), kc = keychain(), lines = [];
+  const log = (...line) => lines.push(line);
+  const at = iso => ({now: () => Date.parse(iso)});
+  saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T08:00:00Z')});
+  assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z');
+  refreshSession(settings, good(), {keychain: kc, ...at('2026-11-11T08:00:00Z')});
+  assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z', 'the same sign-in copied again is no new sign-in');
+  noteRun(settings, {state: 'done', jobs: 3, at: '2026-11-11T09:00:00.000Z'}, {log});
+  assert.deepEqual(lines, [], 'a working read says nothing');
+  noteRun(settings, {state: 'signed-out', jobs: 0, at: '2026-11-12T20:00:00.000Z'}, {log});
+  assert.deepEqual(lines, [['linkedin-jobs', 'sign-in ended by LinkedIn', {why: 'signed-out', hours: 60}]]);
+  noteRun(settings, {state: 'signed-out', jobs: 0, at: '2026-11-12T21:00:00.000Z'}, {log});
+  assert.equal(lines.length, 1, 'told once per sign-in, not at every read after it');
+  refreshSession(settings, [cookie('li_at', 'AQEDAR-fake-new'), cookie('JSESSIONID', JSESSION)], {keychain: kc, ...at('2026-11-13T07:00:00Z')});
+  assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-13T07:00:00.000Z', 'a new sign-in starts the clock again');
+  assert.ok(!JSON.stringify(settings.settings()).includes(SECRET) && !JSON.stringify(lines).includes('AQEDAR'), 'no value in the settings or the line');
+});

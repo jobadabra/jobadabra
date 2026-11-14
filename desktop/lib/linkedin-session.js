@@ -3,6 +3,7 @@
 // the twin writes its own file, never the owner's), never the settings file, a log, the store or an upload; it is deleted when the switch goes off.
 // Settings: settings.linkedinJobs = {on, asked, declined} (not settings.linkedin: that is the profile import's, lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
+import {log as appLog} from './log.js';
 
 export const SERVICE = 'jobadabra.linkedin-jobs.session';
 export const ACCOUNT = 'linkedin-jobs';
@@ -32,11 +33,11 @@ export function cleanCookies(list) {
 }
 
 /** Store the copied session in the Keychain and turn the switch on. -> {ok: true} | {ok: false, error}; the value is never in the answer. */
-export function saveSession(storage, cookies, {keychain = realKeychain} = {}) {
+export function saveSession(storage, cookies, {keychain = realKeychain, now = Date.now} = {}) {
   const clean = cleanCookies(cookies);
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {on: true});   // Why (Gitar on #3914, 12 Nov 2026): a saved copy is no verdict, so `signin` stays: the next read that works after Needs you is what says "renewed"
+  save(storage, {on: true, keptAt: new Date(now()).toISOString()});   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026): a saved copy is no verdict, so `signin` stays, only its keep time is stamped: the next read that works after Needs you is what says "renewed"
   return {ok: true};
 }
 
@@ -45,12 +46,14 @@ export function saveSession(storage, cookies, {keychain = realKeychain} = {}) {
  * No usable li_at (the person signed out in Chrome): the copy is deleted, because it mirrors Chrome ("deleted ... on sign-out", spec Safety) and the step then says no-session.
  * `held` false (the extension no longer holds the LinkedIn grants, so it read nothing): the Keychain is left as it is. -> {ok, kept?}; the value is never in the answer.
  */
-export function refreshSession(storage, cookies, {keychain = realKeychain, held = true} = {}) {
+export function refreshSession(storage, cookies, {keychain = realKeychain, held = true, now = Date.now} = {}) {
   if (!state(storage).on) return {ok: false, error: 'LinkedIn jobs is off'};
   if (!held) return {ok: true, kept: true};
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); return {ok: true, signedOut: true}; }
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {keptAt: undefined}); return {ok: true, signedOut: true}; }
+  const before = readSession({keychain})?.li_at;   // compared in memory only: a copy of the same sign-in is no new sign-in
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
+  if (before !== clean.li_at) save(storage, {keptAt: new Date(now()).toISOString()});
   return {ok: true};
 }
 
@@ -62,9 +65,9 @@ export function readSession({keychain = realKeychain} = {}) {
 /** Switch off: the Keychain item goes, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
+  // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; keptAt cleared too, 14 Nov 2026; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
   // since the guest read runs while it is off (lib/linkedin-guest-on.js); a new yes starts with no old result, but LinkedIn's wait still holds.
-  save(storage, {on: false, last: undefined, signin: undefined, noticedAt: undefined});
+  save(storage, {on: false, last: undefined, signin: undefined, noticedAt: undefined, keptAt: undefined});
   // Why (Gitar on #4008, 13 Nov 2026): LinkedIn Easy Apply (lib/easy-apply-switch.js) uses this sign-in; its saved yes goes with it, so LinkedIn jobs back on never revives it (warnedAt stays: warned once).
   const easy = storage.settings().easyApply;
   if (easy?.on) storage.saveSettings({easyApply: {...easy, on: false}});
@@ -92,14 +95,24 @@ export function nextSignin(prev, verdict) {
  * The one writer of a run's result (the step's verdict): {state, jobs, at} kept as `last`; a 429 also keeps `pauseUntil` (an ISO time); the sign-in state moves by nextSignin. Never a cookie.
  * -> {event, why}: 'needs-you' (this press ended in Needs you: raise the notice, again at every such press), 'renewed' (Needs you, then a read that worked), or null; always null while the switch is off.
  */
-export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}) {
+export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}, {log = appLog} = {}) {
   const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = state(storage).on;
-  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live ? {signin: next} : {})});
+  const ended = live && ENDED_BY_LINKEDIN.has(String(verdict)) ? endedAfter(storage, at) : null;
+  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live ? {signin: next} : {}), ...(ended ? {keptAt: undefined} : {})});
+  if (ended) log('linkedin-jobs', 'sign-in ended by LinkedIn', {why: String(verdict), hours: ended.hours});
   if (!live) return {event: null, why: ''};
   if (verdict === 'done' && prev.state === 'needs-you') return {event: 'renewed', why: ''};
   const told = next.state === 'needs-you' && (NEEDS[verdict] || verdict === 'failed');
   return told ? {event: 'needs-you', why: next.why} : {event: null, why: ''};
 }
+// Why (14 Nov 2026, owner, asked via AskUserQuestion: "Measure, then Chrome-first (Recommended)", after "If the user needs to retype user and pass every few hours, or every few days
+// that's bad UX"): how long a kept sign-in lasts before LinkedIn ends it. `keptAt` is when the sign-in was kept (never a value); the first read that meets LinkedIn's sign-in page
+// or a check says the hours once, in the app's log, and clears it.
+const ENDED_BY_LINKEDIN = new Set(['signed-out', 'check']);
+const endedAfter = (storage, at) => {
+  const since = Date.parse(storage.settings().linkedinJobs?.keptAt || ''), end = Date.parse(at || '');
+  return Number.isFinite(since) && Number.isFinite(end) && end >= since ? {hours: Math.round((end - since) / 3600000)} : null;
+};
 /** When (epoch ms, 0 = never) the last "needs you" notice was raised (lib/linkedin-notice.js: one a day). */
 export const noticedAt = storage => Number(storage.settings().linkedinJobs?.noticedAt) || 0;
 /** Remember when a "needs you" notice was raised (`at` epoch ms), or forget it (`at` 0, after "renewed": the next failure is told at once). Writes only that key; the other linkedinJobs keys stay. */
