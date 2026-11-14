@@ -123,6 +123,11 @@ async function matchChecked(jobs, match, rows) {
   }
 }
 
+/** Each read job's step log is kept with its stored check (lib/apply-readiness.js keepSteps; a job with no stored check keeps none). Never throws. */
+async function keepLogs(urls) {
+  for (const url of urls) if (readOf(url) && keptSteps(url).length) await Promise.resolve(wired.keep(url, keptSteps(url))).catch(() => false);
+}
+
 /**
  * Runs the checks on the picked jobs, one at a time, through `read(job)` (the hidden-browser read). The dialog names the job in flight from the first moment, counts its seconds, and lists
  * each finished job's result as it lands; Stop ends before the next one. Resolves with {read, failed}: how many were read and how many could not be.
@@ -153,7 +158,7 @@ export async function runTriage(jobs, read, match = null) {
       paint();
     }
     if (match && !cancelled) await matchChecked(jobs, match, rows);   // Stop ends the check where it is: no match runs, so the simple forms read so far say "answers not checked" (apply-triage-mode.js), never "can apply automatically"
-    for (const url of rows.keys()) if (readOf(url) && keptSteps(url).length) await Promise.resolve(wired.keep(url, keptSteps(url))).catch(() => false);   // each read job's log is kept with its stored check (a job with no stored check keeps none)
+    await keepLogs([...rows.keys()]);
   } finally {
     clearInterval(ticker);
     Object.assign(state, {running: false, stopping: false, matching: false, job: null, log: null});
