@@ -22,7 +22,7 @@ def join(named, pick, hosts, free, start):
     new = [board for board in pick(named or []) if board['host'] not in hosts][:max(0, free)]
     if new:
         print(f"Job boards: also reading {', '.join(board['name'] for board in new)}, named for your search meanwhile", flush=True)
-    return [start(board) for board in new]
+    return [future for future in (start(board) for board in new) if future is not None]   # start gives None for a board another read took meanwhile
 
 
 def start(read_item, reads, hosts, order, by_turn, futures, submit):

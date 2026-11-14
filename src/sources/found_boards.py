@@ -37,7 +37,8 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
-_early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
+_early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched; an early read enters it when it STARTS, with none yet
+_claims = board_claims.Claims(_early, EARLY_MINUTES * 60)   # one early read per board per press (board_claims.py): the same registry, no second state
 
 
 def _terms(search, limit=MAX_SEARCHES, early=False):
@@ -329,7 +330,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     retry, dropped = (lambda entry: _retry_due(entry, now)), (dead if dead is not None else _dead())
     searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
     proposed = boards if boards is not None else board_ideas.ideas(search)
-    todo = board_claims.first(board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
+    todo = _claims.first(board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
                                       kept, since, handed=set(_early)), early)   # web=False: these only; a board read early in this run reads on; one early read per board (board_claims.py)
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
 
@@ -341,14 +342,14 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         if entry.get('rendered'):   # its lists are built by scripts: read in the headless browser from now on (_rendered)
             board = {**board, 'rendered': True}
         board = {**board, **({'charset': entry['charset']} if entry.get('charset') else {})}   # its search words in its own charset (board_paths.read)
-        handed = _early.pop(board['host'], None)
-        return (board, entry, handed[1] if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 and not early else {}, {}, proposed)
+        handed = None if early else _early.pop(board['host'], None)   # Why (14 Nov 2026, #4145): an early read leaves the registry to the full read, and to the claims it holds
+        return (board, entry, handed[1] if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 else {}, {}, proposed)
     reads = [item(board) for board in todo]
     late_pages = {} if early else {board['host']: page for board in todo if (page := late_reads.take('board', board['host'])) is not None}
     if late_pages:
         print(f"Job boards: {len(late_pages)} read after the last search's time taken from it, not read again", flush=True)
     hosts = {board['host'] for board in todo}
-    spares = list(enumerate(item(board) for board in (board_claims.free(board_yield.pick(spare, kept, retry, dropped, remember=False), early) if spare else [])
+    spares = list(enumerate(item(board) for board in (_claims.free(board_yield.pick(spare, kept, retry, dropped, remember=False), early) if spare else [])
                             if board['host'] not in hosts))
     taken, lock = {}, threading.Lock()   # taken: {a board's host: [(spare item, result)]} the boards read in place of it while it refused
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
@@ -390,7 +391,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                     break
                 _, spare_item = spares.pop(0)
                 order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
-            if not board_claims.take(spare_item[0], early):   # another early read took this board since the list was made
+            if not _claims.take(spare_item[0], early):   # another early read took this board since the list was made
                 continue
             print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
             result = one(spare_item)
@@ -460,8 +461,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST level for the AI calls of
     # each board, whose future maps to its item so it is kept as it ends (#3892)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
-    start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
-    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_claims.first(board_yield.pick(these, kept, retry, dropped, remember=False), early), hosts, workers - len(reads), start))
+    start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item)) if _claims.take(board, early) else None   # None: another read took it meanwhile
+    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: _claims.free(board_yield.pick(these, kept, retry, dropped, remember=False), early), hosts, workers - len(reads), start))
     # Why (#3892, 12 Nov 2026; rounds 13 Nov 2026, sa): boards are kept as they end (in the list's order a slow first board held the others' titles
     # and places past the AI's time), and a board's rounds are handed as each ends (`between`, board_rounds.py: a board with six rounds never ended
     # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
