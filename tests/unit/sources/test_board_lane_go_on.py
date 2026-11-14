@@ -263,7 +263,7 @@ class TheReadOnIsTheLanesReader(TheLaneReadsOnAfterTheFirstJobsStep):
         while not lane.groups.empty():
             groups.append(lane.groups.get_nowait())
         self.assertGreater(len(groups), 1, 'positive control: the slice\'s group and the read-on\'s')
-        self.assertEqual([views is None for _, views in groups], [False] * len(groups), 'every group carries the lane reader\'s views')
+        self.assertEqual([views is None for _, views, _waiting in groups], [False] * len(groups), 'every group carries the lane reader\'s views')
 
     test_the_boards_read_ends_with_its_slice_and_the_lane_reads_on_after_the_step = None   # the parent's own tests run once, in their class
     test_the_steps_last_title_batch_is_not_behind_a_read_on_call = None
