@@ -244,7 +244,7 @@ test('a menu whose AI pick takes 26.7 s (the plan path, measured) is still picke
     const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
     const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
     let skew = 0;
-    const now = () => Date.now() + skew;
+    const now = () => Date.now() + skew;   // clock: relative, combo-click compares it only with its own start (now() at the menu's first look)
     const choose = async seen => { await new Promise(resolve => setTimeout(resolve, 13000)); skew += 13700; return seen.choices.includes(SENTENCES.plain.want) ? SENTENCES.plain.want : ''; };
     const {picked, capped} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0, choose, now});
     assert.deepEqual({picked, capped, value: await p.evaluate(() => document.getElementById('rtw').value)}, {picked: true, capped: false, value: SENTENCES.plain.want});
