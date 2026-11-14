@@ -32,9 +32,9 @@ def listable(done):
 
 
 def settled(done, listed):
-    """Return answered URLs already listed or definitively refused; an unfinished outside-place answer may still become vague.
-    Why (#4219, 14 Nov 2026): settlement shares counts(), so an unfinished outside-place answer alone cannot settle a job."""
-    return counts(done.answered, listed=listed, ended=done.got is None)['settled']
+    """Return owed URLs already listed or definitively refused; an unfinished outside-place answer may still become vague.
+    Why (#4219 and #4332): settlement and reports share the full plan, including listed jobs or late refusals absent from answered."""
+    return counts(done.owed, done.unplaced, listed, ended=done.got is None)['settled']
 
 
 def _where(job):

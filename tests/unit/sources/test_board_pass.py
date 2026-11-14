@@ -86,3 +86,13 @@ class BoardPassAccounting(unittest.TestCase):
         second = board_pass.counts(self.jobs, self.jobs[1:])
         self.assertEqual((second['refused'], second['waiting']), (1, 2))
         self.assertEqual((first['waiting'], first['got']), (3, (0, 0)))
+
+    def test_settlement_and_reports_share_the_full_plan_after_partial_answers(self):
+        done = board_pass.cut(self.track)
+        self.assertEqual(done.answered, [], 'the result predates every answer')
+        listed = {self.jobs[0]['url'], 'https://other.example.test/unrelated'}
+        self.assertEqual(board_pass.settled(done, listed), [self.jobs[0]['url']])
+        self.assertEqual(board_pass.settled(done, listed), done.report(listed)[0])
+        feeds._triaged()['late role 0'] = False
+        self.assertEqual(board_pass.settled(done, listed), [self.jobs[0]['url'], self.jobs[1]['url']])
+        self.assertEqual(board_pass.settled(done, listed), done.report(listed)[0], 'late refusals also agree')
