@@ -80,6 +80,8 @@ def _isolated_save(path, items):
 
 # What a live-test twin may READ from the owner's real store (owner, 10 Oct 2026: "let the twin use the original app Gmail connection"): the Google
 # sign-in (read-only Gmail and Calendar), so the sign-up's confirmation mail can be found. Nothing else, and never a write (put/delete stay in the twin's file).
+# Narrower than the app's list (desktop/lib/keychain.js twinMayRead: also the job-site passwords, the Ready owner secret and the LinkedIn sign-in), on purpose: the engine reads
+# none of those in a twin run; the app reads them itself (Gitar on #4246). An engine reader of one adds it here.
 TWIN_MAY_READ = ('jobadabra.google.client-id', 'jobadabra.google.client-secret', 'jobadabra.google.refresh-token')
 
 

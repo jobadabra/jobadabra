@@ -20,6 +20,7 @@
 | Engine's Keychain (Telegram bot) | yes | none (`src/secret_store.py` `isolated()`) |
 | Google sign-in (read-only Gmail and Calendar: the sign-up's confirmation mail) | yes | **read from the real store** (owner, 10 Oct 2026), the three `jobadabra.google.*` items only (`TWIN_MAY_READ`); never written |
 | Ready to send (owner secret) | yes | **read from the real store** (owner, 17 Oct 2026), the one item `jobadabra.ready.owner_secret` (`desktop/lib/keychain.js` `TWIN_OWNER_SECRET`), read-only: the twin is the same install, so its Send tonight / Run now reach the site as the owner's. The night's forms are filled on the server, never submitted |
+| LinkedIn sign-in (Easy Apply proof run, plan 5/5, stopped before Send) | yes | **read from the real store** (owner, 14 Nov 2026: "Read my Keychain item"), the one item `jobadabra.linkedin-jobs.session`, read-only; a write is refused, so no LinkedIn session ever lands in the twin's file (`desktop/lib/keychain.js` `TWIN_LINKEDIN_SESSION`). Run Easy Apply in Background automation only: the twin never sends |
 | Real websites, Keychain site passwords, AI | yes | yes (real AI spend: say the cost) |
 | Keychain writes (a new site password, a Google sign-in) | yes | never: the twin's own file `isolated-secrets.json` in its folder (`desktop/lib/keychain.js`, `src/secret_store.py`); it reads that file first, then the real site passwords only |
 

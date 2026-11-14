@@ -119,6 +119,18 @@ test('the twin also reads the one Ready to send owner secret item, read-only, an
   assert.equal(keychain.read('jobadabra.ready.owner_secret', {env: {JOBADABRA_E2E: '1', JOBADABRA_USER_DATA: dir}, exec, platform: 'darwin'}), null);   // an e2e run never reaches it
 });
 
+// Owner, 14 Nov 2026 (asked via AskUserQuestion: "Read my Keychain item (Recommended)"): the twin's Easy Apply proof run reads the owner's LinkedIn sign-in, never writes or keeps one.
+test('the twin reads the LinkedIn sign-in item read-only, never writes it to its file on disk, and an e2e run never reaches it', async () => {
+  assert.equal((await import('../../../lib/linkedin-session.js')).SERVICE, keychain.TWIN_LINKEDIN_SESSION, 'the twin allows the very item the app uses');
+  const dir = folder(), env = {JOBADABRA_TWIN: '1', JOBADABRA_USER_DATA: dir};
+  const {calls, exec} = spy(() => '{"li_at":"fake"}\n');
+  assert.equal(keychain.read(keychain.TWIN_LINKEDIN_SESSION, {env, exec, platform: 'darwin'}), '{"li_at":"fake"}');
+  assert.equal(keychain.write(keychain.TWIN_LINKEDIN_SESSION, '{"li_at":"fresh"}', {account: 'linkedin-jobs', env, exec, platform: 'darwin'}), false);
+  assert.equal(fs.existsSync(path.join(dir, 'isolated-secrets.json')), false, 'no LinkedIn session in a file');
+  assert.ok(calls.every(call => call[1] === 'find-generic-password'), 'the real item is only read');
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', {env: {JOBADABRA_E2E: '1', JOBADABRA_USER_DATA: dir}, exec, platform: 'darwin'}), null);
+});
+
 test('a test that passes no fake exec can never change the real Keychain (24 Oct 2026: a Python test wrote the owner\'s Keychain)', () => {
   assert.throws(() => keychain.write('jobadabra.x.token', 'v', {env: {NODE_TEST_CONTEXT: 'child-v8'}, platform: 'darwin'}), /real Keychain/);
   assert.throws(() => keychain.remove('jobadabra.x.token', {env: {NODE_TEST_CONTEXT: 'child-v8'}, platform: 'darwin'}), /real Keychain/);

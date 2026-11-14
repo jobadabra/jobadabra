@@ -4,7 +4,7 @@
 // Settings: settings.linkedinJobs = {on, asked, declined} (not settings.linkedin: that is the profile import's, lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 
-export const SERVICE = 'jobadabra.linkedin-jobs.session';
+export const SERVICE = realKeychain.TWIN_LINKEDIN_SESSION;   // one owner of the item's name: lib/keychain.js (Gitar on #4246)
 export const ACCOUNT = 'linkedin-jobs';
 export const COOKIE_NAMES = ['li_at', 'JSESSIONID'];   // the only two LinkedIn cookies that carry the sign-in; nothing else is read, sent or kept
 export const MAX_ASKS = 2;                             // owner, 31 Oct 2026: "for the first, or for the second time"
