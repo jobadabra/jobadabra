@@ -37,6 +37,7 @@ async function watchUntilSignedIn(wanted) {
     }
   } finally { watching = false; }
   if (arrived(wanted) && wanted === 'jobs') toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+  else if (!arrived(wanted) && wanted === 'easy-apply') toast(t('pagesEasyApply.stayedOff'), '', NO_PLACE.itself, 'warn');   // Gitar on #4276: the copy never came, so say Easy Apply stayed off
   return arrived(wanted);
 }
 
