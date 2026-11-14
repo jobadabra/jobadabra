@@ -292,10 +292,6 @@ jobs:
           echo "end=$(date +%s)" >> times.env
           python3 tools/persona-search/pair.py minutes times.env "${{ matrix.person.id }}" out >> "$GITHUB_STEP_SUMMARY"
           if [ -s "out/claim-hold-${{ matrix.person.id }}.log" ]; then { echo "Claim not held all the way (searches may have run without room):"; echo '```'; cat "out/claim-hold-${{ matrix.person.id }}.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
-      - name: The boards the searches read, as names only, to the Scout (never red)
-        if: always()
-        # Why (13 Nov 2026, owner via sa: "Any install + our CI searches"): the person comes from each folder's name (a night person adds nothing); host names only, a failed post is a warning (tools/persona-search/report_boards.py).
-        run: python3 tools/persona-search/report_boards.py out --run "$GITHUB_RUN_ID" || true
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -334,6 +330,10 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/download-artifact@v7
         with: {pattern: 'search-pair-*', path: dl, merge-multiple: true}
+      # Why (14 Nov 2026, rp, owner via sa; run 43531622998 of search-profiles.yml): one share per run from the job that holds every artifact, not one per person (the site takes 30 shares an hour, jobadabra-web
+      # api/ci-boards.js PER_HOUR); the person comes from each folder's name (a night person adds nothing); host names only; its line (told, or NOT told and why) goes to the run's summary; never red.
+      - name: The boards the searches read, as names only, in ONE share to the Scout (never red)
+        run: python3 tools/persona-search/report_boards.py dl --run "$GITHUB_RUN_ID" || true
       - name: One comment, updated in place
         id: table
         env:

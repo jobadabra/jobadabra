@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest import mock
 
@@ -193,6 +194,66 @@ class ReportBoards(unittest.TestCase):
         self.assertEqual(report_boards.body({}, 'a b/c?9')['install'], 'ci-search-abc9')
         self.assertEqual(report_boards.body({}, '')['install'], 'ci-search-run')
         self.assertLessEqual(len(report_boards.body({}, 'x' * 99)['install']), len('ci-search-') + 40)
+
+
+class OneShareForARun(unittest.TestCase):
+    """14 Nov 2026 (rp, owner via sa: "let's fix what we learn"): run 43531622998 sent one share per SEARCH, 34 in one UTC hour against the site's 30 an hour (jobadabra-web api/ci-boards.js PER_HOUR), and the
+    last three came back 429 and were lost with only a warning. One share per run, sent by the job that holds every artifact; a share that does not arrive is a line in the run's summary."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        for name in ('GITHUB_ACTIONS', 'JOBADABRA_FIXTURE_DIR', 'GITHUB_STEP_SUMMARY'):
+            self.addCleanup(os.environ.pop, name, None)
+            os.environ.pop(name, None)
+
+    def artifacts(self, people):
+        """The folder the table job downloads: one `search-profile-<id>` folder per search, each reading the same board plus one of its own."""
+        root = Path(self.tmp.name) / 'results'
+        for index, person in enumerate(people):
+            run_folder(root, f'search-profile-{person}', [board('shared.example', local=index), board(f'own{index}.example', local=1)])
+        return root
+
+    def test_fifteen_searches_make_one_post_and_a_shared_board_keeps_its_highest_count_and_its_address(self):
+        people = ['b01', 'b02', 'b03', 'b04', 'b05', 'b06', 'b07', 'b08', 'b09', 'b10', 'c01', 'c02', 'c03', 'c04', 'c05']
+        root = self.artifacts(people)
+        template = 'https://shared.example/s?q={role}&l={place}'
+        (root / 'search-profile-b03' / 'found-boards.json').write_text(json.dumps({'boards': {'shared.example': {'search_url': template, 'state': 'ok'}}}), encoding='utf-8')
+        post = Post()
+        self.assertEqual(main([str(root), '--run', '77'], post, CI), 0)
+        self.assertEqual(len(post.requests), 1, 'one share for the whole run, never one per search')
+        items = json.loads(post.requests[0].data)['ci_boards']
+        shared = [item for item in items if item['host'] == 'shared.example']
+        self.assertEqual(sum(len(item['countries']) for item in shared), len({report_boards.country_of(person) for person in people}))
+        self.assertEqual(max(item['local'] for item in shared), 14, 'the highest count over the searches that named it')
+        self.assertTrue(any(item.get('url') == template for item in shared), 'the address one search read fine')
+
+    def test_a_429_is_a_line_in_the_summary_and_the_note_never_a_red_run(self):
+        root = self.artifacts(['b01', 'b02', 'c04'])
+        summary, note = Path(self.tmp.name) / 'summary.md', Path(self.tmp.name) / 'table.md'
+        note.write_text('| table |\n', encoding='utf-8')
+        env = {**CI, 'GITHUB_STEP_SUMMARY': str(summary)}
+        refused = urllib.error.HTTPError(report_boards.URL, 429, 'Too Many Requests', {}, None)
+        self.assertEqual(main([str(root), '--run', '77', '--note', str(note)], Post(error=refused), env), 0)
+        for text in (summary.read_text(encoding='utf-8'), note.read_text(encoding='utf-8')):
+            self.assertIn('CI boards NOT told to the Scout (HTTP 429)', text)
+            self.assertIn('3 search', text)
+
+    def test_a_share_that_arrived_is_one_line_too_and_a_run_with_nothing_to_tell_adds_none(self):
+        root = self.artifacts(['b01', 'b02'])
+        summary = Path(self.tmp.name) / 'summary.md'
+        main([str(root), '--run', '77'], Post(), {**CI, 'GITHUB_STEP_SUMMARY': str(summary)})
+        self.assertIn('CI boards told to the Scout:', summary.read_text(encoding='utf-8'))
+        empty, quiet = Path(self.tmp.name) / 'empty', Path(self.tmp.name) / 'quiet.md'
+        run_folder(empty, 'search-profile-b01', [board('x.example.com', kind='employer feed')])
+        main([str(empty), '--run', '77'], Post(), {**CI, 'GITHUB_STEP_SUMMARY': str(quiet)})
+        self.assertFalse(quiet.exists())
+
+    def test_the_summary_is_written_only_in_a_github_actions_run(self):
+        root = self.artifacts(['b01'])
+        summary = Path(self.tmp.name) / 'summary.md'
+        main([str(root), '--run', '77'], Post(), {'GITHUB_STEP_SUMMARY': str(summary)})
+        self.assertFalse(summary.exists())
 
 
 if __name__ == '__main__':
