@@ -49,3 +49,13 @@ test('the ask says an experience or skill claim the facts do not state is propos
   assert.ok(system.includes('experience or skill claim that'));
   assert.ok(system.includes('multi-language build pipelines'));
 });
+
+// Why (14 Nov 2026, Gitar on #4361): a saved Nationality was held as "demographic" on a live form; the ask must carry the example that says a saved fact answers it.
+test('the ask tells the model a personal-trait question a saved fact states (Nationality) is filled, not left empty', async () => {
+  let seen;
+  const client = { messages: { create: async (request) => { seen = request; return { stop_reason: 'end_turn', usage: {}, content: [{ type: 'text', text: JSON.stringify({ eligible: true, eligibility_note: '', answers: [] }) }] }; } } };
+  await answerForm({ PROFILE_TEXT: 'x', ANSWERS_TEXT: '', KNOWLEDGE_TEXT: '' }, { url: 'https://example.com/j', fields: [{ field: 'a', label: 'Name', type: 'text', required: true }], page_text: '' }, client);
+  const system = JSON.stringify(seen.system);
+  assert.ok(system.includes('Field \\"Nationality\\"'));
+  assert.ok(system.includes('a saved fact states is answered from that fact'));
+});

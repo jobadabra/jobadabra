@@ -31,6 +31,8 @@ export const FORMS = [
     expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board'}}},
   // The same question as the benchmark asked it (form 106): its own applicant's facts and a delivery-lead posting. Before #2213 the typed text never named the subject
   // (0/3: one off-topic sentence, two boxes left with reminders only). A later change to the written rule must keep this passing.
+  {id: 'nationality-saved', applicant: 'nationalitySaved', fields: [field('nationality', 'Nationality', 'select', ['Swiss', 'Spanish', 'German', 'Other', 'Decline to self-identify'])],
+    expect: {nationality: {value: ['Spanish']}}, rests: ['| Nationality | Spanish |']},
   {id: 'written-uncovered-live', applicant: 'sreNoBacklog', fields: [field('backlog', 'Describe a time you improved backlog cleanliness and Jira structure across multiple teams without adding unnecessary process overhead.', 'textarea')],
     // Why notMatch (benchmark runs 40451005110 + 40456280034, owner 27 Oct 2026, "Stop after the fact"): the typed draft is one sentence; any second sentence (the text before the
     // "• Add:" lines) is where the judge found claims beyond the facts ("so I know how to …", "both were shared standards that many teams used").
