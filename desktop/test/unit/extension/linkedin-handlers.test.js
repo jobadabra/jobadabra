@@ -210,9 +210,9 @@ test('at start a sign-in a press may still turn on stays: Chrome way waiting, or
   }
 });
 
-// Gitar on #4358: a Chrome sign-out leaves LinkedIn jobs on and its sign-in lost: the extension keeps its grants and a copy from a new Chrome sign-in is taken, so one fact has one owner.
-test('lost sign-in with LinkedIn jobs on: grants kept, a new Chrome copy is taken and brings it back to kept', () => {
-  const settings = store({linkedinJobs: {on: true, login: {state: 'lost', at: 1}}}), kc = keychain();
+// Gitar on #4358: a Chrome sign-out leaves LinkedIn jobs on: the extension keeps its grants and a copy from a new Chrome sign-in is taken, so one fact has one owner.
+test('signed out in Chrome with LinkedIn jobs on: grants kept, a new Chrome copy is taken and the sign-in is kept again', () => {
+  const settings = store({linkedinJobs: {on: true, login: {state: 'none', at: 1}}}), kc = keychain();
   const routes = linkedinRoutes(settings, {keychain: kc, refresh: {look: () => false, delivered: () => {}}});
   assert.equal(routes.pending().revoke, false, 'the grants stay: LinkedIn jobs is still on');
   assert.deepEqual(routes.refresh({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}), {ok: true});
@@ -222,12 +222,15 @@ test('lost sign-in with LinkedIn jobs on: grants kept, a new Chrome copy is take
   assert.equal(linkedinRoutes(off, {keychain: kc}).pending().revoke, true, 'nothing on, nothing kept, nothing waiting: the grants go');
 });
 
-// Gitar on #4365: opening the Chrome way over an older kept sign-in takes that sign-in out at once, so a wait that ends with no copy leaves no credential behind.
-test('Chrome way over an older kept sign-in: it goes now; no copy, the wait ends, nothing is left', () => {
+// Gitar on #4365, #4368: opening the Chrome way over a sign-in already kept (its item there) changes nothing: the press uses it, nothing is deleted, no wait is opened.
+test('Chrome way over a kept sign-in: it stays kept; with its item gone, the wait opens as usual', () => {
   const t0 = Date.parse('2026-11-14T08:00:00Z'), settings = store({linkedinJobs: {on: false, login: {state: 'kept', at: t0 - 600000}}}), kc = keychain();
   kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
   openSignin(settings, {keychain: kc, now: () => t0});
-  assert.equal(kc.items.has(SERVICE), false, 'the older item is out as the Chrome way opens');
-  assert.equal(settings.settings().linkedinJobs.login.state, 'waiting');
+  assert.equal(kc.items.has(SERVICE), true, 'the working sign-in is not deleted');
+  assert.equal(settings.settings().linkedinJobs.login.state, 'kept');
+  kc.items.clear();
+  openSignin(settings, {keychain: kc, now: () => t0});
+  assert.equal(settings.settings().linkedinJobs.login.state, 'waiting', 'the mark with no item is no sign-in: the Chrome way waits for a copy');
   assert.equal(linkedinView(settings, {keychain: kc, now: () => t0 + WANTED_MS + 1000}).login, 'none');
 });

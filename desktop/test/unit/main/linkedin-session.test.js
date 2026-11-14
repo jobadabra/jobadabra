@@ -222,7 +222,7 @@ test('Chrome signed out: the copy and the mark go together; an explicit "not sig
   saveSession(settings, good(), {keychain: kc});
   assert.deepEqual(refreshSession(settings, [], {keychain: kc}), {ok: true, signedOut: true});
   assert.equal(signedIn(settings), false, 'LinkedIn jobs still on, but nothing is kept');
-  assert.deepEqual([state(settings).on, settings.settings().linkedinJobs.login.state], [true, 'lost'], 'Gitar on #4358: the switch stays on, the sign-in is lost (inactive)');
+  assert.deepEqual([state(settings).on, settings.settings().linkedinJobs.login.state], [true, 'none'], 'Gitar on #4358: the switch stays on as before; the explicit none stops the older-install fallback from reading it as kept (its inactive look is 5/5)');
   settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, signin: {state: 'needs-you', why: 'check', empties: 0}}});
   saveSession(settings, good(), {keychain: kc});
   assert.equal(signinView(settings).why, 'check', 'a sign-in is no read verdict: a Needs you a read wrote waits for the next read that works ("renewed")');
@@ -263,12 +263,12 @@ test('LinkedIn jobs turns on with a kept sign-in only when the Keychain item is 
   assert.deepEqual(turnOnJobs(settings, {keychain: kc}), {ok: true});
 });
 
-// Gitar on #4365: the keep time stays when the same sign-in comes back after a loss (the item is read whatever the state).
-test('the same sign-in saved again keeps its keep time, also after a lost state', () => {
+// Gitar on #4365: the keep time stays when the same sign-in comes back (the item is read whatever the state).
+test('the same sign-in saved again keeps its keep time, in any state', () => {
   const settings = store({linkedinJobs: {on: true}}), kc = keychain();
   saveSession(settings, good(), {keychain: kc, now: () => 1000});
   const keptAt = settings.settings().linkedinJobs.keptAt;
-  settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, login: {state: 'lost', at: 2000}}});   // lost with the item still there (a copy that changed nothing)
+  settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, login: {state: 'waiting', at: 2000}}});   // a wait over an item that is still there (the same sign-in comes again)
   saveSession(settings, good(), {keychain: kc, now: () => 90000000});
   assert.equal(settings.settings().linkedinJobs.keptAt, keptAt);
 });

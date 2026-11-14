@@ -4,7 +4,7 @@
 // Design (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times. Once logged in, then we should share it for the other"; asked via
 // AskUserQuestion: "Yes, this design (Recommended)", then "Simplify, then reopen (Recommended)", then "One sign-in state (Recommended)" after Gitar's 3rd round on #4358): this module owns
 // LinkedIn jobs' switch (`on`) and the ONE sign-in state (`login`, the Keychain item beside it). States: none (nothing kept) → waiting (a Chrome way opened while off; WANTED_MS, then none
-// again) → kept (a copy kept: the window, the Chrome way, or a refresh) → lost (Chrome signed out while on: the switch stays on but inactive; a new copy brings it back to kept).
+// again) → kept (a copy kept: the window, the Chrome way, or a refresh). A Chrome sign-out deletes the item and writes none while the switch stays on, as before; "lost" (inactive on screen) is 5/5.
 // A sign-in turns no switch on: the press that asked turns its own switch on once `kept`. Switching off deletes the sign-in (none); Easy Apply uses it only through LinkedIn jobs
 // (lib/easy-apply-switch.js), so it goes off too. Settings: settings.linkedinJobs = {on, login: {state, at}, asked, declined, …} (not settings.linkedin: that is the profile import's,
 // lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
@@ -40,14 +40,14 @@ export function cleanCookies(list) {
 }
 
 export const WANTED_MS = SIGNIN_WAIT_MS;   // Why (Gitar on #4271, #4283): a Chrome way left unfinished must not let a much later copy in; it lasts exactly as long as the window's own watch
-/** The one sign-in state: {state: 'none' | 'waiting' | 'kept' | 'lost', at} (epoch ms it began). A wait older than WANTED_MS reads as none (no stamp outlives it); an older install with no `login` reads from `on`. */
+/** The one sign-in state: {state: 'none' | 'waiting' | 'kept', at} (epoch ms it began). A wait older than WANTED_MS reads as none (no stamp outlives it); an older install with no `login` reads from `on`. */
 export function loginOf(storage, {now = Date.now} = {}) {
   const mine = storage.settings().linkedinJobs || {}, login = mine.login;
   if (!login) return {state: linkedinSignedIn(storage.settings()) ? 'kept' : 'none', at: 0};
   const at = Number(login.at) || 0;
   return login.state === 'waiting' && now() - at > WANTED_MS ? {state: 'none', at: 0} : {state: login.state, at};
 }
-const moveLogin = (storage, state, {now = Date.now} = {}) => save(storage, {login: state === 'none' ? undefined : {state, at: now()}});
+const moveLogin = (storage, state, {now = Date.now} = {}) => save(storage, {login: {state, at: now()}});   // 'none' is written, not dropped: with no `login` an older install reads from `on`
 /** True while a sign-in is kept (renderer/apply-settings-model.js linkedinSignedIn, the one rule). */
 export const signedIn = storage => linkedinSignedIn(storage.settings());
 
@@ -72,10 +72,10 @@ export function saveSession(storage, cookies, {keychain = realKeychain, now = Da
  * `held` false (the extension no longer holds the LinkedIn grants, so it read nothing): the Keychain is left as it is. -> {ok, kept?}; the value is never in the answer.
  */
 export function refreshSession(storage, cookies, {keychain = realKeychain, held = true, now = Date.now} = {}) {
-  if (!takesCopy(storage, {now})) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271, #4358: kept, or lost while on (a Chrome sign-in again brings it back)
+  if (!takesCopy(storage, {now})) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271, #4358: kept, or the switch on after a Chrome sign-out (a Chrome sign-in again brings it back)
   if (!held) return {ok: true, kept: true};
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {login: {state: 'lost', at: now()}, keptAt: undefined}); return {ok: true, signedOut: true}; }   // owner, 14 Nov 2026: "Lost sign-in … The one on, is still on but inactive"; it never writes a switch
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); moveLogin(storage, 'none', {now}); save(storage, {keptAt: undefined}); return {ok: true, signedOut: true}; }   // the switch stays as it is, as on main; its "lost, inactive" look is 5/5 (owner, 14 Nov 2026: "Split the PR in two")
   return saveSession(storage, cookies, {keychain, now});
 }
 
@@ -84,15 +84,16 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
-/** True when a copy from the extension is taken: a Chrome way waits for it, a sign-in is kept, or one was lost while LinkedIn jobs is on. */
-export const takesCopy = (storage, deps = {}) => ['waiting', 'kept', 'lost'].includes(loginOf(storage, deps).state);
-/** True while the extension keeps its LinkedIn grants: LinkedIn jobs is on (even with its sign-in lost), or a Chrome way waits, or a sign-in is kept. */
-export const keepsGrants = (storage, deps = {}) => state(storage).on || takesCopy(storage, deps);
-/** The Chrome way was opened: while off, the sign-in waits for its copy (an older kept sign-in is no answer to this press: Gitar on #4350). While on, a copy is already taken. */
+/** True when a copy from the extension is taken: a Chrome way waits for it, a sign-in is kept, or LinkedIn jobs is on (a refresh, also after a Chrome sign-out). */
+export const takesCopy = (storage, deps = {}) => state(storage).on || loginOf(storage, deps).state !== 'none';
+/** True while the extension keeps its LinkedIn grants: the same rule as the copy it may send (LinkedIn jobs on, a Chrome way waiting, or a sign-in kept). */
+export const keepsGrants = takesCopy;
+/**
+ * The Chrome way was opened with LinkedIn jobs off: the sign-in waits for its copy (WANTED_MS). A sign-in already kept with its item there stays as it is: the press turns its switch on
+ * with it (owner, 14 Nov 2026: "he should never login 2 times"; Gitar on #4350, #4365: nothing is deleted, so an expired wait leaves no orphan and no working sign-in is lost).
+ */
 export const openSignin = (storage, deps = {}) => {
-  if (state(storage).on) return;
-  // Why (Gitar on #4365): an older kept sign-in is no answer to this press and must not outlive the wait as an orphan: the Chrome way takes over, so its item goes now and an expired wait leaves nothing.
-  if (loginOf(storage, deps).state === 'kept') (deps.keychain || realKeychain).remove(SERVICE, {account: ACCOUNT});
+  if (state(storage).on || (loginOf(storage, deps).state === 'kept' && readSession(deps))) return;
   moveLogin(storage, 'waiting', deps);
 };
 
@@ -110,7 +111,7 @@ export function forgetUnused(storage, {keychain = realKeychain, now = Date.now} 
 /** LinkedIn jobs on with the sign-in already kept (a Chrome copy that came after its window closed): nothing is asked. -> {ok: true} | {ok: false, reason: 'needs-signin'}. */
 export function turnOn(storage, {keychain = realKeychain} = {}) {
   if (loginOf(storage).state !== 'kept' || !readSession({keychain})) return {ok: false, reason: 'needs-signin'};   // Gitar on #4334: the state alone is no sign-in; the Keychain item must be there too
-  save(storage, {on: true, login: {state: 'kept', at: loginOf(storage).at}});
+  save(storage, {on: true});   // Gitar on #4368: the keep time `login.at` stays that of the copy
   return {ok: true};
 }
 

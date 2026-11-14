@@ -62,6 +62,7 @@ async function signInHere(wanted) {
 
 // The Chrome way, while the Chrome extension is connected: its own page in Chrome copies the sign-in Chrome already has. -> true when the sign-in arrived (waits for it, except a renewal).
 async function turnOnWithChrome(wanted) {
+  if (wanted !== 'renew' && view.signedIn && view.hasSession) return turnOnKept();   // owner, 14 Nov 2026: never sign in twice; a sign-in already kept is used, Chrome is not opened
   const opened = await window.pilot.linkedinJobsConnect().catch(() => null);
   if (!opened?.opened) { toast(...notOpened(opened)); return false; }
   toast(t('pagesFinalLabels.finishChrome'), t('pagesAuditPunct.a41'), NO_PLACE.itself, 'info');

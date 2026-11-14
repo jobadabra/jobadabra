@@ -11,9 +11,9 @@ import {easyApplyOn} from '../renderer/apply-settings-model.js';
 export function linkedinRoutes(storage, deps = {}) {
   const note = deps.refresh || realRefresh;
   return {
-    // Why (Gitar on #4276, #4283, #4358): a copy is taken only while the one sign-in state says so (lib/linkedin-session.js takesCopy: a Chrome way waiting, kept, or lost while on); it turns no switch on.
+    // Why (Gitar on #4276, #4283, #4358): a copy is taken only while the one sign-in state says so (lib/linkedin-session.js takesCopy: a Chrome way waiting, kept, or the switch on); it turns no switch on.
     session: payload => (session.takesCopy(storage, deps) ? session.saveSession(storage, payload?.cookies, deps) : {ok: false, error: 'Nobody asked for a LinkedIn sign-in'}),
-    // Why (#4312, Gitar on #4358): the grants follow the same state, so LinkedIn jobs on with its sign-in lost keeps them and a Chrome sign-in again comes back; a Find jobs press asks for a fresh copy.
+    // Why (#4312, Gitar on #4358): the grants follow the same state, so LinkedIn jobs on after a Chrome sign-out keeps them and a Chrome sign-in again comes back; a Find jobs press asks for a fresh copy.
     pending: () => ({revoke: !session.keepsGrants(storage, deps), refresh: session.state(storage).on && note.look()}),
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };

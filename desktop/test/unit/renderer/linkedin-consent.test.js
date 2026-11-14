@@ -54,8 +54,9 @@ test('each door turns LinkedIn jobs on: window in main, Chrome after its copy ar
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });
 
-// Gitar on #4350: an older kept sign-in is no answer to this press: with the Chrome way open and no copy coming, LinkedIn jobs stays off when the wait ends.
-test('the Chrome way with an older sign-in kept waits for its own copy: none came, LinkedIn jobs stays off', async t => {
+// Gitar on #4350, #4354: with the Chrome way open and no copy coming, LinkedIn jobs stays off when the wait ends, and the person is told.
+// Owner, 14 Nov 2026: a sign-in already kept is used instead (the `chrome` flag below), never a second sign-in.
+for (const kept of [false, true]) test(`the Chrome way ${kept ? 'with a sign-in already kept uses it, Chrome stays closed' : 'with none kept: no copy came, LinkedIn jobs stays off and says so'}`, async t => {
   const previousWindow = globalThis.window, previousDocument = globalThis.document;
   const node = Object.assign(new EventTarget(), {open: false, showModal() {
     this.open = true;
@@ -71,8 +72,10 @@ test('the Chrome way with an older sign-in kept waits for its own copy: none cam
     const handlers = new Map();
     registerLinkedinHandlers({DEMO: false, storage, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}, extensionSeen: () => true},
       deps: {keychain, isolated: true}, log: () => {}, openPage: async () => ({opened: true})});
-    keychain.write((await import('../../../lib/linkedin-session.js')).SERVICE, JSON.stringify({li_at: 'older-fake-session'}));   // an older sign-in, kept with the switch off (the press that made it never turned it on)
-    settings.linkedinJobs = {on: false, signedIn: true};
+    if (kept) {
+      keychain.write((await import('../../../lib/linkedin-session.js')).SERVICE, JSON.stringify({li_at: 'older-fake-session'}));   // a sign-in kept with the switch off (the press that made it never turned it on)
+      settings.linkedinJobs = {on: false, login: {state: 'kept', at: Date.now()}};
+    }
     let reads = 0, live = true;
     globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(), linkedinJobsOn: async () => handlers.get('linkedinJobsOn')(),
       linkedinJobsState: async () => {
@@ -85,10 +88,10 @@ test('the Chrome way with an older sign-in kept waits for its own copy: none cam
     consent.bindToast((title, body) => toasts.push(body));
     await consent.refreshLinkedin();
     assert.equal(consent.view.extension, true, 'the Chrome way can be picked');
-    assert.equal(await consent.openLinkedinConsent({mode: 'turn-on'}), false);
+    assert.equal(await consent.openLinkedinConsent({mode: 'turn-on'}), kept);
     live = false;
-    assert.equal(settings.linkedinJobs.on, false, 'the older sign-in did not turn LinkedIn jobs on');
-    assert.match(toasts.at(-1) || '', /Chrome sent no LinkedIn sign-in in time/, 'Gitar on #4354: the Chrome way says how it ended');
+    assert.equal(settings.linkedinJobs?.on === true, kept, kept ? 'the kept sign-in turned it on' : 'no copy came');
+    if (!kept) assert.match(toasts.at(-1) || '', /Chrome sent no LinkedIn sign-in in time/, 'Gitar on #4354: the Chrome way says how it ended');
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });
 
