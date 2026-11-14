@@ -112,7 +112,8 @@ def judge(pid, jobs_path, out):
 
 
 def target(relevant, eures):
-    """'meets' (N >= X), 'below' or 'not measured' (X = 0 or missing). Why (13 Nov 2026, sa: the Trello board's rule, owner: "Keep EURES as X, ours without it"): X = 0 is never a pass."""
+    """'meets' (N >= X), 'below' or 'not measured' (X = 0 or missing). Why (13 Nov 2026, sa: the Trello board's rule, owner: "Keep EURES as X, ours without it"): X = 0 is never a pass.
+    Why (14 Nov 2026, owner, asked via AskUserQuestion by sa, "How should the Trello cards be measured?": "With EURES on, 3 searches (Recommended)"): N, the card's number, is what a user gets: EURES on, the middle of three judged searches; "ours alone" (EURES off) stays on the card as a second line, written by hand on the Trello card by the measuring session (no code produces it); X and this rule are unchanged."""
     if not eures:
         return 'not measured'
     return 'meets' if relevant >= eures else 'below'
@@ -148,6 +149,7 @@ def row(pid, out):
     right = [r for r in rows if r.get('role') == 'yes' and r.get('place') == 'yes']
     press = json.loads((read('draw/presses.jsonl').splitlines() or ['{}'])[0])
     started = _when(press.get('started'))
+    result['eures_on'] = press.get('eures') == 'on'   # Why (14 Nov 2026, Gitar on #4170): the table says which series a row is from data (presses.jsonl "eures" is written by run.mjs --with-eures), never from a fixed string
     seen = [t for t in (_when(r.get('first_seen')) for r in right) if t]
     log = '\n'.join(read(f'draw/{f.name}') for f in sorted((out / 'draw').glob('run-*.log')))
     boards = BOARD.findall(log)
@@ -188,8 +190,10 @@ def table(folder, out):
     """The run's table (markdown) from every profile's row.json under the folder, in id order; also written as rows.json beside it."""
     rows = sorted((json.loads(f.read_text(encoding='utf-8')) for f in Path(folder).rglob('row.json')), key=lambda r: r['id'])
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
+    modes = {bool(r.get('eures_on')) for r in rows}
+    eures_word = 'on' if modes == {True} else 'mixed' if len(modes) > 1 else 'off'   # Why (14 Nov 2026, Gitar on #4170): one EURES-on row must not label a folder that also holds EURES-off rows
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
-             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
+             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES {eures_word}): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
              '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read | boards that gave jobs | boards with relevant | boards refused | boards cut at the end | time ran out for | broker waits p90 | AI calls refused | longest short AI call | engine | judge |',
              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
