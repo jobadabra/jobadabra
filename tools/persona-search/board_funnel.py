@@ -56,10 +56,14 @@ def board_round(rows, host_of_name, hit, sec):
 
 
 def job_stage(rows, stage):
-    """One per-job Stage line: a board's job goes to its host's row, any other reader's to the reader's; a job is told by its address (and title after `#`), whatever place a later pass added after ` | `."""
+    """One per-job Stage line: a board's job goes to its host's row ('jobs with no link' when the line's link is `-`), any other reader's to the reader's.
+    A job is told by its link, plus the title after `#` of a link-less one; a never_asked line adds ` | <place>` (job_stage.say_one), cut off so one job is one key
+    (a title holding ` | ` with no place on its line loses its tail: rare, and then it counts twice)."""
     link, rest = stage['url'], stage['rest']
-    key = host_of(link) if stage['reader'] == 'Job boards found' else stage['reader']
-    job = link + rest if '#' in link else link
+    key = (host_of(link) or 'jobs with no link') if stage['reader'] == 'Job boards found' else stage['reader']
+    job = link
+    if '#' in link:
+        job = link + (rest.rsplit(' | ', 1)[0] if stage['stage'] == 'never_asked' else rest)
     rows[key]['urls'].setdefault(job, []).append(stage['stage'])
     rows[key]['feed'] = stage['reader'] != 'Job boards found'
 
@@ -170,7 +174,7 @@ def table(folder):
     unknown = judged(folder, rows, data['names'])
     if not rows and not clock.get('end'):
         return 'No search log in this folder.\n'
-    out = ['| source | named by | got a place | read at (s) | words asked | jobs on pages | kept | kept, then dropped | never judged (waiting) | judged no | place out | no link of its own | shown | right |', '|' + '---|' * 14]
+    out = ['| source | named by | got a place | read at (s) | words asked | jobs on pages | kept | kept, then dropped | never judged (waiting) | judged no | place out | no link (never listed) | no link of its own | shown | right |', '|' + '---|' * 15]
     for key, row in sorted(rows.items(), key=lambda item: (-item[1]['right'], -item[1]['jobs'], item[0])):
         verdict = {url: [s for s in said if s != 'read'][-1:] or ['never_asked'] for url, said in row['urls'].items()}
         count = Counter(v[0] for v in verdict.values())
@@ -178,7 +182,7 @@ def table(folder):
         place = row['place'] or ('free feed, always read' if row['feed'] else 'read' if row['rounds'] else 'no reason logged')
         refused = f", {row['refused']} page(s) refused" if row['refused'] else ''
         out.append(f"| {key} | {', '.join(sorted(set(row['named']))) or '-'} | {place} | {'-' if row['first'] is None else row['first']} | {row['rounds'] or '-'}{refused} | "
-                   f"{row['jobs'] or '-'} | " + ' | '.join(str(count[s] or '-') for s in ('kept', 'dropped', 'never_asked', 'ai_no', 'placed_out')) + f" | {linkless(row['urls'])} | {row['shown'] or '-'} | {row['right'] or '-'} |")
+                   f"{row['jobs'] or '-'} | " + ' | '.join(str(count[s] or '-') for s in ('kept', 'dropped', 'never_asked', 'ai_no', 'placed_out', 'no_link')) + f" | {linkless(row['urls'])} | {row['shown'] or '-'} | {row['right'] or '-'} |")
     out += ['', f"Clocks: list arrived {seen(clock.get('list'))} · board read cut {seen(clock.get('cut'))} · last title pass {seen(clock.get('titles'))} · "
                 f"last place pass {seen(clock.get('places'))} · run end {seen(clock.get('end'))}"]
     if clock.get('later_free'):
