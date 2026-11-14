@@ -81,11 +81,12 @@ def untimed(_name):
     yield
 
 
-def said(board, term, place, started, jobs_before, found=None, how='', error=None, on_page=None, parts=None, link=None):
+def said(board, term, place, started, jobs_before, found=None, how='', error=None, on_page=None, parts=None, link=None, rest=''):
     """Print one round of `board`'s read: its words and place, the first page's jobs (`on_page`; the full read also reads the next pages, counted
     apart), how many of all are new to this read, how the page was read, and its seconds since `started` (time.monotonic(), the next pages
     included) with the parts that took them; `error` (an HTTP code or a short reason) when the page was not read; `link`: the search link asked.
-    Why (13 Nov 2026, sa): a board whose search page was the same whatever the words could not be told from the log, which never printed the link."""
+    Why (13 Nov 2026, sa): a board whose search page was the same whatever the words could not be told from the log, which never printed the link.
+    rest: why no next page was read (board_pages.more), '' when they were or none was asked."""
     asked = f"'{term}'" + (f" in {place}" if place else '')
     took = f'{time.monotonic() - started:.0f} s' + (parts.said() if parts else '') + (f' · {link}' if link else '')
     if error is not None:
@@ -96,7 +97,7 @@ def said(board, term, place, started, jobs_before, found=None, how='', error=Non
     first = len(found or []) if on_page is None else on_page
     pages = f" ({len(found or [])} with its next pages)" if len(found or []) > first else ''
     print(f"Job boards: {board.get('name') or board.get('host')} round {asked}: {first} job(s) on the page{pages}, {new} new"
-          f"{', ' + how if how else ''}, {took}", flush=True)
+          f"{', ' + how if how else ''}{', ' + rest if rest else ''}, {took}", flush=True)
 
 
 def page_seen(markup, url):
