@@ -203,10 +203,10 @@ test('a new press during the clean-up shares the ending window instead of openin
   assert.deepEqual(await again, await first);
 });
 
-// Gitar on #3080: the Keychain is macOS-only, so on Windows the window must not open at all (the person would type a password for nothing).
-test('without a Keychain (not macOS, not an isolated run) the window never opens, and the press says why', async () => {
+// Gitar on #3080: with no secret store the window must not open at all (the person would type a password for nothing). 14 Nov 2026: Windows keeps it in its Credential Manager.
+test('without a secret store (Linux, not an isolated run) the window never opens, and the press says why', async () => {
   let opened = 0;
-  const {handlers, lines} = app({platform: 'win32', signIn: async () => { opened++; return {ok: true, cookies: [li()]}; }});
+  const {handlers, lines} = app({platform: 'linux', signIn: async () => { opened++; return {ok: true, cookies: [li()]}; }});
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: false, reason: 'no-keychain'});
   assert.equal(opened, 0);
   assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'no-keychain'}]]);
@@ -305,4 +305,12 @@ test('a popup never navigates to another scheme, and one made after the sign-in 
   f.made[0].emit('closed'); await pending;
   const late = f.child(); f.made[0].webContents.emit('did-create-window', late, POPUP);
   assert.equal(late.destroyed, true);
+});
+
+// Owner, 14 Nov 2026: "Let's store them in Keychain/Credentials Manager (windows)... If once logged in with Linkedin for Linkedin jobs, it should remember and use that session/credentials for Easy Apply".
+test('on Windows the sign-in window opens and the session is kept in the computer\'s store, where Easy Apply reads it', async () => {
+  const {handlers, lines, keychain} = app({platform: 'win32', signIn: async () => ({ok: true, cookies: [li()]})});
+  assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: true});
+  assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'signed-in'}]]);
+  assert.equal(readSession({keychain}).li_at, SECRET);   // the one read LinkedIn jobs and Easy Apply share (lib/easy-apply-batch.js turn)
 });

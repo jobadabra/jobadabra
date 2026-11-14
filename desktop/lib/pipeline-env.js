@@ -29,14 +29,7 @@ const OVERRIDE = process.env.JOBADABRA_MODEL_OVERRIDE;   // set only by the end-
 export const MODELS = OVERRIDE ? {enrich: OVERRIDE, score: OVERRIDE, kit: OVERRIDE, insight: OVERRIDE, small: OVERRIDE}
   : {enrich: 'claude-haiku-5-5', score: 'claude-sonnet-5-5', kit: 'claude-sonnet-5-5', insight: 'claude-sonnet-5-5', small: 'claude-haiku-5-5'};
 
-// The packaged app's own Python (with the anthropic package), else the repo's virtualenv, else python3.
-// Windows keeps them elsewhere: python\python.exe (python-build-standalone) and .venv\Scripts\python.exe.
-export function python(platform = process.platform, exists = fs.existsSync) {
-  const candidates = platform === 'win32'
-    ? [path.join(REPO, 'python', 'python.exe'), path.join(REPO, '.venv', 'Scripts', 'python.exe')]
-    : [path.join(REPO, 'python', 'bin', 'python3'), path.join(REPO, '.venv', 'bin', 'python')];
-  return candidates.find(candidate => exists(candidate)) || (platform === 'win32' ? 'python' : 'python3');
-}
+export {python} from './engine-python.js';   // moved to its own file (lib/keychain.js starts it too); every importer keeps this name
 
 // First run: the user's config starts as the repo defaults (the wizard then rewrites search/preferences), without the defaults' notes ("_comment":
 // "Example search settings ..."): a note is never a setting, and one reached the fill prompt (lib/config-text.js). Every start (main.js) also cleans a copy

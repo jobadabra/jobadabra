@@ -113,13 +113,16 @@ test('a stuck report belongs to its own job only, never to another job at the sa
   assert.equal(apply.isFormOf('', posting), false);
 });
 
-test('the job-site password is read from the Keychain on a Mac only, and a missing one is null', async () => {
+test('the job-site password is read from the Mac\'s Keychain or Windows\' Credential Manager, and a missing one is null', async () => {
   const sitePassword = await import('../../../lib/site-password.js');
   const calls = [];
   assert.equal(sitePassword.read('darwin', (...args) => { calls.push(args); return 'Maple-Rocket-42\n'; }), 'Maple-Rocket-42');
   assert.deepEqual(calls[0].slice(0, 2), ['security', ['find-generic-password', '-a', 'jobadabra', '-s', 'jobadabra.sites.password', '-w']]);
   assert.equal(sitePassword.read('darwin', () => { throw new Error('not found'); }), null);
-  assert.equal(sitePassword.read('win32', () => 'x'), null);
+  const asked = [];
+  assert.equal(sitePassword.read('win32', (cmd, args) => { asked.push(args); return 'Maple-Rocket-42'; }), 'Maple-Rocket-42');   // 14 Nov 2026: through the engine's store
+  assert.deepEqual(asked[0], ['-m', 'src.secret_store', 'get', 'jobadabra.sites.password', '--account', 'jobadabra']);
+  assert.equal(sitePassword.read('linux', () => 'x'), null);   // no store there
 });
 
 test('the stage follows the tab: account with its site, then the form; the account site is kept', () => {

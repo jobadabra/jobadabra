@@ -153,3 +153,44 @@ test('an item an older install stored under job-pilotto.* is still read; the new
   assert.equal(keychain.legacyName('other.name', 'x'), null);
   assert.ok(!calls.some(call => call.includes('add-generic-password')));
 });
+
+// Owner, 14 Nov 2026: "jobadabra should not store the linkedin credentials on disk... Let's store them in Keychain/Credentials Manager (windows)".
+test('Windows keeps a secret in its Credential Manager through the engine\'s store: the secret on stdin, never on a command line or in a file', () => {
+  const calls = [];
+  const exec = (cmd, args, opts) => { calls.push({cmd, args, opts}); return args[2] === 'get' ? 'S3CRET-value' : ''; };
+  const at = {account: 'linkedin-jobs', env: {}, exec, platform: 'win32'};
+  assert.equal(keychain.write('jobadabra.linkedin-jobs.session', 'S3CRET-value', at), true);
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', at), 'S3CRET-value');
+  assert.equal(keychain.remove('jobadabra.linkedin-jobs.session', at), true);
+  assert.deepEqual(calls.map(call => call.args), ['put', 'get', 'delete'].map(verb => ['-m', 'src.secret_store', verb, 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs']));
+  for (const call of calls) {
+    assert.match(call.cmd, /python(\.exe)?$/);
+    assert.equal(call.opts.cwd, pipeline.REPO);
+    assert.equal(call.opts.windowsHide, true);   // no console window flashes
+    assert.ok(!JSON.stringify([call.cmd, call.args]).includes('S3CRET'), 'the secret never rides on the command line');
+  }
+  assert.equal(calls[0].opts.input, 'S3CRET-value');
+  assert.equal(keychain.write('jobadabra.x.token', 'v', {env: {}, exec, platform: 'win32'}), true);
+  assert.deepEqual(calls.at(-1).args.slice(-2), ['--account', 'jobadabra']);   // the Mac's default account
+  assert.equal(keychain.read('jobadabra.report.token', {env: {}, exec, platform: 'win32'}), 'S3CRET-value');
+  assert.deepEqual(calls.at(-1).args, ['-m', 'src.secret_store', 'get', 'jobadabra.report.token']);   // no account: any, as `security` without -a
+  assert.equal(keychain.hasStore('win32'), true);
+});
+
+test('Windows: a store that fails reads nothing and keeps nothing; a test or an isolated run never starts it; Linux has no store', () => {
+  const fails = () => { throw new Error('exit 1'); };
+  const at = {account: 'linkedin-jobs', env: {}, exec: fails, platform: 'win32'};
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', at), null);
+  assert.equal(keychain.write('jobadabra.linkedin-jobs.session', 'v', at), false);
+  assert.equal(keychain.remove('jobadabra.linkedin-jobs.session', at), false);
+  const {calls, exec} = spy(() => 'real-secret');
+  const dir = folder();
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', {env: {JOBADABRA_E2E: '1', JOBADABRA_USER_DATA: dir}, exec, platform: 'win32'}), null);
+  assert.equal(keychain.write('jobadabra.linkedin-jobs.session', 'v', {env: {JOBADABRA_E2E: '1', JOBADABRA_USER_DATA: dir}, exec, platform: 'win32'}), true);   // its own file
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', {env: {}, exec, platform: 'linux'}), null);
+  assert.equal(keychain.write('jobadabra.linkedin-jobs.session', 'v', {env: {}, exec, platform: 'linux'}), false);
+  assert.equal(keychain.hasStore('linux'), false);
+  assert.deepEqual(calls, []);
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', {env: {NODE_TEST_CONTEXT: 'child'}, platform: 'win32'}), null);   // the genuine exec under a test reads nothing
+  assert.throws(() => keychain.write('jobadabra.linkedin-jobs.session', 'v', {env: {NODE_TEST_CONTEXT: 'child'}, platform: 'win32'}), /real Keychain/);
+});

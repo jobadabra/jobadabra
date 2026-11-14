@@ -33,7 +33,9 @@ test('the list asks for attributes only, and a password is read for a plain host
   assert.deepEqual(calls[0].slice(0, 2), ['security', ['dump-keychain']]);   // no -d: no secrets in the list
   assert.equal(reveal('career2.successfactors.eu', 'darwin', () => 'Maple-Rocket-42\n'), 'Maple-Rocket-42');
   assert.equal(reveal('x; rm -rf /', 'darwin', () => 'nope'), null);
-  assert.equal(reveal('a.com', 'win32', () => 'nope'), null);
+  const asked = [];
+  assert.equal(reveal('a.com', 'win32', (cmd, args) => { asked.push(args); return 'Maple-Rocket-42'; }), 'Maple-Rocket-42');   // Windows: its Credential Manager (14 Nov 2026)
+  assert.deepEqual(asked[0].slice(0, 3), ['-m', 'src.secret_store', 'get']);
   assert.equal(list('win32').ok, false);
 });
 

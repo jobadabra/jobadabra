@@ -21,6 +21,10 @@ class FakeKeyring:
     def delete_password(self, service, user):
         self.items.pop((service, user))
 
+    def get_credential(self, service, user):
+        found = next(((who, value) for (name, who), value in self.items.items() if name == service and user in (None, who)), None)
+        return mock.Mock(username=found[0], password=found[1]) if found else None
+
 
 class RealStoreIsOffLimitsToTestsTest(unittest.TestCase):
     """24 Oct 2026: a test wrote jobadabra.google.scopes into the owner's real Keychain. An unmocked write or delete from a test now raises."""
@@ -149,6 +153,34 @@ class SecretStoreTest(unittest.TestCase):
             google.store('id', 'secret', 'refresh', production=False, github=False)
             self.assertEqual(google.credentials(), ('id', 'secret', 'refresh'))
         self.assertIn(('jobadabra.google.auth-at', 'igor'), store.items)
+
+
+class AppDoorTest(unittest.TestCase):
+    """Owner, 14 Nov 2026: "Let's store them in Keychain/Credentials Manager (windows)": desktop/lib/keychain.js keeps the app's secrets (the LinkedIn sign-in) through this door on Windows."""
+    def run_door(self, *argv, given=''):
+        import io
+        out = io.StringIO()
+        return secret_store.main(list(argv), stdin=io.StringIO(given), stdout=out), out.getvalue()
+
+    def test_the_secret_comes_on_stdin_and_goes_back_on_stdout(self):
+        store = FakeKeyring()
+        with mock.patch.object(sys, 'platform', 'win32'), mock.patch.object(secret_store, '_keyring', return_value=store):
+            self.assertEqual(self.run_door('put', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs', given='{"li_at": "x"}'), (0, ''))
+            self.assertEqual(store.items, {('jobadabra.linkedin-jobs.session', 'linkedin-jobs'): '{"li_at": "x"}'})
+            self.assertEqual(self.run_door('get', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs'), (0, '{"li_at": "x"}'))
+            self.assertEqual(self.run_door('get', 'jobadabra.linkedin-jobs.session'), (0, '{"li_at": "x"}'))   # no account: whichever holds it
+            self.assertEqual(self.run_door('delete', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs'), (0, ''))
+            self.assertEqual(store.items, {})
+            self.assertEqual(self.run_door('delete', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs'), (1, ''))
+            self.assertEqual(self.run_door('get', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs'), (1, ''))
+            self.assertEqual(self.run_door('put', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs', given=''), (1, ''))
+            self.assertEqual(store.items, {})
+
+    def test_a_test_never_reaches_the_real_store_through_the_door(self):
+        with mock.patch.object(sys, 'platform', 'win32'), mock.patch.dict('os.environ', {'JOBADABRA_E2E': '', 'JOBADABRA_TWIN': ''}):
+            self.assertEqual(self.run_door('get', 'jobadabra.linkedin-jobs.session'), (1, ''))
+            with self.assertRaisesRegex(RuntimeError, 'real secret store'):
+                self.run_door('put', 'jobadabra.linkedin-jobs.session', '--account', 'linkedin-jobs', given='v')
 
 
 class EndToEndIsolationTest(unittest.TestCase):
