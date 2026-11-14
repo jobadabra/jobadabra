@@ -21,7 +21,8 @@ MOVES = 'Moves: p3 right jobs 0 → pending (1 run a side, same minute, usual di
 class Gh:
     """A stub `gh`: check rows of the head, pair runs, comments and dispatches; `log` keeps the order of writes and dispatches."""
 
-    def __init__(self, rows=(), runs=(), comments='', compare=None, fail_dispatch=False):
+    def __init__(self, rows=(), runs=(), comments='', compare=None, fail_dispatch=False, old_row=None):
+        self.old_row = old_row   # the earlier measured head's row, answered for that sha only
         self.rows, self.runs, self.comments, self.compare, self.fail, self.log, self.dispatched, self.queries = [dict(r) for r in rows], list(runs), comments, compare or {}, fail_dispatch, [], [], []
 
     @staticmethod
@@ -45,6 +46,8 @@ class Gh:
             return '\n'.join(json.dumps(r) for r in self.runs)
         if 'filter=all' in text:
             return json.dumps([r.get('output[title]', '') for r in self.rows])
+        if '/check-runs?per_page=100&check_name=' in text and self.old_row and OLD in text:
+            return json.dumps([{**self.old_row, 'title': self.old_row.get('output[title]', ''), 'summary': ''}])
         if '/check-runs?per_page=100&check_name=' in text:
             return json.dumps([{**r, 'title': r.get('output[title]', ''), 'summary': r.get('output[summary]', '')} for r in self.rows[-1:]])   # the API's default filter: the latest of that name
         if '/issues/' in text and text.rstrip().endswith('--jq') or '/comments' in text:
@@ -171,6 +174,11 @@ class TheVerdictStartsThePair(unittest.TestCase):
         gh = Gh()
         self.assertEqual(play(gh, body='Moves: nothing (a log line only)\n'), 'nothing')
         self.assertEqual((gh.state(), gh.rows[-1]['conclusion'], gh.dispatched), ('nothing', 'success', []))
+        self.assertIn('no pair: the body says "a log line only"', gh.rows[-1]['output[title]'], 'the row quotes the author\'s why, never "nothing moves"')
+        measured = Gh()
+        play(measured, body='Moves: nothing (the owner counted three same-minute pairs: driver +26, +7, +6)\n')
+        self.assertIn('three same-minute pairs', measured.rows[-1]['output[title]'])
+        self.assertIn('not by a pair', measured.rows[-1]['output[summary]'])
 
     def test_no_people_named_asks_for_them_and_says_it_once(self):
         gh = Gh()
@@ -191,6 +199,17 @@ class ALaterHeadKeepsOrRemeasures(unittest.TestCase):
         self.assertEqual(play(gh, body='A change, numbers written.\n'), 'carry')
         self.assertEqual((gh.state(), gh.rows[-1]['conclusion'], gh.dispatched), ('carried', 'neutral', []))
         self.assertIn(OLD[:7], gh.rows[-1]['output[title]'])
+
+    def test_a_carried_red_stays_red_and_a_carried_yes_stays_neutral(self):
+        """A lost pair must not turn green by a docs-only push: the gate reads this row (found reading #4225, 14 Nov 2026)."""
+        compare = {'status': 'ahead', 'count': 1, 'files': ['docs/a.md']}
+        red = Gh(comments=self.META, compare=compare, old_row={'id': 1, 'conclusion': 'failure', 'output[title]': 'no proven gain: p3 15 → 17', 'external_id': 'search-pair:counted:3:9'})
+        self.assertEqual(play(red, body='A change.\n'), 'carry')
+        self.assertEqual(red.rows[-1]['conclusion'], 'failure')
+        self.assertIn('red stands', red.rows[-1]['output[summary]'])
+        green = Gh(comments=self.META, compare=compare, old_row={'id': 1, 'conclusion': 'success', 'output[title]': 'p3 5 → 20', 'external_id': 'search-pair:counted:3:9'})
+        self.assertEqual(play(green, body='A change.\n'), 'carry')
+        self.assertEqual(green.rows[-1]['conclusion'], 'neutral')
 
     def test_a_head_that_changed_a_search_file_measures_the_same_people_again(self):
         gh = Gh(comments=self.META, compare={'status': 'ahead', 'count': 1, 'files': ['src/press/rank.py']})

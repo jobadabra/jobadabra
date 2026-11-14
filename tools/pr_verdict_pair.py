@@ -50,6 +50,15 @@ def modules():
     return _load('pair', 'persona-search', 'pair.py'), _load('pair_row', 'persona-search', 'pair_row.py'), _load('pr_body_check', 'pr-body-check.py')
 
 
+def nothing_why(check, body):
+    """The `<why>` of the body's `Moves: nothing (<why>)` line, as the author wrote it ('' when there is none): the row quotes it, so it never claims more than the author said."""
+    for hit in check.MOVES.finditer(body or ''):
+        found = re.search(r'Moves:\**\s*nothing\b[^(]*\((.*)\)\s*$', hit.group(0).strip())
+        if found:
+            return found.group(1).strip()
+    return ''
+
+
 def says_nothing(check, body):
     """True when the body has a valid `Moves: nothing (<why>)` line (the shape tools/pr-body-check.py accepts)."""
     return any(re.search(r'Moves:\**\s*nothing\b', hit.group(0)) for hit in check.MOVES.finditer(body or ''))
@@ -117,7 +126,7 @@ def row_on(gh, repo, sha):
     """The head's "Search before/after" check run as pair_row reads it ({id, external_id, summary}), or {}: asked by exact name."""
     from urllib.parse import quote
     got = json.loads(gh('api', f'repos/{repo}/commits/{sha}/check-runs?per_page=100&check_name={quote(ROW)}', '--jq',
-                        '[.check_runs[] | {id, external_id, completed_at, summary: (.output.summary // ""), title: (.output.title // "")}]') or '[]')
+                        '[.check_runs[] | {id, external_id, completed_at, conclusion, summary: (.output.summary // ""), title: (.output.title // "")}]') or '[]')
     return got[0] if got else {}
 
 
@@ -179,8 +188,8 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
     command = f"gh workflow run search-pair.yml -R {repo} -f pr={number} -f people='{json.dumps(people)}'"
     shown = ', '.join(str(p) for p in people)
     events = {'carry': lambda: carried(gh, repo, last, sha),
-              'nothing': lambda: {'kind': 'opened', 'verdict': 'nothing', 'people': [], 'title': 'Moves says nothing moves: no pair',
-                                  'summary': 'The PR body says `Moves: nothing (<why>)` and names no person: there is nothing to measure. The claim is judged in the PR text.'},
+              'nothing': lambda: {'kind': 'opened', 'verdict': 'nothing', 'people': [], 'title': f'no pair: the body says "{nothing_why(check, body)}"'[:140],
+                                  'summary': f'The PR body says `Moves: nothing ({nothing_why(check, body)})` and names no person, so no pair is started for this commit. What the PR claims is judged in its text, not by a pair; the row says only what the author wrote.'},
               'needed': lambda: {'kind': 'opened', 'verdict': 'unnamed', 'people': [], 'title': "pair needed: name the people in the body's Moves lines",
                                  'summary': "Add `Moves: p<n> <number> <before> -> pending (1 run a side, same minute, usual difference <d>)` for each person this change reaches (one could-hurt person too); the pair starts by itself on the next check."},
               'capped': lambda: {'kind': 'opened', 'verdict': 'unnamed', 'people': [],   # no people: a row with the failed tries' people would read as the same row (pair_row._place)
@@ -205,8 +214,10 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
 
 
 def carried(gh, repo, last, sha):
-    """The `carried` event: the earlier head's row title, kept on this head."""
+    """The `carried` event: the earlier head's row title kept on this head, with the earlier row's verdict: a red stays red (a docs-only commit never turns a lost pair green), anything else is neutral.
+    Why (14 Nov 2026, found reading #4225 for sa's live proof of the gate): `carried` was always neutral, and the PR verdict now reads this row (tools/pr_verdict_pair_gate.py)."""
     was = row_on(gh, repo, last['sha'])
     title = (was.get('title') or 'its pair ran').strip()
-    return {'kind': 'carried', 'people': last.get('people', []), 'conclusion': 'neutral', 'title': f"ran on {last['sha'][:7]}, search files unchanged since: {title}"[:140],
-            'summary': f"The pair measured {last['sha'][:7]}; no file the search reads changed since, so its numbers stand for {sha[:7]} (the PR comment holds the table)."}
+    red = was.get('conclusion') == 'failure'
+    return {'kind': 'carried', 'people': last.get('people', []), 'conclusion': 'failure' if red else 'neutral', 'title': f"ran on {last['sha'][:7]}, search files unchanged since: {title}"[:140],
+            'summary': f"The pair measured {last['sha'][:7]}; no file the search reads changed since, so its {'red stands' if red else 'numbers stand'} for {sha[:7]} (the PR comment holds the table)."}
