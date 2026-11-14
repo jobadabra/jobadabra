@@ -112,6 +112,16 @@ test('links on the page\'s own path with letters in their ids are postings; a li
   } finally { await page.close(); }
 });
 
+test('a page whose own id is under another name still reads the same-path postings (Gitar on #4287)', async () => {
+  const page = await browser.newPage();   // fixtures/visits/letter-ids.html at an address holding its id under tk, not jk
+  try {
+    await page.goto(`${base}/letter-ids.html?tk=xyz98765`);
+    const linked = await call(page, 'extractPage');
+    const read = linked.cards.map(card => new URL(card.url).searchParams.get('jk'));
+    assert.ok(['def456', 'ghi789', 'jkl012'].every(id => read.includes(id)), `the postings are read: ${read}`);
+  } finally { await page.close(); }
+});
+
 test('the next page is the pager\'s next number, never the top menu\'s marked link', async () => {
   const {page} = await open('attribute');
   try {

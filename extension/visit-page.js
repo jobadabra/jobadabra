@@ -10,18 +10,20 @@ export function extractPage() {
   const seen = new Set();
   const cards = [];
   const here = new URL(location.href);
-  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids (idsOf: letters or digits, #3877) are all ids the page's own address
-  // already holds (the selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
-  // Why (#3877, Gitar on #4278 and #4282): an id is a value of 5+ word characters with a digit (abc123, 3870321), read only under the names the
-  // page's own address holds its ids in (jk): with 5-digit numbers only, a same-path posting with a letter id (/viewjob?jk=def456) read as the page; with
-  // every name, a date or tracking value (date=2024-11-12) made the selected job's header a posting. A page with no id of its own reads every name.
+  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path that points at the page's own job (the
+  // selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
+  // Why (#3877; Gitar on #4278, #4282, #4287: the third round on this line, so the rule is written as it is meant): a same-path link is the page
+  // only when it points at the page's own job: it carries one of the page's ids under the same name, and no other value under a name where the page
+  // has an id. An id is a value of 5+ word characters with a digit (abc123, 3870321; a page number or a tracking word is not). On a page with no id of
+  // its own, a link naming an id is a posting. Before: only 5-digit numbers were ids, so /viewjob?jk=def456 read as the page.
   const ID = /^(?=.*\d)[\w-]{5,}$/;
-  const idNames = new Set([...here.searchParams].filter(([, value]) => ID.test(value)).map(([name]) => name));
-  const idsOf = url => [...url.searchParams].filter(([name, value]) => (!idNames.size || idNames.has(name)) && ID.test(value)).map(([, value]) => value);
-  const ownIds = new Set(idsOf(here));
+  const pageIds = [...here.searchParams].filter(([, value]) => ID.test(value));
   const toPage = href => {
     const at = new URL(href);
-    return at.host === here.host && at.pathname === here.pathname && idsOf(at).every(value => ownIds.has(value));
+    if (at.host !== here.host || at.pathname !== here.pathname) return false;
+    if (!pageIds.length) return ![...at.searchParams.values()].some(value => ID.test(value));
+    return pageIds.some(([name, value]) => at.searchParams.get(name) === value)
+      && pageIds.every(([name, value]) => !at.searchParams.has(name) || at.searchParams.get(name) === value);
   };
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.href.split('#')[0];
