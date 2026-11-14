@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 
 from .. import store
+from ..ai import slots
 from . import ats
 
 MAX_EMPLOYERS = 5   # feeds read per press for LinkedIn's jobs, inside the LinkedIn lane and before its read cut (src/sources/read_budget.py deadline)
@@ -25,24 +26,22 @@ def _company(name):
     return store.identity(name, 'x').split('|', 1)[0]
 
 
-def feed_of(company, index):
-    """(ats, slug) of this employer's feed in the index, or None: the exact name first, then one name the other's first words (store._same_company)."""
+def feeds_of(company, index):
+    """[(ats, slug)] of this employer's feeds in the index, each once: the exact name's first, then those where one name is the other's first words (store._same_company).
+    Why (lg, 14 Nov 2026): GetYourGuide's index feed lacked its Zurich SRE job, which the Scout's newer Ashby feed listed; reading only the first feed missed it."""
     key = _company(company)
-    if not key:
-        return None
-    named = [(entry, _company(entry.get('company'))) for entry in index or () if entry.get('ats') and (entry.get('slug') or entry.get('board'))]
-    for exact in (True, False):
-        for entry, other in named:
-            if other and (other == key if exact else store._same_company(key, other)):
-                return entry['ats'], entry.get('slug') or entry['board']
-    return None
+    named = [(entry, _company(entry.get('company'))) for entry in index or () if key and entry.get('ats') and (entry.get('slug') or entry.get('board'))]
+    found = [(entry['ats'], entry.get('slug') or entry['board']) for exact in (True, False) for entry, other in named
+             if other and (other == key if exact else store._same_company(key, other))]
+    return list(dict.fromkeys(found))
 
 
 def _places_agree(listed, feed_place):
     """LinkedIn's place and the feed job's agree: the same city (store.cities_agree), or the feed job is open worldwide or names the country LinkedIn listed it in
     ('Home based - Worldwide', 'Remote, Switzerland' for 'Zurich, Zurich, Switzerland'). Why (Gitar on #4257): a remote job open to one region only ('Remote - USA') is
     another posting, so any other remote place keeps LinkedIn's copy."""
-    if store.cities_agree(listed, feed_place):
+    city = store._city(listed)
+    if store.cities_agree(listed, feed_place) or (city and re.search(rf'\b{re.escape(city)}\b', store.folded(feed_place))):   # 'In office - Zürich' names Zurich
         return True
     feed, last = store.folded(feed_place), store.folded((listed or '').rsplit(',', 1)[-1]).strip() if ',' in (listed or '') else ''
     country = last if len(last) > 2 else ''   # Why (Gitar on #4259): 'New York, NY' ends in a state code, not a country
@@ -52,8 +51,8 @@ def _places_agree(listed, feed_place):
 def match(job, feed):
     """The one feed job that is this LinkedIn job, or None (none, or two that could be it)."""
     key = store.identity(job.get('company'), job.get('title'))
-    same = [each for each in feed if key and store.identity(job.get('company'), each.get('title')) == key and _places_agree(job.get('location'), each.get('location'))]
-    return same[0] if len(same) == 1 else None
+    same = {each['url']: each for each in feed if key and store.identity(job.get('company'), each.get('title')) == key and _places_agree(job.get('location'), each.get('location'))}
+    return next(iter(same.values())) if len(same) == 1 else None   # one posting a careers page lists twice is one job (keyed by its address)
 
 
 def _past_cut():
@@ -71,7 +70,7 @@ def guess_feed(company, probe=None):
     if not tries:
         return []
     with ThreadPoolExecutor(max_workers=min(9, len(tries))) as pool:
-        found = list(pool.map(lambda each: probe(*each), tries))
+        found = list(pool.map(slots.carry(lambda each: probe(*each)), tries))   # the caller's level rides into the pool (src/ai/slots.py carry)
     return [(system, slug, list(jobs)) for (system, slug), jobs in zip(tries, found) if jobs]
 
 
@@ -89,10 +88,14 @@ def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, pas
     fetch = fetch or ats.probe   # looked up at call time, so a test's stand-in is the one read; None for a feed that is down, empty or changed shape
     feeds, out, moved, guessed = {}, [], 0, {}
     for job in jobs:
-        where = feed_of(job.get('company'), index)
-        if where and where not in feeds and len(feeds) < limit and not past_cut():   # Why (Gitar on #4257): a slow feed never costs the LinkedIn jobs already read
-            feeds[where] = list(fetch(*where) or ())   # a feed that is down or changed shape: LinkedIn's copy stays
-        hit = match(job, feeds.get(where) or ()) if where else None
+        known, hit = feeds_of(job.get('company'), index), None
+        for where in known:
+            if where not in feeds and len(feeds) < limit and not past_cut():   # Why (Gitar on #4257, #4264): a slow feed never costs the LinkedIn jobs already read, whichever of the employer's feeds it is
+                feeds[where] = list(fetch(*where) or ())   # a feed that is down or changed shape: LinkedIn's copy stays
+            hit = match(job, feeds.get(where) or ())
+            if hit:
+                break
+        where = known[0] if known else None
         name = _company(job.get('company'))
         if not where and name and name not in guessed and len(guessed) < guesses and not past_cut():
             guessed[name] = guess(job.get('company'))
@@ -120,19 +123,41 @@ def _local_feeds(db):
 
 def from_row(jobs):
     """LinkedIn's reader row's pass (src/sources/reader_rows.py): prefer_employer over the downloaded index (unless JOBADABRA_DISABLE=index) and this Mac's feeds; a
-    guessed feed that held a job joins feed_sources, so every later press reads it; the jobs still on LinkedIn go to the Scout as board employers."""
+    guessed feed that held a job joins feed_sources, so every later press reads it; the jobs still on LinkedIn go to the Scout (LinkedIn employers).
+    Why (Gitar on #4264): the bookkeeping writes (feed_sources, board_employers.json) never cost the jobs already read: a locked or read-only file is logged and skipped."""
     from .. import employer_index, paths, scout_core
     from ..features import disabled
     from . import board_employers
     index = [] if disabled('index') else employer_index.load()
-    with closing(store.connect(paths.jobs_db())) as db:
-        scout_core.ensure_tables(db)
-        index = [*index, *_local_feeds(db)]
+    try:
+        with closing(store.connect(paths.jobs_db())) as db:
+            scout_core.ensure_tables(db)
+            index = [*index, *_local_feeds(db)]
+    except (OSError, sqlite3.Error) as problem:
+        print(f'LinkedIn: this Mac\'s own feeds not read ({type(problem).__name__}): the index only', flush=True)
 
     def register(company, system, slug):
-        with closing(store.connect(paths.jobs_db())) as db:
-            db.execute("INSERT OR IGNORE INTO feed_sources (ats, slug, company, tier, quality, added_at) VALUES (?, ?, ?, 'Standard', NULL, ?)",
-                       (system, slug, (company or '')[:120], scout_core.now()))
-            db.commit()
+        try:
+            with closing(store.connect(paths.jobs_db())) as db:
+                db.execute("INSERT OR IGNORE INTO feed_sources (ats, slug, company, tier, quality, added_at) VALUES (?, ?, ?, 'Standard', NULL, ?)",
+                           (system, slug, (company or '')[:120], scout_core.now().isoformat(timespec='seconds')))
+                db.commit()
+        except (OSError, sqlite3.Error) as problem:
+            print(f'LinkedIn: {company}\'s feed not kept ({type(problem).__name__}): looked up again next press', flush=True)
+            return
         print(f'LinkedIn: {company} runs on {system} ({slug}): read by every search from now on', flush=True)
-    return prefer_employer(jobs, index, register=register, note=lambda left: board_employers.note(left, 'LinkedIn'))
+
+    def note(left):
+        try:
+            board_employers.note(left, 'LinkedIn')
+        except OSError as problem:
+            print(f'LinkedIn: employers not handed to the Scout ({type(problem).__name__})', flush=True)
+    return prefer_employer(jobs, index, register=register, note=note)
+
+
+def linkedin_jobs(search):
+    """LinkedIn's reader row (src/sources/reader_rows.py): LinkedIn's public search (src/sources/linkedin_guest.py read), then from_row. The row's one seam
+    (tests/unit/sources/test_reader_rows.py SEAMS), so a press test that stubs LinkedIn stubs its employer lookups too."""
+    from . import linkedin_guest
+    jobs = linkedin_guest.read(search)
+    return from_row(jobs) if jobs else jobs
