@@ -45,6 +45,9 @@ class Beside:
         self.search, self.groups, self.matched, self.done, self.shortened, self.failed = search, queue.SimpleQueue(), [], threading.Event(), False, False
         self.notify = None   # set by the thread that owns the job cache while it waits elsewhere (the first-jobs step's hub): called after each group
         self.arrived = threading.Event()   # Why (13 Nov 2026, eo): wakes the job-cache thread's wait for the full board read when a group lands (boards_ahead.Ahead.wait)
+        self.step_ended = threading.Event()   # set when the first-jobs step ends (daily_search); a lane with no such step (no `listed`) goes on at once
+        if listed is None:
+            self.step_ended.set()
         end = read_budget.run_end()
         reads = [(self._known, None)] + ([(lambda _wait: self._listed(listed), slots.FIRST)] if listed else [])   # the slice's boards kept its FIRST level
         self.count, self.left = threading.Lock(), len(reads)
@@ -59,7 +62,7 @@ class Beside:
         """One group source of the lane in its own thread, to the lane's end; the lane is done when every source has ended."""
         from ..ai import batch_scope, slots
         try:
-            with slots.in_lane(end), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
+            with slots.in_lane(end, self.step_ended.wait), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
                 read(wait)
             if caught:   # the full board read reads them
                 print(f'Warning: job boards first skipped: {caught.reason}: {caught.error}', flush=True)
