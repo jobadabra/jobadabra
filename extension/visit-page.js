@@ -12,16 +12,16 @@ export function extractPage() {
   const here = new URL(location.href);
   // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path that points at the page's own job (the
   // selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
-  // Why (#3877; Gitar on #4278, #4282, #4287: the third round on this line, so the rule is written as it is meant): a same-path link is the page
-  // only when it points at the page's own job: it carries one of the page's ids under the same name, and no other value under a name where the page
-  // has an id. An id is a value of 5+ word characters with a digit (abc123, 3870321; a page number or a tracking word is not). On a page with no id of
-  // its own, a link naming an id is a posting. Before: only 5-digit numbers were ids, so /viewjob?jk=def456 read as the page.
+  // Why (#3877; Gitar on #4278, #4282, #4287, #4291: one rule for the five shapes): a same-path link is the page when it names no id (the next page,
+  // a sort), or when it carries one of the page's ids under the same name and no other value under a name where the page has an id (its header
+  // link, with a tracking value added); any other same-path link naming an id is a posting. An id is a value of 5+ word characters with a digit
+  // (abc123, 3870321; a page number is not). Before: only 5-digit numbers were ids, so /viewjob?jk=def456 read as the page.
   const ID = /^(?=.*\d)[\w-]{5,}$/;
   const pageIds = [...here.searchParams].filter(([, value]) => ID.test(value));
   const toPage = href => {
     const at = new URL(href);
     if (at.host !== here.host || at.pathname !== here.pathname) return false;
-    if (!pageIds.length) return ![...at.searchParams.values()].some(value => ID.test(value));
+    if (![...at.searchParams.values()].some(value => ID.test(value))) return true;
     return pageIds.some(([name, value]) => at.searchParams.get(name) === value)
       && pageIds.every(([name, value]) => !at.searchParams.has(name) || at.searchParams.get(name) === value);
   };

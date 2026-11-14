@@ -122,6 +122,20 @@ test('a page whose own id is under another name still reads the same-path postin
   } finally { await page.close(); }
 });
 
+test('on a page with an id, a same-path link naming no id is the page; one naming another id is a posting (Gitar on #4291)', async () => {
+  // Gitar on #4291: at /viewjob?jk=abc123, the next-page link /viewjob?start=10 named none of the page's ids and read as a posting
+  const page = await browser.newPage();
+  try {
+    await page.goto(`${base}/letter-ids.html?jk=abc123`);
+    await page.evaluate(`history.replaceState(null, '', '/viewjob?jk=abc123');
+      document.body.insertAdjacentHTML('afterbegin', '<a href="/viewjob?start=10">Stand-in next page</a><a href="/viewjob?jk=def456&amp;start=10">Stand-in posting def456</a>')`);
+    const linked = await call(page, 'extractPage');
+    const read = linked.cards.map(card => new URL(card.url).search);
+    assert.ok(!read.includes('?start=10'), `the id-less link is the page: ${read}`);
+    assert.ok(read.includes('?jk=def456&start=10'), `the link naming def456 is a posting (positive control): ${read}`);
+  } finally { await page.close(); }
+});
+
 test('the next page is the pager\'s next number, never the top menu\'s marked link', async () => {
   const {page} = await open('attribute');
   try {
