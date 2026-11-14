@@ -101,6 +101,35 @@ class OneHostOneRead(unittest.TestCase):
         self.assertEqual(len(first), 1)
         self.assertEqual([j['url'] for j in second], ['https://b2.example/job/2'], 'the second read goes on to its other boards')
 
+    def test_a_board_that_got_no_lane_is_read_by_the_next_read_of_the_search(self):
+        """Gitar, #4268: the claim was kept when no lane came before the cut, so no read of the search read that host."""
+        read = []
+
+        def read_board(b, search, fetch, route=None, early=False, show=None):
+            read.append(b['host'])
+            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
+        with mock.patch.object(found_boards, 'read_board', read_board):
+            with mock.patch.object(board_lanes.Lanes, 'take', return_value=False):   # the first read's lanes stay full to its cut
+                found_boards.read(SEARCH, [board(1)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+            jobs = found_boards.read(SEARCH, [board(1)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+        self.assertEqual(read, ['b1.example'], 'the read that got no lane read nothing and gave the host back')
+        self.assertEqual([j['url'] for j in jobs], ['https://b1.example/job/1'])
+
+    def test_a_spare_board_another_read_took_is_not_read_in_place_of_a_refusing_one(self):
+        """Gitar, #4268: only the first board's host was claimed, so a spare read in its place could be a host another read of the search had."""
+        read = []
+
+        def read_board(b, search, fetch, route=None, early=False, show=None):
+            read.append(b['host'])
+            if b['host'] == 'b1.example':
+                return [], 'browser', None   # refuses: a spare is read in its place
+            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
+        with mock.patch.object(found_boards, 'read_board', read_board):
+            found_boards.read(SEARCH, [board(2)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')
+            found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2), board(3)], is_relevant=list, dead=set(),
+                              fetch=lambda url: '')
+        self.assertEqual(read, ['b2.example', 'b1.example', 'b3.example'], 'b2.example read once; the next spare reads in its place')
+
     def test_a_new_search_reads_the_board_again(self):
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'))
         self.assertFalse(board_lanes.claim('delucru.md', 'read 2'))

@@ -372,7 +372,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         lane = read_item[0]['host']
         if not board_lanes.claim(lane, lanes):   # another of this search's reads took this host (one host, one read; L36)
             return TAKEN
-        if not lanes.take(lane, wait=read_budget.seconds_left(cut)):   # no lane came before the cut: read by the next search
+        if not lanes.take(lane, wait=read_budget.seconds_left(cut)):   # no lane came before the cut: another read of the search may read it
+            board_lanes.release(lane, lanes)   # Why (Gitar, #4268): a kept claim left the host read by no one
             return NO_LANE
         try:
             first = result = one(read_item, lane)
@@ -382,6 +383,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                     if not spares:
                         break
                     _, spare_item = spares.pop(0)
+                    if not board_lanes.claim(spare_item[0]['host'], lanes):   # another read of the search has it (Gitar, #4268)
+                        continue
                     order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
                 print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
                 result = one(spare_item, lane)

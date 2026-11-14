@@ -108,3 +108,11 @@ def claim(host, read):
     if open_ is None:
         return True
     return open_['hosts'].setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)
+
+
+def release(host, read):
+    """`read` gives `host` back: it got no lane and read nothing, so another read of the search may read it (Gitar, #4268)."""
+    from .. import time_budget
+    open_ = time_budget.CLOCK.board_hosts
+    if open_ is not None and open_['hosts'].get(host) is read:
+        del open_['hosts'][host]
