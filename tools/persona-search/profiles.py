@@ -112,7 +112,8 @@ def judge(pid, jobs_path, out):
 
 
 def target(relevant, eures):
-    """'meets' (N >= X), 'below' or 'not measured' (X = 0 or missing). Why (13 Nov 2026, sa: the Trello board's rule, owner: "Keep EURES as X, ours without it"): X = 0 is never a pass."""
+    """'meets' (N >= X), 'below' or 'not measured' (X = 0 or missing). Why (13 Nov 2026, sa: the Trello board's rule, owner: "Keep EURES as X, ours without it"): X = 0 is never a pass.
+    Why (14 Nov 2026, owner, asked via AskUserQuestion by sa, "How should the Trello cards be measured?": "With EURES on, 3 searches (Recommended)"): N, the card's number, is what a user gets: EURES on, the middle of three judged searches; "ours alone" (EURES off) stays on the card as a second line; X and this rule are unchanged."""
     if not eures:
         return 'not measured'
     return 'meets' if relevant >= eures else 'below'
@@ -189,7 +190,7 @@ def table(folder, out):
     rows = sorted((json.loads(f.read_text(encoding='utf-8')) for f in Path(folder).rglob('row.json')), key=lambda r: r['id'])
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
-             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
+             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES off unless the run name says "EURES on"): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
              '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read | boards that gave jobs | boards with relevant | boards refused | boards cut at the end | time ran out for | broker waits p90 | AI calls refused | longest short AI call | engine | judge |',
              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
