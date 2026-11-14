@@ -43,8 +43,9 @@ export function addStep(url, step, ms) {
 /** One finished step as the person reads it: "✓ Reading the form · 8 s" (the dialog's list; the one place the line's shape lives). */
 export const stepText = (words, seconds) => `✓ ${words} · ${t('helperTail.triageStepSeconds', {count: seconds})}`;
 
-/**
- * A job's last check in this window as lines: [{words, seconds}] in order; a step this app does not name is left out. [] when this window has not checked the job.
- */
-export const stepsOf = url => (kept.get(url) || []).filter(item => STEP_KEYS[item?.step])
+/** A log's finished steps as the lines the person reads: [{words, seconds}] in order; a step this app does not name is left out (the dialog and the drawer both draw from this). */
+export const linesOf = steps => (Array.isArray(steps) ? steps : []).filter(item => STEP_KEYS[item?.step])
   .map(({step, ms}) => ({words: t(`helperTail.${STEP_KEYS[step]}`), seconds: Math.round(Math.max(0, Number(ms) || 0) / 1000)}));
+
+/** A job's last check in this window as lines ([] when this window has not checked the job). */
+export const stepsOf = url => linesOf(kept.get(url));
