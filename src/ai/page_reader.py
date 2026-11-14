@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from .. import budget_tape
 from . import cost, decide, engine, page_words
+from ..notion.dedupe import unlinked_job_url
 from ..sources import ats, careers, posting_text
 from .models import SMALL_MODEL
 
@@ -90,13 +91,15 @@ def clean(items, base):
         own = careers.registrable(parts.hostname) == home or bool(page_words.host_named([parts.hostname]).get((parts.hostname or '').lower()))
         if parts.scheme not in ('http', 'https') or not own:
             link = base
+        place = re.sub(r'\s+', ' ', str(item.get('place') or '')).strip()[:80]
+        employer = re.sub(r'\s+', ' ', str(item.get('employer') or '')).strip()[:120]
+        if link == base:   # no link of its own: its own address all the same, or the board read and the store keep one job of the page (dedupe.unlinked_job_url)
+            link = unlinked_job_url(base, title, employer, place)
         key = (title.lower(), link)
         if key in seen:
             continue
         seen.add(key)
-        place = re.sub(r'\s+', ' ', str(item.get('place') or '')).strip()[:80]
-        jobs.append({**ats._job(link if link != base else f'{base}#{len(jobs) + 1}', title, place, link if link != base else base, '', '', False),
-                     'employer': re.sub(r'\s+', ' ', str(item.get('employer') or '')).strip()[:120]})
+        jobs.append({**ats._job(link, title, place, link, '', '', False), 'employer': employer})
     return jobs
 
 

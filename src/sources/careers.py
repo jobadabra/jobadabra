@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ats, careers_parse, host_pace, page_bytes
 from . import board_round_log
+from ..notion.dedupe import unlinked_job_url
 from ..press import stage
 
 MAX_BYTES = 2_000_000
@@ -216,7 +217,8 @@ def listed(items, url, markup, fetch_page):
             with stage.guard('employer sites: listed job'):   # a job page that fails: the listing's own title and place
                 found = jsonld_jobs(fetch_page(link), link, job_page=True)[:1] or [job_from_page(fetch_page(link), link)]
         job = (found or [None])[0] or {}
-        return ats._job(link or f'{url}#{title}', title, job.get('location') or listing.get('location', ''), link or url,
+        address = link or unlinked_job_url(url, title)   # a card with no link keeps its own address (src/notion/dedupe.py)
+        return ats._job(address, title, job.get('location') or listing.get('location', ''), address,
                         job.get('date_posted', ''), job.get('description', ''), bool(job.get('remote')))
     with ThreadPoolExecutor(max_workers=6) as pool:
         return list(pool.map(slots.carry(one), items[:40]))

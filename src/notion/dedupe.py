@@ -9,7 +9,22 @@ TRACKING = ('utm_', 'gh_src', 'gh_jid_src', 'ref', 'source', 'src', 'lever-sourc
 STATUS_RANK = {'Applied': 5, 'Dismissed': 4, 'Open': 3, 'Not seen': 2, 'Closed': 1}
 
 
-IDENTIFYING_FRAGMENT = re.compile(r'/|^jp-|[0-9a-f]{12,}', re.I)
+IDENTIFYING_FRAGMENT = re.compile(r'/|^jp-|^job:|[0-9a-f]{12,}', re.I)
+UNLINKED = 'job:'   # the fragment that names a job a listing page shows with no link of its own (unlinked_job_url)
+
+
+def unlinked_job_url(page, title, employer='', place=''):
+    """The address of a job a listing page names with no link of its own: the page, then `#job:` and the employer's, the title's and the card's place words.
+    Invariants: the same job read again (the next search, the list in another order) gets the same address, so the store's key finds its row; two
+    jobs on one page differ unless the page names one employer's same title in the same place twice (one ad listed again, as store.same_job counts a
+    board's repeats; same_job also tells two cities apart). `place` is the card's own, never the page's: a staffing site or an aggregator is the
+    "employer" of every card, so one title in two towns is two jobs (sa, 14 Nov 2026);
+    normalize_url keeps the fragment (IDENTIFYING_FRAGMENT `^job:`).
+    Why (xc, 14 Nov 2026): the AI page reader gave such jobs the page as their address and a layout `page#title`, whose fragment normalize_url
+    dropped; the board read keeps one job per address and the store one row per key, so a page's 22 jobs became 1 (LisboaUX) and 54 kept became 8 new
+    (a Madrid electrician board). A position number (#1, #2) is not an identity: the list reorders between searches."""
+    words = '-'.join(re.findall(r'\w+', f'{employer or ""} {title or ""} {place or ""}'.lower()))
+    return f"{urlsplit(page)._replace(fragment='').geturl()}#{UNLINKED}{words}"
 
 
 def normalize_url(url):
