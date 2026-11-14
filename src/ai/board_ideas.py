@@ -18,6 +18,7 @@ from .providers.contract import detail, reason
 
 MODEL = MAIN_MODEL   # owner, 18 Oct 2026: the main model; the small one proposed 2 useless boards for a Dutch controller
 MAX_BOARDS = 16
+NAMED_MAX = 4   # boards named with no search link that one search reads through their own search (each is a home page and a form beside the others, inside the same deadline)
 OWN_READERS = ('jobs.ch', 'swissdevjobs.ch', 'techtree.io')   # src/sources/boards.py BOARDS: read by their own code, never twice
 PORTALS = ('linkedin.', 'indeed.', 'glassdoor.', 'levels.fyi')  # src/sources/visits_portals.py: offered as visits already
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['boards'], 'properties': {'boards': {'type': 'array', 'items': {
@@ -183,11 +184,12 @@ LEAD = 3    # boards each side gives in turn after the first six
 FIRST = budget.value('first_jobs.SLICE_BOARDS')   # the boards a first search reads at once; one owner: press/budget.json (src/first_jobs.py reads the same row)
 
 
-def ideas(search, client=None, field=True):
+def ideas(search, client=None, field=True, named=False):
     """The boards Claude proposed for this search's countries, roles and kinds (validated), one call per slice of countries, each from the
     cache when it already answered for it; [] without AI or without countries. field: also the field's own boards (_field), sharing the
     head of the list with the countries' boards (_in_turn); off for the central scout, whose search mixes several kinds of work for one
-    country (src/scout_boards.py)."""
+    country (src/scout_boards.py). named: also the boards the proposal named with no search link (homes), after the others and at most NAMED_MAX, each read only through its
+    own plain GET search (src/sources/board_home_search.py): the person's full read asks for them (found_boards.read), the first-jobs slice and the Scout do not."""
     asked = slices(search)
     if not asked:
         return []
@@ -198,6 +200,8 @@ def ideas(search, client=None, field=True):
     country = []   # the slices in their order; a call that failed leaves the others
     for found in own:
         country.extend(board for board in found or [] if board['host'] not in {b['host'] for b in country})
+    if named:   # Why (14 Nov 2026, owner "yes" via sa): 100 of 107 boards named without a link were never read; by hand, 4 of them gave Sofia +12-15 right jobs
+        country.extend([board for board in homes(search) if board['host'] not in {b['host'] for b in country}][:NAMED_MAX])
     return _merge(_in_turn(country, [board for board in of_field if board['host'] not in {b['host'] for b in country}]), shared)
 
 

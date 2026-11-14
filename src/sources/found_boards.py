@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_home_search, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -328,7 +328,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     by_turn = []   # each board's jobs at its turn in the list (its replacements after it): the list's order at the end, whichever board ended first
     retry, dropped = (lambda entry: _retry_due(entry, now)), (dead if dead is not None else _dead())
     searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
-    proposed = boards if boards is not None else board_ideas.ideas(search)
+    proposed = boards if boards is not None else board_ideas.ideas(search, named=True)
     todo = board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
                                       kept, since, handed=set(_early))   # web=False: these only; a board read early in this run reads on
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
@@ -367,11 +367,11 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         if board['host'] in late_pages:   # read after the last search's cut, or its ladder was cut: that page, not a second read
             return tuple(late_pages.pop(board['host']))
         via = rounds.listen(through, read_item) if rounds else through
-        result = board_search_first.read(board, entry, read_item[4], search, via, is_relevant or board_yield.is_relevant, show, early, read_board) \
-            or read_board(board, search, via, entry.get('route'), early=early, show=show)   # a general board's link with no word: its own search first
+        result = (board_home_search.read if board_home_search.wanted(board) else board_search_first.read)(board, entry, read_item[4], search, via, is_relevant or board_yield.is_relevant, show, early, read_board) \
+            or read_board(board, search, via, entry.get('route'), early=early, show=show)   # a general board's link with no word: its own search first; a named board with no link: only its own plain GET search (board_home_search)
         if board.get('charset'):   # learned on this read (board_paths.read): its next searches ask in it at once
             entry['charset'] = board['charset']
-        if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
+        if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone') and not board.get('home'):   # nothing read: a board at all? (board_check); not for a named board, whose AI slots stay for judging
             site, page = board_check.kind(board, fetch)
             if site:
                 entry['site_kind'], entry['site_page'] = site, board_check.name_of(page, board['host']) if site == 'one employer' else ''

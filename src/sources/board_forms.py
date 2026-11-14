@@ -12,6 +12,7 @@ from ..press import stage
 TEXT_BOXES = ('', 'text', 'search')   # an <input> a person types words into
 PERSONAL = ('email', 'tel', 'file')   # a box for the person's own details: a form with one is a subscription or an application, never a search
 MAX_TEMPLATES = 2                     # forms tried per board: the home page's search box is among the first
+BOT_CHECK = 'captcha'                 # the technical name every bot check carries in a form (a field, a class, a script address): structure, never a site's word
 TOKEN = 24                            # a POST form's hidden value longer than this is a token (an anti-forgery one runs to 100+), never put in a kept link;
                                       # a short constant (lang=de, a search kind) stays, as the board's own form sends it (Gitar, #3917)
 
@@ -24,9 +25,11 @@ class _Forms(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = {key: value or '' for key, value in attrs}
         if tag == 'form':
-            self.open = {'action': attrs.get('action', ''), 'method': attrs.get('method', 'get').lower(), 'boxes': [], 'hidden': [], 'password': False, 'personal': False}
+            self.open = {'action': attrs.get('action', ''), 'method': attrs.get('method', 'get').lower(), 'boxes': [], 'hidden': [], 'password': False, 'personal': False, 'not_a_search': False}
             self.forms.append(self.open)
-        elif tag == 'input' and self.open is not None:
+        elif self.open is not None and (tag == 'textarea' or BOT_CHECK in ' '.join(attrs.get(key, '') for key in ('name', 'id', 'class', 'src', 'data-sitekey')).lower()):
+            self.open['not_a_search'] = True   # a free-text box (a message) or a bot check: a contact form, never a search
+        if tag == 'input' and self.open is not None:
             kind = attrs.get('type', '').lower()
             if kind == 'password':
                 self.open['password'] = True
@@ -42,14 +45,17 @@ class _Forms(HTMLParser):
             self.open = None
 
 
-def templates(markup, page_url, posted_at=None, search_only=False):
+def templates(markup, page_url, posted_at=None, search_only=False, plain=False):
     """The search links the page's own forms make, with {role} (and {place} for a second text box), forms with two boxes first.
     posted_at: a form sent by POST counts too, its field names asked as a GET link at this address (the board's own search page), not at its action, which answers a POST only.
     search_only (the Scout's board pass only; Find jobs in the app is unchanged: Gitar on #4042, no live pair): a form with an e-mail, phone or file box is left out.
     Why (13 Nov 2026, bp, owner via sa: the Scout never opens a subscribe or alert form): such a form is a job alert or an application (rabota.md's home page holds a subscribe
     form with position, name and e-mail boxes sent without a method, and two apply forms), so the Scout never makes a search link of it, whatever its text boxes are called.
     Why (12 Nov 2026, ch): JobScout24's search form is a POST (SearchWhat, anti-forgery token) and its list page answers ?SearchWhat=<words> with the filtered list,
-    while the guessed ?keywords= was ignored (the unfiltered 84,421 jobs, 0 right). The link stays only when it brings relevant jobs (found_boards._another_way)."""
+    while the guessed ?keywords= was ignored (the unfiltered 84,421 jobs, 0 right). The link stays only when it brings relevant jobs (found_boards._another_way).
+    plain (a board the AI named with no search link, src/sources/board_home_search.py): also a form with a free-text box or a bot check is left out, as the search_only ones.
+    Why (14 Nov 2026, owner "yes" via sa: "one earlier run filled a contact form with a captcha: that must be impossible by construction"): that read has no AI check of the form, so
+    the form itself must be a search: a GET, text boxes only, nothing personal, no message box, no bot check."""
     parser = _Forms()
     with stage.guard('job boards: form parse') as caught:
         parser.feed(str(markup or ''))
@@ -58,7 +64,7 @@ def templates(markup, page_url, posted_at=None, search_only=False):
     home = urllib.parse.urlsplit(page_url).hostname or ''
     out = []
     for found in sorted(parser.forms, key=lambda f: -min(len(f['boxes']), 2)):
-        if (found['method'] != 'get' and not posted_at) or found['password'] or (search_only and found['personal']) or not found['boxes']:
+        if (found['method'] != 'get' and not posted_at) or found['password'] or ((search_only or plain) and found['personal']) or (plain and found['not_a_search']) or not found['boxes']:
             continue
         action = urllib.parse.urljoin(page_url, found['action'] or page_url)
         parts = urllib.parse.urlsplit(action)
