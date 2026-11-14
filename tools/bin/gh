@@ -6,6 +6,10 @@
 #   in GH_GRAPHQL_WHY. Count: tools/gh-graphql-report.sh.
 # Why (owner, 10 Nov 2026, "REST first, GraphQL fallback"): pr_view and pr_checks (tools/pr-rest-lib.sh) read over GraphQL while REST core is out of quota and say so here as "fallback: REST out", so these lines are told apart from a stray call.
 # Guard: tests/test_gh_graphql_log.py.
+# Why (owner's coordinator mac-95, 14 Nov 2026, rb: the shared 5,000-an-hour REST token hit 0 three times on 13 Nov and nothing could say which caller spent it; measured ~5,750 calls/h): REST calls are logged
+#   too, so the next outage names its caller. GH_REST_LOG (default ~/.cache/jobadabra/gh-rest.log; "off": none), one line each: UTC time, session, caller, folder, call class (ids and shas folded: repos/o/r/pulls/N), HTTP status
+#   or "-" when the call did not print its headers. Only `gh api -i` (every conditional read of tools/pr-rest-lib.sh) is run with its output held to read the status; its output and exit code pass through unchanged.
+#   A 304 is free of the limit and is counted apart. Count: tools/gh-rest-report.sh.
 # Why (28 Oct 2026, load 158): the marker sits in the first lines; grepping the whole file read the real gh (a 40 MB program, ~2.5 s under load) on every call. Only the head is read.
 JOBADABRA_GH_SHIM=1   # Stable marker: skip every worktree copy when resolving the real executable.
 here="$(cd "$(dirname "$0")" && pwd -P)"
@@ -18,10 +22,35 @@ done
 log="${GH_GRAPHQL_LOG:-$HOME/.cache/jobadabra/gh-graphql.log}"
 # GitHub's CLI answers these through GraphQL: every pr / issue / repo / project / label / status command and `gh api graphql`; run, workflow, release, secret and api <path> are REST.
 case "${1:-}" in pr|issue|repo|project|label|status) graphql=1 ;; api) graphql="$(printf '%s\n' "$@" | grep -qx graphql && echo 1)" ;; *) graphql="" ;; esac
-if [ -n "$graphql" ] && [ "$log" != off ]; then
+# shim_log <file> <command identity> <last column>: appends one line, UTC time, session, caller, folder, identity, last column (GraphQL: the reason; REST: the HTTP status).
+shim_log() {
+  local who caller
   . "$here/../session-name.sh" 2>/dev/null && who="$(session_name)" || who="?"
   caller="$(ps -o command= -p "$PPID" 2>/dev/null | awk '{for (i = 1; i <= NF && i <= 2; i++) {n = split($i, p, "/"); printf "%s%s", (i > 1 ? " " : ""), p[n]}}')"
-  mkdir -p "$(dirname "$log")" 2>/dev/null
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "${caller:-?}" "$(basename "$PWD")" "${1:-} ${2:-}" "${GH_GRAPHQL_WHY:-}" >> "$log" 2>/dev/null
+  mkdir -p "$(dirname "$1")" 2>/dev/null
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "${caller:-?}" "$(basename "$PWD")" "$2" "$3" >> "$1" 2>/dev/null
+}
+[ -n "$graphql" ] && [ "$log" != off ] && shim_log "$log" "${1:-} ${2:-}" "${GH_GRAPHQL_WHY:-}"
+# REST calls: `gh api <path>` and run / workflow / release / secret (GraphQL ones were logged above).
+rest_log="${GH_REST_LOG:-$HOME/.cache/jobadabra/gh-rest.log}"
+if [ -z "$graphql" ] && [ "$rest_log" != off ]; then
+  case "${1:-}" in
+    api) kind=api; skip=0; path=""
+      for a in "${@:2}"; do
+        if [ "$skip" = 1 ]; then skip=0; continue; fi
+        case "$a" in -H|--header|-f|--raw-field|-F|--field|-X|--method|--jq|-q|--template|-t|--input|--hostname|--cache|-p|--preview) skip=1 ;; -*) ;; *) path="$a"; break ;; esac
+      done
+      class="api $(printf '%s' "${path%%\?*}" | sed -E 's#^/##; s#^repos/[^/]+/[^/]+#repos/o/r#; s#[0-9a-f]{40}#S#g; s#/[0-9]+#/N#g')" ;;
+    run|workflow|release|secret) kind=cli; class="${1} ${2:-}" ;;
+    *) kind="" ;;
+  esac
+  if [ -n "$kind" ]; then
+    if [ "$kind" = api ] && printf '%s\n' "$@" | grep -qxE -- '-i|--include' && held="$(mktemp 2>/dev/null)"; then
+      "$real" "$@" >"$held"; rc=$?
+      shim_log "$rest_log" "$class" "$(head -n 1 "$held" | tr -d '\r' | awk '{print $2}')"; cat "$held"; rm -f "$held"
+      exit "$rc"
+    fi
+    shim_log "$rest_log" "$class" "-"
+  fi
 fi
 exec "$real" "$@"
