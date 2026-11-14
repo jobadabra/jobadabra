@@ -115,7 +115,8 @@ async function matchChecked(jobs, match, rows) {
   paint();
   const found = await match(asked).catch(() => null);   // a failed match leaves every form as it was read, never a guess
   const took = Date.now() - state.startedAt;
-  for (const {url} of asked) if (found?.[url]) addStep(url, 'matching', took);   // Why (14 Nov 2026, Gitar on #4342): only a form the match answered gets a finished "Matching" step
+  const share = Math.round(took / Math.max(1, asked.length));
+  for (const {url} of asked) if (found?.[url]) addStep(url, 'matching', share);   // Why (14 Nov 2026, Gitar on #4342 + #4353): only a form the match answered gets a "Matching" step, with its share of the one call
   for (const {url} of asked) {
     if (!found?.[url]) continue;
     setRead(url, {...readOf(url), match: found[url]});
