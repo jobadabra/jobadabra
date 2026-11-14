@@ -81,9 +81,8 @@ def _national_on(env):
 def _linkedin_read(run, search):
     """LinkedIn's public search (src/sources/linkedin_guest.py read), looked up at call time like the others; a job its employer's known feed lists is kept under the
     employer's address (src/sources/employer_copy.py), so Apply opens the employer's page."""
-    from . import employer_copy, linkedin_guest
-    jobs = linkedin_guest.read(search)
-    return employer_copy.from_row(jobs) if jobs else jobs
+    from . import employer_copy
+    return employer_copy.linkedin_jobs(search)
 
 
 def _linkedin_on(env):
