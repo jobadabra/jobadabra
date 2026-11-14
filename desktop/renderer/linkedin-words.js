@@ -54,6 +54,7 @@ const SIGN_IN_ENDED = {
   'no-keychain': [t('helperFlow.linkedinUnavailable'), t('helperFlow.linkedinNoKeychain'), 'info'],
   'not-kept': [t('helperFlow.linkedinStayedOff'), t('helperFlow.linkedinNotKept'), 'warn'],
   'needs-signin': [t('helperFlow.linkedinStayedOff'), t('helperFlow.linkedinKeptNotOn'), 'warn'],   // the sign-in is kept but the turn-on was refused (Gitar on #4374)
+  'no-copy': [t('helperFlow.linkedinStillOff'), t('helperFlow.linkedinChromeNoCopy'), 'info'],   // the Chrome way's wait ended with no copy (Gitar on #4354)
   'popup-ended': [t('helperFlow.linkedinStillOff'), t('helperFlow.linkedinPopupEnded'), 'info'],
 };
 // Why (owner, 5 Nov 2026: "Allow popup, you try once"; "if Google refuses, the window says so plainly and points to signing in with Chrome"): the way out is the Chrome sign-in shortcut, or connecting the extension first.

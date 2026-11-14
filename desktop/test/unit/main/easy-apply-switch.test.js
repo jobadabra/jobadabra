@@ -51,14 +51,13 @@ test('with LinkedIn jobs off (no sign-in kept) Easy Apply reads as off, whatever
 // Gitar on #4008: the saved yes must not come back by itself when LinkedIn jobs is switched off and on again; Easy Apply sends from the person's account.
 test('switching LinkedIn jobs off turns Easy Apply off for good; LinkedIn jobs back on leaves it off, still warned once', () => {
   const storage = store(linkedinOn());
-  const items = new Map(), keychain = {write: (key, value) => { items.set(key, value); return true; }, read: key => items.get(key) ?? null, remove: key => items.delete(key)};
+  const items = new Map(), keychain = {write: (key, value) => { items.set(key, value); return true; }, read: key => items.get(key) || null, remove: key => items.delete(key)};
   assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: true});
   linkedin.turnOff(storage, {keychain});
   assert.equal(storage.mine.easyApply.on, false, 'the saved switch itself is off, not only read as off');
   assert.equal(storage.mine.easyApply.warnedAt, NOW.toISOString());
   assert.deepEqual(linkedin.saveSession(storage, [{name: 'li_at', value: 'fake-token', domain: '.linkedin.com'}], {keychain}), {ok: true});
-  assert.equal(linkedin.state(storage).on, false, 'a sign-in turns no switch on');
-  linkedin.turnOn(storage, {keychain});
+  assert.deepEqual(linkedin.turnOn(storage, {keychain}), {ok: true}, 'the press that asked turns LinkedIn jobs on (a sign-in turns no switch on)');
   assert.equal(linkedin.state(storage).on, true);
   assert.equal(state(storage).on, false, 'LinkedIn jobs on again: Easy Apply stays off until the person turns it on');
   const fresh = store(linkedinOn());

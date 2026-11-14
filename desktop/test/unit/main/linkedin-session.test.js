@@ -2,7 +2,7 @@
 // copied LinkedIn session as a credential (allow-listed cookies, Keychain only, gone when the switch goes off). lib/linkedin-session.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {turnOn, COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, notePause, noteRun, pausedUntil, readSession, refreshSession, saveSession, shouldAsk, state, turnOff} from '../../../lib/linkedin-session.js';
+import {turnOn as turnOnJobs, COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, notePause, noteRun, pausedUntil, readSession, refreshSession, saveSession, shouldAsk, state, turnOff} from '../../../lib/linkedin-session.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
 const JSESSION = '"ajax:1234567890"';
@@ -32,17 +32,14 @@ test('a cookie value that is not one printable token is refused (nothing odd rea
   for (const value of ['', 'two words', 'tab\there', 'line\nbreak', 'x'.repeat(2049), 'café']) assert.equal(cleanCookies([cookie('li_at', value)]), null, JSON.stringify(value).slice(0, 30));
 });
 
-test('saving the session puts it in the Keychain under one item, turns no switch on (the press does, through turnOn) and never returns the value', () => {
+test('saving the session puts it in the Keychain under one item, turns no switch on and never returns the value', () => {
   const settings = store({linkedinJobs: {asked: 1}}), kc = keychain();
   const done = saveSession(settings, good(), {keychain: kc});
   assert.deepEqual(done, {ok: true});
   assert.equal(JSON.stringify(done).includes(SECRET), false);
   assert.equal(SERVICE, 'jobadabra.linkedin-jobs.session');
   assert.deepEqual(JSON.parse(kc.items.get(SERVICE)), {li_at: SECRET, JSESSIONID: JSESSION});
-  assert.deepEqual(state(settings), {on: false, asked: 1, declined: 0}, 'a sign-in turns no switch on');
-  assert.deepEqual(turnOn(settings, {keychain: kc}), {ok: true});
-  assert.deepEqual(state(settings), {on: true, asked: 1, declined: 0});
-  assert.deepEqual(turnOn(store(), {keychain: keychain()}), {ok: false, reason: 'needs-signin'}, 'Gitar on #4334: no Keychain item, no turn-on');
+  assert.deepEqual(state(settings), {on: false, asked: 1, declined: 0}, 'the press that asked turns its switch on (owner, 14 Nov 2026, after Gitar on #4297)');
   assert.equal(JSON.stringify(settings.settings()).includes(SECRET), false, 'the settings file never holds the session');
   assert.deepEqual(readSession({keychain: kc}), {li_at: SECRET, JSESSIONID: JSESSION});
 });
@@ -117,7 +114,7 @@ test('#2731 the refresh copy: replaces the Keychain item while on; Chrome signed
   assert.equal(refreshSession(settings, good(), {keychain: kc}).ok, false, 'off: a copy never arrives');
   assert.equal(kc.items.size, 0);
   saveSession(settings, good(), {keychain: kc});
-  turnOn(settings, {keychain: kc});
+  turnOnJobs(settings, {keychain: kc});   // the window's turn-on once the sign-in came
   const fresh = [cookie('li_at', 'AQEDAR-fresh-value'), cookie('JSESSIONID', '"ajax:55"')];
   const answer = refreshSession(settings, fresh, {keychain: kc});
   assert.deepEqual(answer, {ok: true});
@@ -200,8 +197,8 @@ test('a kept sign-in is stamped, and when LinkedIn ends it one line says how man
   const log = (...line) => lines.push(line);
   const at = iso => ({now: () => Date.parse(iso)});
   saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T08:00:00Z')});
+  turnOnJobs(settings, {keychain: kc});
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z');
-  turnOn(settings, {keychain: kc});   // the press that asked
   saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T20:00:00Z')});   // the consent page or the window run again on the same sign-in (Gitar on #4247)
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z', 'the same sign-in saved again keeps its clock');
   refreshSession(settings, good(), {keychain: kc, ...at('2026-11-11T08:00:00Z')});
@@ -215,4 +212,63 @@ test('a kept sign-in is stamped, and when LinkedIn ends it one line says how man
   refreshSession(settings, [cookie('li_at', 'AQEDAR-fake-new'), cookie('JSESSIONID', JSESSION)], {keychain: kc, ...at('2026-11-13T07:00:00Z')});
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-13T07:00:00.000Z', 'a new sign-in starts the clock again');
   assert.ok(!JSON.stringify(settings.settings()).includes(SECRET) && !JSON.stringify(lines).includes('AQEDAR'), 'no value in the settings or the line');
+});
+
+// Gitar on #4271: the mark and the Keychain item move together; a stale open Chrome way expires; a copy turns no switch on.
+import {signedIn} from '../../../lib/linkedin-session.js';
+test('Chrome signed out: the copy and the mark go together; an explicit "not signed in" beats the older-install fallback', () => {
+  const settings = store({linkedinJobs: {on: true}}), kc = keychain();
+  assert.equal(signedIn(settings), true, 'an older install: LinkedIn jobs on meant kept');
+  saveSession(settings, good(), {keychain: kc});
+  assert.deepEqual(refreshSession(settings, [], {keychain: kc}), {ok: true, signedOut: true});
+  assert.equal(signedIn(settings), false, 'LinkedIn jobs still on, but nothing is kept');
+  assert.deepEqual([state(settings).on, settings.settings().linkedinJobs.login.state], [true, 'none'], 'Gitar on #4358: the switch stays on as before; the explicit none stops the older-install fallback from reading it as kept (its inactive look is 5/5)');
+  settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, signin: {state: 'needs-you', why: 'check', empties: 0}}});
+  saveSession(settings, good(), {keychain: kc});
+  assert.equal(signinView(settings).why, 'check', 'a sign-in is no read verdict: a Needs you a read wrote waits for the next read that works ("renewed")');
+});
+test('a refresh copy is taken while any switch keeps the sign-in (Easy Apply alone too)', () => {
+  const settings = store({linkedinJobs: {on: false, login: {state: 'kept', at: 1}}, easyApply: {on: true}}), kc = keychain();
+  kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+  assert.deepEqual(refreshSession(settings, [cookie('li_at', 'AQEDAR-fresher')], {keychain: kc}), {ok: true});
+  assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresher');
+  assert.equal(refreshSession(store(), good(), {keychain: kc}).ok, false, 'nothing kept: a copy never arrives');
+});
+test('the one sign-in state: waiting expires with the window\'s own watch, a kept copy ends it, off clears it', async () => {
+  const {loginOf, takesCopy, openSignin, WANTED_MS} = await import('../../../lib/linkedin-session.js');
+  const {SIGNIN_WAIT_MS} = await import('../../../renderer/apply-settings-model.js');
+  assert.equal(WANTED_MS, SIGNIN_WAIT_MS, 'Gitar on #4283: the same horizon as the window\'s watch, so a copy after "stayed off" is not taken');
+  const t0 = Date.parse('2026-11-14T10:00:00Z'), at = ms => ({now: () => t0 + ms});
+  const settings = store(), kc = keychain();
+  assert.equal(loginOf(settings, at(0)).state, 'none');
+  assert.equal(takesCopy(settings, at(0)), false, 'nobody asked');
+  openSignin(settings, at(0));
+  assert.equal(loginOf(settings, at(WANTED_MS - 1000)).state, 'waiting');
+  assert.equal(loginOf(settings, at(WANTED_MS - 1000)).state, 'waiting', 'a look does not end it: a refused copy can be sent again');
+  assert.equal(loginOf(settings, at(WANTED_MS + 1000)).state, 'none', 'stale: as if nobody asked, and no stamp outlives it (Gitar on #4358)');
+  assert.equal(takesCopy(settings, at(WANTED_MS + 1000)), false);
+  openSignin(settings, at(0));
+  saveSession(settings, good(), {keychain: kc, now: () => t0 + 5000});
+  assert.equal(loginOf(settings, at(10000)).state, 'kept', 'a kept copy ends the wait');
+  turnOff(settings, {keychain: kc});
+  assert.equal(loginOf(settings, at(10000)).state, 'none');
+});
+
+// Gitar on #4334: the saved mark alone is no sign-in; LinkedIn jobs turns on only with the Keychain item there too.
+test('LinkedIn jobs turns on with a kept sign-in only when the Keychain item is there too', () => {
+  const settings = store({linkedinJobs: {login: {state: 'kept', at: 1}}}), kc = keychain();
+  assert.deepEqual(turnOnJobs(settings, {keychain: kc}), {ok: false, reason: 'needs-signin'}, 'the item went (deleted outside the app)');
+  assert.equal(state(settings).on, false);
+  saveSession(settings, good(), {keychain: kc});
+  assert.deepEqual(turnOnJobs(settings, {keychain: kc}), {ok: true});
+});
+
+// Gitar on #4365: the keep time stays when the same sign-in comes back (the item is read whatever the state).
+test('the same sign-in saved again keeps its keep time, in any state', () => {
+  const settings = store({linkedinJobs: {on: true}}), kc = keychain();
+  saveSession(settings, good(), {keychain: kc, now: () => 1000});
+  const keptAt = settings.settings().linkedinJobs.keptAt;
+  settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, login: {state: 'waiting', at: 2000}}});   // a wait over an item that is still there (the same sign-in comes again)
+  saveSession(settings, good(), {keychain: kc, now: () => 90000000});
+  assert.equal(settings.settings().linkedinJobs.keptAt, keptAt);
 });
