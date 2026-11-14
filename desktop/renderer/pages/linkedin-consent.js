@@ -26,7 +26,7 @@ export async function refreshLinkedin() {
 const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;
 let watching = false;
 // The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until the sign-in is kept. Then the press that asked turns its own
-// switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the sign-in came (and, for LinkedIn jobs, it is on).
+// switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the asking switch is on.
 async function watchUntilSignedIn(wanted) {
   if (watching) return false;
   watching = true;
@@ -37,23 +37,23 @@ async function watchUntilSignedIn(wanted) {
       await refreshLinkedin().catch(() => {});
     }
   } finally { watching = false; }
-  if (view.signedIn) return wanted === 'jobs' ? turnOnKept() : true;
+  if (view.signedIn) return turnOnKept(wanted);
   if (wanted === 'easy-apply') toast(t('pagesEasyApply.stayedOff'), '', NO_PLACE.itself, 'warn');   // Gitar on #4276: the copy never came, so say Easy Apply stayed off
   return false;
 }
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.
 let signingIn = false;   // Why (independent review, 3 Nov 2026): the dialog is closed while the window is open, so a Find jobs press must not ask again (and count a decline) meanwhile
-// `wanted`: which switch asked ('jobs' | 'easy-apply' | 'renew'); LinkedIn jobs is turned on here once the sign-in is kept, Easy Apply by its own door. -> true when the sign-in was kept.
+// `wanted`: which switch asked ('jobs' | 'easy-apply' | 'renew'); the main handler completes this press before replying, with no asking-switch note stored. -> true on success.
 async function signInHere(wanted) {
   const renew = wanted === 'renew';
   signingIn = true;
-  const answer = await window.pilot.linkedinJobsSignIn().catch(() => null);
+  const answer = await window.pilot.linkedinJobsSignIn({turnOn: renew ? undefined : wanted}).catch(() => null);
   signingIn = false;
   await refreshLinkedin().catch(() => {});
   // Why (Gitar on #3914, 12 Nov 2026): a renewal is no "LinkedIn jobs is on" (it was on); the next read that works is what says "renewed", so this only says the copy is saved.
   if (answer?.ok && renew) toast(t('pagesLinkedinServices.savedTitle'), t('pagesLinkedinServices.savedBody'), NO_PLACE.itself, 'good');
-  else if (answer?.ok && wanted === 'jobs') return turnOnKept();
+  else if (answer?.ok && wanted === 'jobs') toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
   else if (!answer?.ok) toast(...signInEnded(answer, view));
   return !!answer?.ok;   // Easy Apply says its own "on" (pages/easy-apply-consent.js)
 }
@@ -67,10 +67,11 @@ async function turnOnWithChrome(wanted) {
   return wanted === 'renew' ? false : watchUntilSignedIn(wanted);
 }
 
-async function turnOnKept() {
-  const answer = await window.pilot.linkedinJobsOn().catch(() => null);
+async function turnOnKept(wanted = 'jobs') {
+  const answer = await (wanted === 'easy-apply' ? window.pilot.easyApplyOn({warned: true}) : window.pilot.linkedinJobsOn()).catch(() => null);
   await refreshLinkedin().catch(() => {});
-  if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+  if (answer?.ok && wanted === 'jobs') toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+  if (!answer?.ok && wanted === 'easy-apply') toast(t('pagesEasyApply.stayedOff'), '', NO_PLACE.itself, 'warn');
   return !!answer?.ok;
 }
 

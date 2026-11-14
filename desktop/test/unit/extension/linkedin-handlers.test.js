@@ -57,6 +57,7 @@ test('registered handlers: demo mode touches no store, off deletes the item, the
   const demo = new Map(); registerLinkedinHandlers({DEMO: true, ipcMain: {handle: (name, fn) => demo.set(name, fn)}, server, storage: {settings: () => { throw new Error('demo must not read the store'); }}, openPage: async () => { throw new Error('demo must not open Chrome'); }});
   assert.equal((await demo.get('linkedinJobsState')()).on, false);
   assert.deepEqual(await demo.get('linkedinJobsConnect')(), {opened: true});
+  assert.deepEqual(await demo.get('linkedinJobsSignIn')({}, {turnOn: 'easy-apply'}), {ok: false, reason: 'not-offered'}, 'demo never reports Easy Apply on');
   assert.deepEqual(await demo.get('linkedinJobsOff')(), {ok: true});
 });
 
@@ -127,4 +128,36 @@ test('at start, a sign-in kept with both switches off is deleted; one a switch u
   used.kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
   reg(used);
   assert.equal(used.kc.items.has(SERVICE), true, 'Easy Apply uses it');
+});
+
+test('the window press enables only its asking switch before replying, without another renderer call', async () => {
+  for (const turnOn of ['jobs', 'easy-apply', undefined]) for (const otherOn of [false, true]) {
+    const settings = store({linkedinJobs: {on: turnOn === 'easy-apply' && otherOn, signedIn: false}, easyApply: {on: turnOn !== 'easy-apply' && otherOn}});
+    const kc = keychain(), handlers = new Map();
+    registerLinkedinHandlers({DEMO: false, packaged: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: settings,
+      deps: {keychain: kc, isolated: true}, log: () => {}, signIn: async () => ({ok: true, cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]})});
+    assert.deepEqual(await handlers.get('linkedinJobsSignIn')({}, {turnOn}), {ok: true});
+    assert.deepEqual([settings.settings().linkedinJobs.on, settings.settings().easyApply.on],
+      [turnOn === 'jobs' || (turnOn === 'easy-apply' && otherOn), turnOn === 'easy-apply' || (turnOn !== 'easy-apply' && otherOn)], String(turnOn));
+    if (turnOn === 'easy-apply') assert.ok(settings.settings().easyApply.warnedAt, 'the Continue press carried Easy Apply\'s warning');
+    assert.ok(readSession({keychain: kc}));
+    assert.equal(settings.settings().linkedinJobs.wanted, undefined, 'no asking-switch note for Chrome to consume');
+  }
+});
+
+test('window cancellation, failed storage and a packaged Easy Apply press enable nothing', async () => {
+  for (const failure of ['cancelled', 'not-kept', 'not-offered']) {
+    const settings = store(), kc = keychain(), handlers = new Map();
+    let opened = 0;
+    if (failure === 'not-kept') kc.write = () => false;
+    registerLinkedinHandlers({DEMO: false, packaged: failure === 'not-offered', ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: settings,
+      deps: {keychain: kc, isolated: true}, log: () => {}, signIn: async () => { opened++; return failure === 'cancelled' ? {ok: false, reason: 'cancelled'} : {ok: true, cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}; }});
+    const answer = await handlers.get('linkedinJobsSignIn')({}, {turnOn: 'easy-apply'});
+    assert.equal(answer.ok, false, failure);
+    assert.equal(answer.reason, failure);
+    assert.equal(settings.settings().easyApply?.on === true, false);
+    assert.equal(settings.settings().linkedinJobs?.on === true, false);
+    assert.equal(kc.items.size, 0);
+    if (failure === 'not-offered') assert.equal(opened, 0);
+  }
 });

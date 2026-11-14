@@ -239,6 +239,21 @@ test('a refresh copy is taken while any switch keeps the sign-in (Easy Apply alo
   assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresher');
   assert.equal(refreshSession(store(), good(), {keychain: kc}).ok, false, 'nothing kept: a copy never arrives');
 });
+test('Chrome sign-out marks Needs you for either saved switch and renewal changes neither switch', () => {
+  for (const jobs of [false, true]) for (const easy of [false, true]) {
+    const settings = store({linkedinJobs: {on: jobs}, easyApply: {on: easy}}), kc = keychain();
+    saveSession(settings, good(), {keychain: kc});
+    refreshSession(settings, [], {keychain: kc});
+    assert.equal(kc.items.size, 0);
+    assert.equal(signedIn(settings), false);
+    assert.equal(signinView(settings).state, jobs || easy ? 'needs-you' : 'ok', `${jobs}/${easy}`);
+    if (jobs || easy) assert.equal(signinView(settings).why, 'signed-out');
+    saveSession(settings, good(), {keychain: kc});
+    assert.equal(signinView(settings).state, 'ok');
+    assert.deepEqual([settings.settings().linkedinJobs.on, settings.settings().easyApply.on], [jobs, easy]);
+    assert.equal(JSON.stringify(settings.settings()).includes(SECRET), false);
+  }
+});
 test('an open Chrome way expires with the window\'s own watch and ends only once a copy was kept', async () => {
   const {signinOpen, closeSignin, copyIsOld, COPY_AGE_MS, WANTED_MS} = await import('../../../lib/linkedin-session.js');
   const {SIGNIN_WAIT_MS} = await import('../../../renderer/apply-settings-model.js');

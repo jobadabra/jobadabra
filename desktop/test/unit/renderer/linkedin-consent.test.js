@@ -5,8 +5,52 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {CONSENT, KEY, LINE, askOnPress, linkedinEntries, renewCommandOf, signinLine} from '../../../renderer/linkedin-words.js';
 import {LOOK} from '../../../renderer/suggestions.js';
+import {registerLinkedinHandlers} from '../../../lib/linkedin-handlers.js';
+import {viewOf as easyView} from '../../../lib/easy-apply-switch.js';
 
 const off = {loaded: true, on: false, asked: 0, declined: 0, ask: true, hasSession: false};
+
+test('each door completes only its own switch: window in main, Chrome after its copy arrives', async t => {
+  const previousWindow = globalThis.window, previousDocument = globalThis.document;
+  const nodes = new Map();
+  const node = id => {
+    if (!nodes.has(id)) nodes.set(id, Object.assign(new EventTarget(), {open: false, showModal() {
+      this.open = true;
+      queueMicrotask(() => { this.open = false; this.returnValue = 'default'; this.dispatchEvent(new Event('close')); });
+    }}));
+    return nodes.get(id);
+  };
+  globalThis.document = {getElementById: node};
+  globalThis.window = Object.assign(new EventTarget(), {pilot: {state: async () => ({settings: {}})}});
+  try {
+    const consent = await import('../../../renderer/pages/linkedin-consent.js');
+    const easy = await import('../../../renderer/pages/easy-apply-consent.js');
+    t.mock.timers.enable({apis: ['setTimeout']});
+    for (const chrome of [false, true]) for (const mode of ['turn-on', 'easy-apply']) {
+      const settings = {}, storage = {settings: () => settings, saveSettings: patch => Object.assign(settings, patch)};
+      const items = new Map(), keychain = {read: key => items.get(key), write: (key, value) => { items.set(key, value); return true; }, remove: key => items.delete(key)};
+      const handlers = new Map(), routes = new Map(), cookies = [{name: 'li_at', value: 'fake-session', domain: '.linkedin.com'}];
+      registerLinkedinHandlers({DEMO: false, packaged: false, storage, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: (path, fn) => routes.set(path, fn), extensionSeen: () => chrome},
+        deps: {keychain, isolated: true}, log: () => {}, signIn: async () => ({ok: true, cookies}), openPage: async () => {
+          routes.get('/extension/linkedin-session')({cookies});
+          assert.equal(settings.linkedinJobs?.on === true, false, 'the Chrome copy turns no switch on');
+          assert.equal(settings.easyApply?.on === true, false);
+          setImmediate(() => t.mock.timers.tick(2000));
+          return {opened: true};
+        }});
+      globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsState: async () => handlers.get('linkedinJobsState')(), easyApplyState: async () => easyView(storage, {packaged: false}),
+        linkedinJobsSignIn: async options => handlers.get('linkedinJobsSignIn')({}, options),
+        linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(),
+        linkedinJobsOn: async () => { if (!chrome) throw new Error('renderer closed before another IPC'); return handlers.get('linkedinJobsOn')(); },
+        easyApplyOn: async options => { if (!chrome) throw new Error('renderer closed before another IPC'); return (await import('../../../lib/easy-apply-switch.js')).turnOn(storage, options); }};
+      await consent.refreshLinkedin();
+      if (mode === 'easy-apply') await easy.openEasyApply();
+      else await consent.openLinkedinConsent({mode});
+      assert.equal(settings.linkedinJobs?.on === true, mode === 'turn-on');
+      assert.equal(settings.easyApply?.on === true, mode === 'easy-apply');
+    }
+  } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
+});
 
 test('the Suggestions entry: one row while off, with the one-click action and Not now, gone when on, answered or not read yet', () => {
   const [entry, ...rest] = linkedinEntries({view: off});
@@ -78,7 +122,6 @@ test('every sign-in door asks how to sign in, Chrome first; each door speaks of 
   assert.match(page, /export function openLinkedinConsent\(/, 'no wait before the dialog opens (Gitar on #4265: two openers raced past the one-dialog check)');
   const door = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
   assert.match(door, /const kept = await openLinkedinConsent\(\{mode: 'easy-apply'\}\);/, 'Easy Apply\'s door opens its own words');
-  assert.match(door, /return kept \? turnOn\(true\) : undefined;/, 'on once the sign-in came, by either way');
 });
 
 test('every door opens the one consent: Settings row, ask on Find jobs, Suggestions entry, ⌘K', () => {
@@ -103,9 +146,6 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   assert.match(page, /\$\('linkedin-way-chrome'\)\.disabled = !chrome;/);
   assert.match(page, /\$\('linkedin-way-chrome'\)\.checked = chrome;/, 'Chrome is picked first when it can be');
   assert.match(page, /ways && dialog\.returnValue === 'default' && \$\('linkedin-way-chrome'\)\.checked \? 'chrome'/, 'Continue with Chrome picked goes the Chrome way');
-  // Owner, 14 Nov 2026 ("Simplify, then reopen (Recommended)" after Gitar on #4297): a sign-in turns no switch on; the press that asked turns LinkedIn jobs on once it is kept.
-  assert.match(page, /answer\?\.ok && wanted === 'jobs'\) return turnOnKept\(\)/, 'the window way: LinkedIn jobs\' press turns it on');
-  assert.match(page, /if \(view\.signedIn\) return wanted === 'jobs' \? turnOnKept\(\) : true;/, 'the Chrome way, once the copy came');
 });
 
 // #3911 (owner, 12 Nov 2026: "how to renew the linkedin sign-in?" … searched ⌘K for "link" and found no way): the card says "Needs you", ⌘K has "Renew LinkedIn sign-in", and one dialog says the one step.
