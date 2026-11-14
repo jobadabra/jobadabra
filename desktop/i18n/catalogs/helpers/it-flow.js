@@ -34,6 +34,7 @@ export const messages = {
   "linkedinStayedOff": "Ricerca LinkedIn rimasta disattiva",
   "linkedinNotKept": "Hai effettuato l’accesso, ma Jobadabra non ha potuto conservarlo.",
   "linkedinKeptNotOn": "Hai effettuato l’accesso e l’accesso è conservato, ma LinkedIn jobs non è riuscito ad attivarsi. Premi di nuovo Attiva.",
+  "linkedinChromeNoCopy": "Chrome non ha inviato in tempo un accesso a LinkedIn utilizzabile. Accedi a LinkedIn in Chrome, poi riapri l’accesso a LinkedIn.",
   "linkedinPopupEnded": "Google o Apple potrebbero non consentire l’accesso in questa finestra.",
   "linkedinChromeWay": "Accedi con Chrome: riapri l’accesso LinkedIn e scegli Usa il mio accesso LinkedIn di Chrome.",
   "linkedinChromeMissing": "Accedi con Chrome: collega l’estensione in Impostazioni → Connessioni → Estensione Chrome, poi scegli Usa il mio accesso LinkedIn di Chrome.",

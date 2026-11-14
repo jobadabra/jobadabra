@@ -34,6 +34,7 @@ export const messages = {
   "linkedinStayedOff": "Căutarea LinkedIn a rămas dezactivată",
   "linkedinNotKept": "Te-ai autentificat, dar Jobadabra nu a putut păstra autentificarea.",
   "linkedinKeptNotOn": "Te-ai autentificat și autentificarea este păstrată, dar LinkedIn jobs nu s-a putut activa. Apasă din nou Activează.",
+  "linkedinChromeNoCopy": "Chrome nu a trimis la timp o autentificare LinkedIn utilizabilă. Autentifică-te la LinkedIn în Chrome, apoi deschide din nou autentificarea LinkedIn.",
   "linkedinPopupEnded": "Google sau Apple pot să nu permită autentificarea în această fereastră.",
   "linkedinChromeWay": "Autentifică-te prin Chrome: deschide din nou autentificarea LinkedIn și alege Folosește autentificarea mea LinkedIn din Chrome.",
   "linkedinChromeMissing": "Autentifică-te prin Chrome: conectează extensia în Setări → Conexiuni → Extensie Chrome, apoi alege Folosește autentificarea mea LinkedIn din Chrome.",

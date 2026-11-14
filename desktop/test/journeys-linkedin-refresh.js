@@ -14,6 +14,7 @@ test('scenario: a LinkedIn session that expired, then Chrome signs in again: the
   const note = createRefresh(), routes = linkedinRoutes(storage, {keychain, refresh: note});
   session.openSignin(storage);   // the person turned LinkedIn jobs on with the Chrome way
   routes.session({cookies: [{name: 'li_at', value: 'FAKE-expired-session', domain: '.linkedin.com'}]});   // the consent page copied it once, long ago
+  session.turnOn(storage, {keychain});   // then the window turned LinkedIn jobs on
   const chromeJar = [{name: 'li_at', value: 'FAKE-new-session', domain: '.linkedin.com'}, {name: 'bcookie', value: 'x', domain: '.linkedin.com'}];   // the person signed in again in Chrome
   const chrome = {storage: {local: {get: async () => ({linkedinGranted: {cookies: true, origin: true}}), remove: async () => {}}}, permissions: {contains: async () => true}, cookies: {getAll: async () => chromeJar}};
   const call = async (config, path, init) => (path === '/extension/linkedin-pending' ? routes.pending() : routes.refresh(JSON.parse(init.body)));   // the loopback, without a socket

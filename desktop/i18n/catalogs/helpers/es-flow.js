@@ -34,6 +34,7 @@ export const messages = {
   "linkedinStayedOff": "Búsqueda LinkedIn quedó desactivada",
   "linkedinNotKept": "Iniciaste sesión, pero Jobadabra no pudo conservarla.",
   "linkedinKeptNotOn": "Has iniciado sesión y la sesión se ha conservado, pero LinkedIn jobs no pudo activarse. Pulsa Activar de nuevo.",
+  "linkedinChromeNoCopy": "Chrome no envió a tiempo una sesión de LinkedIn utilizable. Inicia sesión en LinkedIn en Chrome y abre de nuevo el inicio de sesión de LinkedIn.",
   "linkedinPopupEnded": "Google o Apple pueden no permitir el acceso en esta ventana.",
   "linkedinChromeWay": "Inicia sesión con Chrome: vuelve a abrir el inicio de sesión de LinkedIn y elige Usar mi sesión de LinkedIn de Chrome.",
   "linkedinChromeMissing": "Inicia sesión con Chrome: conecta la extensión en Ajustes → Conexiones → Extensión de Chrome y luego elige Usar mi sesión de LinkedIn de Chrome.",
