@@ -38,10 +38,10 @@ function watchUntilSignedIn() {
         await new Promise(done => setTimeout(done, WATCH_MS));
         await refreshLinkedin().catch(() => {});
       }
-    } finally { watching = null; }
-    if (view.login === 'kept') return turnOnKept();
-    if (view.login === 'none') toast(...signInEnded({reason: 'no-copy'}, view));   // Gitar on #4354: the person who went to Chrome hears how it ended
-    return false;
+      if (view.login === 'kept') return await turnOnKept();
+      toast(...signInEnded({reason: 'no-copy'}, view));   // Gitar on #4354, #4385: any ending that is not a kept copy says so, also a wait the window's clock ended a moment before the main side's
+      return false;
+    } finally { watching = null; }   // Gitar on #4385: the shared handle lives until the turn-on and the message are done, so a press in that gap shares them too
   })();
   return watching;
 }

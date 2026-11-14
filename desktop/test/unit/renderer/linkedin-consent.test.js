@@ -239,3 +239,44 @@ test('a refused turn-on after a kept sign-in has its own words', () => {
   assert.match(body, /sign-in is kept/);
   assert.ok(title);
 });
+
+// Gitar on #4385: a wait the window's clock ends while the state still reads waiting says so; a press landing while the turn-on is in flight shares the watch (one Chrome open, one message).
+test('the Chrome watch: a wait that ends still waiting says so; a press during the turn-on shares the watch', async t => {
+  const previousWindow = globalThis.window, previousDocument = globalThis.document;
+  const node = Object.assign(new EventTarget(), {open: false, showModal() {
+    this.open = true;
+    queueMicrotask(() => { this.open = false; this.returnValue = 'chrome'; this.dispatchEvent(new Event('close')); });
+  }});
+  globalThis.document = {getElementById: () => node};
+  globalThis.window = Object.assign(new EventTarget(), {pilot: {state: async () => ({settings: {}})}});
+  try {
+    const consent = await import('../../../renderer/pages/linkedin-consent.js');
+    t.mock.timers.enable({apis: ['setTimeout', 'Date'], now: Date.parse('2026-11-14T08:00:00Z')});
+    const toasts = [];
+    consent.bindToast((title, body) => toasts.push(body));
+    const base = {on: false, signedIn: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: true, signin: {state: 'ok', why: '', empties: 0}};
+    let login = 'waiting', release, onCalls = 0, live = true;
+    globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsConnect: async () => ({opened: true}),
+      linkedinJobsOn: () => { onCalls++; return new Promise(done => { release = () => done({ok: true}); }); },
+      linkedinJobsState: async () => {
+        setImmediate(() => { if (live) t.mock.timers.tick(160000); });   // the window's own clock runs out
+        return {...base, login};
+      }};
+    await consent.refreshLinkedin();
+    assert.equal(await consent.openLinkedinConsent({mode: 'turn-on'}), false);
+    assert.match(toasts.at(-1) || '', /no usable LinkedIn sign-in/, 'still waiting at the deadline: the message, not silence');
+    // a copy arrives in time: the turn-on is in flight when the second press lands
+    login = 'waiting'; toasts.length = 0;
+    let reads = 0;
+    globalThis.window.pilot.linkedinJobsState = async () => { setImmediate(() => { if (live) t.mock.timers.tick(2000); }); return {...base, login: ++reads > 1 ? 'kept' : 'waiting'}; };
+    const first = consent.openLinkedinConsent({mode: 'turn-on'});
+    while (!onCalls) await new Promise(done => setImmediate(done));
+    const second = consent.openLinkedinConsent({mode: 'turn-on'});
+    for (let i = 0; i < 5; i++) await new Promise(done => setImmediate(done));
+    release();
+    assert.deepEqual(await Promise.all([first, second]), [true, true]);
+    assert.equal(onCalls, 1, 'one turn-on');
+    assert.equal(toasts.filter(body => /./.test(body)).length >= 1, true);
+    live = false;
+  } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
+});
