@@ -99,6 +99,8 @@ fs.writeFileSync(path.join(work, 'sides.json'), JSON.stringify({a: sideOf(dirs.a
 if (share && fs.existsSync(path.join(work, 'shared'))) {   // the shared layer's logs outlive its folder: the report counts each side's page reads from them
   fs.mkdirSync(path.join(work, 'logs'), {recursive: true});
   for (const name of fs.readdirSync(path.join(work, 'shared')).filter(f => f.startsWith('log-'))) fs.copyFileSync(path.join(work, 'shared', name), path.join(work, 'logs', name));
+  fs.mkdirSync(path.join(work, 'logs', 'req'), {recursive: true});   // the request texts, for the report's first-difference lines (stays on this Mac with the work folder)
+  for (const name of fs.readdirSync(path.join(work, 'shared')).filter(f => f.endsWith('.req'))) fs.copyFileSync(path.join(work, 'shared', name), path.join(work, 'logs', 'req', name));
 }
 for (const name of share && fs.existsSync(path.join(work, 'shared')) ? fs.readdirSync(path.join(work, 'shared')).filter(f => f.startsWith('log-')) : []) {   // what each side's shared layer did, before the folder goes: a wait that ran to its limit breaks "the same seconds"
   const lines = fs.readFileSync(path.join(work, 'shared', name), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));

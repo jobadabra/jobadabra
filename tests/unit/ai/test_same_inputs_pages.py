@@ -75,5 +75,23 @@ class ReadsFromTheSharedLayer(unittest.TestCase):
         self.assertEqual(validity.against_spread(0, 0), 'inside')
 
 
+class RequestDifferences(unittest.TestCase):
+    def test_a_request_one_side_asked_alone_shows_where_it_differs_from_the_nearest_of_the_same_step(self):
+        sides = {'a': 'A', 'b': 'B'}
+        logs = {'A': [{'kind': 'ai_live', 'url': 'ai-1', 'step': 'titles', 'head': 'x'}],
+                'B': [{'kind': 'ai_shared', 'url': 'ai-1', 'step': 'titles'}, {'kind': 'ai_live', 'url': 'ai-2', 'step': 'titles', 'head': 'list jobs'},
+                      {'kind': 'ai_live', 'url': 'ai-3', 'step': 'other', 'head': 'o'}]}
+        texts = {'ai-1': 'pick from: red, green, blue', 'ai-2': 'pick from: green, red, blue', 'ai-3': 'zzz'}
+        lines = validity.request_differences(logs, sides, texts)
+        self.assertEqual(len(lines), 2)   # ai-2 (B alone, nearest ai-1) and ai-3 (B alone, no request of its step on A)
+        self.assertIn("B asked live alone: step titles", lines[0])
+        self.assertIn('first difference at char 11', lines[0])
+        self.assertIn('no request of that step', lines[1])
+
+    def test_the_layer_names_the_step_and_head_of_a_request(self):
+        step, head = same_inputs._step({'extra_headers': {'x-jp-action': 'titles'}, 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': 'Rate   these\njobs'}]}]})
+        self.assertEqual((step, head), ('titles', 'Rate these jobs'))
+
+
 if __name__ == '__main__':
     unittest.main()

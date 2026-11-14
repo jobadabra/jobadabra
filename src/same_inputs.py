@@ -45,10 +45,10 @@ def _write(path, data):
     os.replace(tmp, path)
 
 
-def _log(kind, what, seconds):
+def _log(kind, what, seconds, **more):
     try:
         with open(os.path.join(folder, f'log-{SIDE}.jsonl'), 'a', encoding='utf-8') as file:
-            file.write(json.dumps({'kind': kind, 'url': what[:200], 'seconds': round(seconds, 2), 't': round(time.time(), 1)}) + '\n')
+            file.write(json.dumps({'kind': kind, 'url': what[:200], 'seconds': round(seconds, 2), 't': round(time.time(), 1), **more}) + '\n')
     except OSError:
         pass
 
@@ -165,13 +165,34 @@ def _urlopen(real):
     return urlopen
 
 
+def _step(params):
+    """The AI step's name (the x-jp-action header) and the first words of its last message: what a log row says about a request next to its key."""
+    headers = params.get('extra_headers') or {}
+    messages = params.get('messages') or [{}]
+    content = messages[-1].get('content', '') if isinstance(messages[-1], dict) else ''
+    if isinstance(content, list):
+        content = ' '.join(str(block.get('text', '')) if isinstance(block, dict) else str(block) for block in content)
+    return str(headers.get('x-jp-action', ''))[:40], ' '.join(str(content).split())[:80]
+
+
+def _keep_request(base, text):
+    """The request text under its key, once, for the report's first-difference line (local, in the run's shared folder; the tool copies it next to the logs).
+    Why (14 Nov 2026, sa): two same-code sides asked different AI keys at +6.5 s and nothing said what differed in the request."""
+    if not os.path.exists(base + '.req'):
+        _write(base + '.req', text.encode('utf-8', 'replace'))
+
+
 class _Messages:
     def __init__(self, live):
         self.live = live
 
     def create(self, **params):
-        key = 'ai-' + search_tape._key('ai', search_tape.DATE.sub('DATE', json.dumps(params, sort_keys=True, default=str)))
+        text = search_tape.DATE.sub('DATE', json.dumps(params, sort_keys=True, default=str))
+        key = 'ai-' + search_tape._key('ai', text)
         base = os.path.join(folder, key)
+        if not REPLAY:
+            _keep_request(base, text)
+        step, head = _step(params)
         if REPLAY:
             if not os.path.exists(base + '.json'):
                 _count('ai_missing')
@@ -190,21 +211,21 @@ class _Messages:
                 answer = self.live().messages.create(**params)
             except Exception as error:   # the failure is written too, so the other search raises it at once instead of waiting out its limit
                 _write(base + '.json', json.dumps({'error': f'{type(error).__name__}: {error}'[:300], 'seconds': round(time.monotonic() - asked, 3)}).encode())
-                _log('ai_failed', key, time.monotonic() - asked)
+                _log('ai_failed', key, time.monotonic() - asked, step=step, head=head)
                 raise
             usage = getattr(answer, 'usage', None)
             record = {'model': getattr(answer, 'model', ''), 'stop_reason': getattr(answer, 'stop_reason', 'end_turn'), 'engine': getattr(answer, 'engine', ''),
                       'texts': [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'], 'seconds': round(time.monotonic() - asked, 3),
                       'usage': {k: getattr(usage, k) for k in ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'billing', 'provider', 'model') if hasattr(usage, k)}}
             _write(base + '.json', json.dumps(record).encode())
-            _log('ai_live', key, record['seconds'])
+            _log('ai_live', key, record['seconds'], step=step, head=head)
             return answer
         record = _await(base, asked, WAIT_AI_S, key) if role == 'other' else None
         if record is None:
             _count('ai_own_again' if role == 'own' else 'ai_live')
             return self.live().messages.create(**params)
         _count('ai_shared')
-        _log('ai_shared', key, time.monotonic() - asked)
+        _log('ai_shared', key, time.monotonic() - asked, step=step, head=head)
         if record.get('error'):
             raise RuntimeError(record['error'])
         return search_tape._response(record)

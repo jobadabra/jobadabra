@@ -74,6 +74,9 @@ if result['verdict'].startswith('valid') and flags:
 elif reads is None:
     result['why'] += ' (page reads not recorded for this folder: not checked)'
 print(f'{pid}: layer: src/same_inputs.py (the merged one; a throwaway layer is not this tool)' if recorded else f'{pid}: layer: not recorded for this folder')   # Why (14 Nov 2026, sa): a throwaway-layer run was read as this tool
+if recorded:
+    for line in same_inputs_validity.request_differences(logs, sides, same_inputs_validity.read_requests(os.path.join(work, 'logs', 'req'))):
+        print(f'{pid}: REQUEST {line}')
 print(f'{pid}: {result["verdict"]}{result["why"]}: failed calls (AI, web search, feed reads) '
       + ', '.join(f'{s.upper()} {c[s]["failed"]} (clock rule {c[s]["clock"]}, other {c[s]["other"]}, no text {c[s]["notext"]})' for s in SIDES))
 for s, line in result['shown']:
