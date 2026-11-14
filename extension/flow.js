@@ -45,7 +45,9 @@ export function debuggerTurn(work) {
   return turn;
 }
 // Every awaited step of the clicks has a deadline, and a whole menu too: a control that never answers is given up on, the rest of the fill goes on (step-bound.js).
-const STEP_MS = {attach: 8000, page: 8000, mouse: 8000, type: 8000, choose: 20000, combo: 35000};
+// Why (#4298, 14 Nov 2026): the plan path's AI pick took 18.4-26.7 s a menu (20 s cut the 26.7 s one before its answer); combo-click.js leaves the AI's time out of its
+// 30 s cap, so the whole menu may take that cap plus two picks (a search box asks more than once).
+const STEP_MS = {attach: 8000, page: 8000, mouse: 8000, type: 8000, choose: 45000, combo: 35000 + 2 * 45000};
 // Menus given up on in this fill (a timeout, or the ceiling): a later pass does not wait on the same menu again, so one control costs the fill one wait, not one per pass (tab -> labels).
 const givenUp = new Map();
 export const forgetGivenUp = tabId => { givenUp.delete(tabId); };

@@ -6,8 +6,10 @@
 // limit out another 9 s, and the wait never ended: 30-40 s of silence, then "dead end: silent" with the late answers behind it).
 // busy time (14 Oct 2026, a loaded machine: the page's main thread was blocked 10-15 s after the click, so the extension's own calls hung and the wall clock ran out on a menu
 // that was only slow, "given up" and left): a call that took longer than slowCall (or a 100 ms sleep that woke later than that) is the page being busy, not the menu being dead; that time does not count against the waits or
-// the ceiling. `hard` bounds the whole menu in real time anyway (a page that never answers is still given up on; flow.js STEP_MS.combo is above it).
-// Known leftover (14 Oct 2026, coreweave replay on a Mac at load 100+): the AI pick (choose) took 16-30 s on a starved worker (its own 20 s timer fired at 30 s) and ate the menu's 35 s, so the menu read "No options" and was given up. A retry of the menu was tried (#735) and dropped: it doubles a never-opens menu's wait and trips "dead end: silent".
+// the ceiling. `hard` bounds the whole menu in real time anyway, the AI's pick left out (a page that never answers is still given up on; flow.js STEP_MS.combo is above it).
+// Why (#4298, owner 14 Nov 2026: "this filling is very slow and ineffective"): the AI's pick is the AI's time, not the menu's, for `hard` too. On the plan path a pick
+// took 18.4-26.7 s, and `hard` counted it, so a Greenhouse form's privacy and self-identify menus were given up right as the answer arrived (14 Oct's coreweave
+// "known leftover", which on the plan path hit every AI-picked menu). The AI's own limit is flow.js STEP_MS.choose; flow.js STEP_MS.combo bounds the whole.
 const PATIENCE = {first: 1500, loading: 5000, option: 4500, deciding: 9000, ceiling: 15000, hard: 30000, slowCall: 150};
 
 // type(text): real typing over the box's content. choose({asked, choices, label}): the AI's pick of one choice by meaning, or ''.
@@ -16,12 +18,12 @@ const PATIENCE = {first: 1500, loading: 5000, option: 4500, deciding: 9000, ceil
 export async function clickCombo({page, click, spot, skip = 0, type = null, choose = null, sleep = ms => new Promise(r => setTimeout(r, ms)), now = Date.now, marks = []}) {
   let picked = false, last = null, capped = false;
   const began = now();
-  let busy = 0;   // ms spent inside calls that answered slowly (the page's main thread was blocked); only the excess over slowCall counts, so there is no cliff at the threshold. Calls are awaited one at a time here: run in parallel they would count twice, `hard` still bounds that
+  let busy = 0, asking = 0;   // asking: ms inside choose (the AI's pick), left out of `hard` (#4298); busy: ms spent inside calls that answered slowly (the page's main thread was blocked); only the excess over slowCall counts, so there is no cliff at the threshold. Calls are awaited one at a time here: run in parallel they would count twice, `hard` still bounds that
   const timed = fn => async (...args) => { const t = now(); try { return await fn(...args); } finally { const d = now() - t; if (d > PATIENCE.slowCall) busy += d - PATIENCE.slowCall; } };
-  page = timed(page); click = timed(click); if (choose) choose = timed(choose);   // the AI's pick is the AI's time, not the menu's: a search box asks it more than once (page/fill-menus.js searchFor)
+  page = timed(page); click = timed(click); if (choose) { const ask = timed(choose); choose = async (...args) => { const t = now(); try { return await ask(...args); } finally { asking += now() - t; } }; }   // the AI's pick is the AI's time, not the menu's: a search box asks it more than once (page/fill-menus.js searchFor)
   const sleepFor = sleep;
   sleep = async ms => { const t = now(); await sleepFor(ms); const late = now() - t - ms; if (late > PATIENCE.slowCall) busy += late - PATIENCE.slowCall; };   // a starved worker wakes late too
-  const over = () => now() - began >= PATIENCE.hard || now() - began - busy >= PATIENCE.ceiling;
+  const over = () => now() - began - asking >= PATIENCE.hard || now() - began - busy >= PATIENCE.ceiling;
   const mark = tag => { marks.push(`${tag}@${now() - began}`); if (marks.length > 40) marks.shift(); };   // where the time went, said when a menu is given up (flow.js)   // every wait below is REAL time: counting 100 ms ticks let a busy page (each call taking a second or more) stretch a 1.5 s wait to 30 s
   for (let attempt = 1; attempt <= 2 && !picked; attempt++) {
     const before = await page(() => window.__jobadabraArmedCount());
