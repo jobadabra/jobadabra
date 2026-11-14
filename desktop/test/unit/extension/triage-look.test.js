@@ -111,8 +111,20 @@ test('a page that refuses the question read is still a simple form, with questio
   assert.equal(report.questions, null);
 });
 
-test('a form that is not simple reports no questions (nothing to match)', async () => {
+test('a page behind a bot check reports no questions (nothing to match before the check)', async () => {
   const {report} = await run({shapes: [FORM], kind: {role: 'form', botCheck: true}, controls: [{type: 'text', label: 'First name', required: true}]});
   assert.equal(report.simple, false);
   assert.equal('questions' in report, false);
+});
+
+// #4325 (14 Nov 2026, owner: "So it doesn't really work"): a form that may need a check still has its required questions read, so the app can say which answers are missing.
+test('a form that may need a check (a frame among its fields) still reports its required questions', async () => {
+  const {report} = await run({shapes: [{...FORM, frames: 1, formFrames: 1}], kind: {role: 'form', botCheck: false}, controls: [{type: 'text', label: 'Please indicate your nationality', required: true}]});
+  assert.deepEqual([report.simple, report.why], [false, 'check']);
+  assert.deepEqual(report.questions, ['Please indicate your nationality']);
+});
+
+test('a frame pinned to the screen (frames counted, none among the form) leaves the form simple, with its questions', async () => {
+  const {report} = await run({shapes: [{...FORM, frames: 1, formFrames: 0}], kind: {role: 'form', botCheck: false}, controls: [{type: 'text', label: 'First name', required: true}]});
+  assert.deepEqual([report.simple, report.why, report.questions], [true, '', ['First name']]);
 });

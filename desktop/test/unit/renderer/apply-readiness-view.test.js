@@ -10,7 +10,7 @@ const READS = {
   notChecked: null,
   login: {...clean, login: true, simple: false, why: 'login'},
   account: {...clean, accountCreation: true, simple: false, why: 'account'},
-  details: {...clean, simple: true, questions: [{label: 'Salary'}], match: {missing: [{kind: 'detail', name: 'Salary expectation'}], unjudged: 0}},
+  details: {...clean, simple: true, questions: ['Salary'], match: {missing: [{kind: 'detail', label: 'Salary expectation'}, {kind: 'answer', label: 'How did you perform in mathematics at high school?'}], unjudged: 0}},   // the match's real shape (lib/triage-match.js missingOf): #4325, a fake {name} hid that the drawer listed none
   ready: {...clean, simple: true, questions: [], match: {missing: [], unjudged: 0}},
   ineligible: {...clean, eligible: false},
 };
@@ -29,7 +29,7 @@ test('Apply readiness says what the check found and lists what is missing, from 
   assert.deepEqual(login.missing, ['Sign in on the employer\'s site']);
   assert.equal(login.button, 'Check again');
   assert.deepEqual(readinessOf(READS.account).missing, ['An account on the employer\'s site']);
-  assert.deepEqual(readinessOf(READS.details).missing, ['Salary expectation']);
+  assert.deepEqual(readinessOf(READS.details).missing, ['Salary expectation', 'How did you perform in mathematics at high school?']);
   assert.deepEqual(readinessOf(READS.ready).missing, []);
   assert.ok(readinessOf(READS.ready).found, 'a ready job still says what the check found');
 });

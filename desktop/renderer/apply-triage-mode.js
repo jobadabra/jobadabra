@@ -1,6 +1,13 @@
 // Apply triage: turns one form read into the highest apply mode that job can take. Pure, no AI, no I/O.
 
 /**
+ * Whether a read is a form whose required questions are read and matched against your saved details: a simple form, or a form that may need a check (its questions still
+ * decide whether it can be applied to automatically once the check is done). Why (14 Nov 2026, #4325, owner: "So it doesn't really work"): a "check" read skipped the match, so
+ * the drawer never said which answers were missing. The one test every reader of the match uses (lib/triage-read.js, lib/apply-readiness.js, lib/apply-check-first.js, pages/jobs-triage.js). Pure.
+ */
+export const readsQuestions = read => read?.simple === true || (read?.simple === false && read.why === 'check');
+
+/**
  * The highest apply mode a read form allows, with the reason the chip shows.
  * Order: not eligible is skipped; a captcha, a login wall or an account to create needs the person (Standard); then the read's own verdict:
  * the light look says `simple` (a simple form is Full automation, any other named reason needs the person: the form's shape decides, no answer plan was made, owner 7 Nov 2026);

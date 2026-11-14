@@ -1,25 +1,34 @@
 // What the flow reads off a page, as two closed scripts run in the tab (moved out of fill-flow.js, 13 Oct 2026, a pure move): pageShape (the counts of fields, files, frames and the document's status)
 // and pageSketchOf (the page's sketch for the AI that decides its kind: headings, controls, buttons, frames). Both are closed scripts: desktop/e2e/ladder-capture.mjs runs pageSketchOf's body on its own.
 // Guards: desktop/test/unit/extension/named-controls.test.js, desktop/integration/extension/own-ui-not-read.test.mjs, the recorded case desktop/e2e/recorded/own-panel-not-in-sketch-1.
+/**
+ * The counts of the page it runs in (a closed script: chrome.scripting runs it in the tab, a test runs it with page.evaluate). -> {fields, passwords, files, anyFiles, textareas, nodes, frames, formFrames, frameHosts, status}.
+ */
+export function shapeOfPage() {
+  const shown = el => el.getClientRects().length > 0 && el.type !== 'hidden';
+  const controls = [...document.querySelectorAll('input, textarea, select')].filter(shown);
+  const skip = new Set(['submit', 'button', 'reset', 'search', 'image', 'password', 'file', 'hidden']);
+  const seen = [...document.querySelectorAll('iframe')].filter(el => { const box = el.getBoundingClientRect(); return box.width > 40 && box.height > 40; });   // a check drawn in a frame, often seconds after the load
+  const pinned = el => { for (let up = el; up && up !== document.documentElement; up = up.parentElement) if (getComputedStyle(up).position === 'fixed') return true; return false; };
+  return {
+    fields: controls.filter(el => el.tagName !== 'TEXTAREA' && !skip.has(el.type)).length,
+    passwords: controls.filter(el => el.type === 'password').length,
+    files: controls.filter(el => el.type === 'file').length,
+    anyFiles: document.querySelectorAll('input[type=file]').length,   // an upload behind a button ("Upload a CV"): its input is hidden
+    textareas: controls.filter(el => el.tagName === 'TEXTAREA').length,
+    nodes: document.getElementsByTagName('*').length,   // still growing: a page that renders its form after the load
+    frames: seen.length,
+    // Why (14 Nov 2026, #4325): the frames a check among the form's own controls could be drawn in, for the light read's "may need a check" (triage-verdict.js). A frame pinned to the screen (a corner badge that asks nothing of
+    // the person) is not among the form's controls: on a Greenhouse board form it alone turned "simple" into "a check may be in the form".
+    formFrames: seen.filter(el => !pinned(el)).length,
+    // Their hosts, as the page-kind sketch gives them: a frame is often there before its address (about:blank first), so a host that shows up later counts as new.
+    frameHosts: [...new Set(seen.map(el => { try { return new URL(el.src, location.href).hostname; } catch { return ''; } }).filter(Boolean))],
+    status: performance.getEntriesByType('navigation')[0]?.responseStatus || 0,   // the server's answer for this document (ladder/site-broken.js); 0 when unknown
+  };
+}
+/** The counts of a tab's page (shapeOfPage) plus its plain-button question steps, or null when the tab refuses the read. */
 export function pageShape(tabId) {
-  return chrome.scripting.executeScript({target: {tabId}, func: () => {
-    const shown = el => el.getClientRects().length > 0 && el.type !== 'hidden';
-    const controls = [...document.querySelectorAll('input, textarea, select')].filter(shown);
-    const skip = new Set(['submit', 'button', 'reset', 'search', 'image', 'password', 'file', 'hidden']);
-    return {
-      fields: controls.filter(el => el.tagName !== 'TEXTAREA' && !skip.has(el.type)).length,
-      passwords: controls.filter(el => el.type === 'password').length,
-      files: controls.filter(el => el.type === 'file').length,
-      anyFiles: document.querySelectorAll('input[type=file]').length,   // an upload behind a button ("Upload a CV"): its input is hidden
-      textareas: controls.filter(el => el.tagName === 'TEXTAREA').length,
-      nodes: document.getElementsByTagName('*').length,   // still growing: a page that renders its form after the load
-      frames: [...document.querySelectorAll('iframe')].filter(el => { const box = el.getBoundingClientRect(); return box.width > 40 && box.height > 40; }).length,   // a check drawn in a frame, often seconds after the load
-      // Their hosts, as the page-kind sketch gives them: a frame is often there before its address (about:blank first), so a host that shows up later counts as new.
-      frameHosts: [...new Set([...document.querySelectorAll('iframe')].filter(el => { const box = el.getBoundingClientRect(); return box.width > 40 && box.height > 40; })
-        .map(el => { try { return new URL(el.src, location.href).hostname; } catch { return ''; } }).filter(Boolean))],
-      status: performance.getEntriesByType('navigation')[0]?.responseStatus || 0,   // the server's answer for this document (ladder/site-broken.js); 0 when unknown
-    };
-  }}).then(rows => rows?.[0]?.result || null).then(async shape => (shape ? {...shape, choices: await choiceGroups(tabId)} : shape)).catch(() => null);
+  return chrome.scripting.executeScript({target: {tabId}, func: shapeOfPage}).then(rows => rows?.[0]?.result || null).then(async shape => (shape ? {...shape, choices: await choiceGroups(tabId)} : shape)).catch(() => null);
 }
 // The question steps drawn with plain buttons (page/choice-step.js: structure only, while a control waits for the answer). The finder is injected when this page has not loaded it yet.
 async function choiceGroups(tabId) {

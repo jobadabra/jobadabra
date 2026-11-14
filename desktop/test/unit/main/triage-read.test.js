@@ -40,6 +40,7 @@ test('a simple look carries its required questions (trimmed, strings only, at mo
   assert.equal(readFromLook({simple: true, why: '', questions: many}).questions.length, 30);
   assert.equal('questions' in readFromLook({simple: true, why: ''}), false, 'an older extension sends none');
   assert.equal('questions' in readFromLook({simple: false, why: 'login', questions: ['Phone']}), false);
+  assert.deepEqual(readFromLook({simple: false, why: 'check', questions: ['Phone']}).questions, ['Phone'], 'a form that may need a check keeps its questions for the match (#4325)');
 });
 
 test('a page that refused the label read sends questions null, kept as null (answers not checked), never an empty list', () => {
