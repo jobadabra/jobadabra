@@ -171,3 +171,16 @@ test('a check\'s step log is kept with its stored check, so "Took" and the log s
   assert.equal(none.calls.store.filter(([, method]) => method === 'update').length, 0);
   assert.ok(calls.store.some(([, method]) => method === 'update'));
 });
+
+test('a stored check that runs out of room drops its step log before its questions (Gitar on #4349)', () => {
+  const steps = Array.from({length: 8}, () => ({step: 'drafting', ms: 123456}));
+  const questions = [];
+  const base = {...SIMPLE, match: {missing: [], unjudged: 0}};
+  while (pack({...base, questions: [...questions, 'x'.repeat(40)]}, {posted: '2026-11-01', now: NOW}).length < MAX_CHARS - 60) questions.push(`Required question ${questions.length} ${'x'.repeat(20)}`);
+  const alone = pack({...base, questions}, {posted: '2026-11-01', now: NOW});
+  assert.ok(alone.length <= MAX_CHARS && alone.length + JSON.stringify(steps).length > MAX_CHARS, 'positive control: the questions fit alone, not with the steps');
+  const kept = unpack(pack({...base, questions, steps}, {posted: '2026-11-01', now: NOW}));
+  assert.deepEqual(kept.read.questions, questions, 'the questions are kept');
+  assert.equal(kept.read.steps, undefined, 'the steps were dropped');
+  assert.deepEqual(unpack(pack({...base, questions: ['Phone'], steps}, {posted: '2026-11-01', now: NOW})).read.steps, steps, 'with room, the steps are kept');
+});
