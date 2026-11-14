@@ -88,6 +88,15 @@ class RequestDifferences(unittest.TestCase):
         self.assertIn('first difference at char 11', lines[0])
         self.assertIn('no request of that step', lines[1])
 
+    def test_a_fallback_ask_and_a_failed_ask_count_as_asked_alone_and_the_nearest_is_the_longest_shared_prefix(self):
+        sides = {'a': 'A', 'b': 'B'}
+        logs = {'A': [{'kind': 'ai_live_after_wait', 'url': 'ai-1', 'step': 's', 'head': 'h'}, {'kind': 'ai_failed', 'url': 'ai-4', 'step': 's', 'head': 'h'}],
+                'B': [{'kind': 'ai_live', 'url': 'ai-2', 'step': 's'}, {'kind': 'ai_live', 'url': 'ai-3', 'step': 's'}]}
+        texts = {'ai-1': 'abcdef-xyz', 'ai-2': 'zzzzzzzzzz', 'ai-3': 'abcdef-uvw', 'ai-4': 'qq'}   # ai-2 has the same letters count, ai-3 the longer shared start
+        lines = validity.request_differences(logs, sides, texts, limit=1)
+        self.assertEqual(len(lines), 1)
+        self.assertIn('first difference at char 7', lines[0])
+
     def test_the_layer_names_the_step_and_head_of_a_request(self):
         step, head = same_inputs._step({'extra_headers': {'x-jp-action': 'titles'}, 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': 'Rate   these\njobs'}]}]})
         self.assertEqual((step, head), ('titles', 'Rate these jobs'))

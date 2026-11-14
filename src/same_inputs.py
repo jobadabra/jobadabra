@@ -223,7 +223,11 @@ class _Messages:
         record = _await(base, asked, WAIT_AI_S, key) if role == 'other' else None
         if record is None:
             _count('ai_own_again' if role == 'own' else 'ai_live')
-            return self.live().messages.create(**params)
+            started = time.monotonic()
+            try:
+                return self.live().messages.create(**params)
+            finally:   # Gitar on #4388: a fallback ask is a live ask the report must see
+                _log('ai_own_again' if role == 'own' else 'ai_live_after_wait', key, time.monotonic() - started, step=step, head=head)
         _count('ai_shared')
         _log('ai_shared', key, time.monotonic() - asked, step=step, head=head)
         if record.get('error'):
