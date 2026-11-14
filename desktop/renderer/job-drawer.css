@@ -125,3 +125,11 @@
 .doc-head.tone-violet { --tone: var(--violet); --tone-soft: var(--violet-soft); }
 .doc-head.tone-signal { --tone: var(--signal); --tone-soft: var(--signal-soft); }
 .jd-card > .doc-head h3 { margin: 0; }
+
+/* Application → Apply readiness (#4325): the summary card's outcome line, and the folded check log's rows (words, a bar of the step's share of the slowest, seconds). Tokens only, both themes. */
+.jd-readiness { display: grid; gap: var(--sp-3); }
+.jd-readiness-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.jd-readiness .jd-actions { margin-top: 0; }
+.jd-readiness-step { align-self: stretch; display: grid; grid-template-columns: minmax(0, 14rem) 1fr auto; align-items: center; gap: var(--sp-3); padding: var(--sp-1) 0; font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+.jd-readiness-bar { display: block; height: 6px; border-radius: var(--r-sm); background: var(--surface-2); position: relative; overflow: hidden; }
+.jd-readiness-bar::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--share, 0%); background: var(--signal); border-radius: inherit; }

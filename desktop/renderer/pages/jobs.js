@@ -397,6 +397,6 @@ export async function init() {
   document.addEventListener('score-found-ask', () => startScoreQueue());   // ⌘K "Score found jobs" (pages/nav.js)
   shared.scoreFound = startScoreQueue;   // a row's "Score" press (pages/score-queue-draw.js)
   wireApplyDialog({startedApplying, openJob: openJobPanel});
-  wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage, onStep: fn => window.pilot.onTriageStep?.(fn)});
+  wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), keep: (url, steps) => window.pilot.applyReadinessSteps(url, steps), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage, onStep: fn => window.pilot.onTriageStep?.(fn)});
 }
 

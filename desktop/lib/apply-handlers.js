@@ -82,6 +82,8 @@ export function registerApplyHandlers(ctx) {
     const asked = askedOf(reads);
     return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
+  // A check's step log (renderer/readiness-steps.js), kept with the job's stored check so it survives a restart; the demo stores nothing.
+  ipcMain.handle('applyReadinessSteps', (_, url, steps) => (DEMO ? false : readiness.keepSteps(String(url || ''), steps)));
   // The held batch's own match (lib/apply-check-first.js matchAll): the same call, without readiness's store step, so it never clears the form-check dialog's waiting reads.
   const matchHeld = reads => { const asked = askedOf(reads); return DEMO ? demoTriageMatch(storage.settings(), asked) : matchLogged(asked); };
   ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });
