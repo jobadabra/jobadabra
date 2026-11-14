@@ -309,18 +309,20 @@ def discover(website, fetch_page=get_text):
     return _explore(website, shown, show)
 
 
-def read_page_from(markup, url, fetch_page, part=None, linked=None):
+def read_page_from(markup, url, fetch_page, part=None, linked=None, stats=None):
     """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings, kept only
     when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not).
     linked: the job pages a board's served layout named (board_layout.py), so no link on the page is asked about; None = the page's job links.
+    stats: a dict that gets `read` (job pages fetched without failing) and `gave` (of those, the pages that gave a posting): a failed fetch is that
+    page's failure, a fetched page that is no posting says the links named were not job pages (board_layout.py compares the two).
     Either way at most MAX_JOB_PAGES job pages are read, as the page's own job links always were."""
     def one(link):
         with stage.guard('employer sites: linked page') as caught:
             page = fetch_page(link)
         if caught:
-            return [], []
+            return [], [], False
         declared = jsonld_jobs(page, link, job_page=True)
-        return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])
+        return (declared, [], True) if declared else ([], [job for job in [job_from_page(page, link)] if job], True)
     from . import board_round_log, one_posting
     part = part or board_round_log.untimed   # a board's round names where its seconds went (log only); any other page read times nothing
     if linked is None:
@@ -329,12 +331,13 @@ def read_page_from(markup, url, fetch_page, part=None, linked=None):
     linked = linked[:MAX_JOB_PAGES]
     with part(f'{len(linked)} job pages'), ThreadPoolExecutor(max_workers=6) as pool:
         read = list(pool.map(slots.carry(one), linked))
-    headed = list({job['url']: job for _, jobs in read for job in jobs}.values())
+    headed = list({job['url']: job for _, jobs, _ in read for job in jobs}.values())
     with part('postings'):
         postings = {job['url'] for job in one_posting.kept(headed, reader() is not None)}
-    found = [job for declared, jobs in read for job in declared + [job for job in jobs if job['url'] in postings]]
-    return list({job['url']: job for job in found}.values())
-
+    pages = [declared + [job for job in jobs if job['url'] in postings] for declared, jobs, _ in read]
+    if stats is not None:
+        stats['read'], stats['gave'] = sum(1 for *_, fetched in read if fetched), sum(1 for found in pages if found)
+    return list({job['url']: job for found in pages for job in found}.values())
 
 
 # Imported last: these look up READER, _asked, careers_links ... on this module when called.
