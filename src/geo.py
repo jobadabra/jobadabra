@@ -214,47 +214,51 @@ def within(place, location):
     return km(place, location) <= place['r']
 
 
-def _parts(location):
-    """The places a location string lists ("Berlin; Köln; Nürnberg"): its ';'-separated parts, the last one dropped when the key was cut at KEY_WIDTH (a half
-    word is no place). One part: the string names one place. Structure only: what each part is stays the map's answer."""
-    parts = [part.strip() for part in location.split(';') if part.strip()]
-    return parts[:-1] if len(location) >= KEY_WIDTH and len(parts) > 1 else parts
+def _parts(key):
+    """(parts, cut) for a location key that lists several places ("Berlin; Köln; Nürnberg"): its non-empty ';'-separated parts, and whether the key was cut at
+    KEY_WIDTH (the last part is then half a word and dropped, and the list is not whole). One part, or none: ([], False), the string names one place.
+    Structure only: what each part is stays the map's answer. The ONE owner of the cut rule."""
+    parts = [part.strip() for part in key.split(';') if part.strip()]
+    if len(parts) < 2:
+        return [], False
+    cut = len(key) >= KEY_WIDTH
+    return (parts[:-1] if cut else parts), cut
+
+
+def _verdict_of(entry, places):
+    """'best' | 'in' | 'out' for one placed location against the places' entries, None when the map cannot say (no entry, remote, only a country for a smaller place)."""
+    results = [(answer, within(place, entry)) for answer, place in places] if entry else []
+    if not results or any(r is None for _, r in results):
+        return None
+    return next((answer for answer, r in results if r and answer == 'best'), None) or next((answer for answer, r in results if r), None) or 'out'
+
+
+def _list_verdict(answers, cut):
+    """One verdict for a list's parts: 'best'/'in' when any part is; 'out' only when the list is whole (not cut) and every part is placed outside; else None."""
+    hit = next((a for a in answers if a == 'best'), None) or next((a for a in answers if a == 'in'), None)
+    return hit or ('out' if not cut and answers and all(a == 'out' for a in answers) else None)
 
 
 def verdicts(locations, words, client=None, ask=True):
     """{normalized location: 'best' | 'in' | 'out'} for the locations the map can decide against these place words (place_triage.places_words);
     a location it cannot place, or that is remote or only a country for a smaller place, is left out for the model. With work rights given, only
     'out' is decided here: a visa need comes with the model's country answer.
-    A string that lists several places is answered part by part: 'best'/'in' when any part is, 'out' only when every part is placed and outside, else
-    left to the model. Why (nb, 14 Nov 2026, b08 replay of #4224): the map gave "München, Germany; Nürnberg, Germany; …" one point (Munich) and a Nürnberg
-    search closed that job as outside."""
+    A string that lists several places is answered part by part (_list_verdict). Why (nb, 14 Nov 2026, b08 replay of #4224): the map gave
+    "München, Germany; Nürnberg, Germany; …" one point (Munich) and a Nürnberg search closed that job as outside."""
     groups = (('best', words.get('best_places') or []), ('in', words.get('anywhere_in') or []), ('in', words.get('cities_abroad') or []))
     keys = list(dict.fromkeys(norm(loc) for loc in locations))
     listed = {key: _parts(key) for key in keys}
-    listed = {key: parts for key, parts in listed.items() if len(parts) > 1 or ';' in key}
-    single = [key for key in keys if key not in listed]
-    found = {**resolve([w for _, ws in groups for w in ws], client, ask),
-             **resolve(single + [part for parts in listed.values() for part in parts], client, ask, share=True)}
+    asked = [key for key in keys if not listed[key][0]] + [part for parts, _ in listed.values() for part in parts]
+    found = {**resolve([w for _, ws in groups for w in ws], client, ask), **resolve(asked, client, ask, share=True)}
     places = [(answer, found.get(norm(w))) for answer, ws in groups for w in ws]
     if not places or any(entry is None for _, entry in places):
         return {}   # a place the map cannot place: the model decides, as before
-
-    def one(location):
-        entry = found.get(norm(location))
-        results = [(answer, within(place, entry)) for answer, place in places] if entry else []
-        if not results or any(r is None for _, r in results):
-            return None
-        hit = next((answer for answer, r in results if r and answer == 'best'), None) or next((answer for answer, r in results if r), None)
-        return hit or 'out'
-
     out = {}
-    for location in keys:
-        answers = [one(part) for part in listed[location]] if location in listed else [one(location)]
-        hit = next((a for a in answers if a == 'best'), None) or next((a for a in answers if a == 'in'), None)
-        if hit and not words.get('work_rights'):
-            out[location] = hit
-        elif not hit and answers and all(a == 'out' for a in answers) and (location not in listed or len(listed[location]) == location.count(';') + 1):
-            out[location] = 'out'
+    for key in keys:
+        parts, cut = listed[key]
+        verdict = _list_verdict([_verdict_of(found.get(norm(part)), places) for part in parts], cut) if parts else _verdict_of(found.get(key), places)
+        if verdict and not (verdict != 'out' and words.get('work_rights')):
+            out[key] = verdict
     return out
 
 

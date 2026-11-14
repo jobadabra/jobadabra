@@ -16,6 +16,7 @@ PLACES = {
     'münchen, germany': ('city', 'DE', 48.137, 11.576, 25), 'nürnberg, germany': ('city', 'DE', 49.452, 11.077, 20), 'augsburg, germany': ('city', 'DE', 48.37, 10.9, 15),
     'münchen, germany; nürnberg, germany; augsburg, germany': ('city', 'DE', 48.137, 11.576, 25),   # what the map answered for a list in the b08 replay: its first city
     'bielefeld, germany; bochum, germany': ('city', 'DE', 52.02, 8.53, 15), 'bielefeld, germany': ('city', 'DE', 52.02, 8.53, 15), 'bochum, germany': ('city', 'DE', 51.48, 7.22, 12),
+    'bochum, germany;': ('city', 'DE', 51.48, 7.22, 12),   # a stray ';' names one place
     'germany': ('country', 'DE', None, None, None), 'remote - emea': ('remote', '', None, None, None), 'bogus': ('city', 'XX', 91.0, 8.0, 10)}
 
 
@@ -142,6 +143,19 @@ class TriageTests(unittest.TestCase):
         self.assertEqual(got[geo.norm(elsewhere)], 'out')   # every part placed and outside: still closed
         with mock.patch.dict(feeds.placed(), {geo.norm(listed): got[geo.norm(listed)]}, clear=False):
             self.assertTrue(feeds.wanted_location({'location': listed, 'title': 'x'}))
+
+    def test_the_edges_of_a_list_of_places(self):
+        """Each branch of the part-by-part answer: a stray ';' is one place (decided whole, as before), a key cut at 120 characters is never 'out', a part the
+        map cannot place leaves the list to the model, work rights decide only 'out'."""
+        words = {'best_places': ['nürnberg'], 'anywhere_in': [], 'cities_abroad': []}
+        cut = ('bielefeld, germany; bochum, germany; ' * 4)[:130]
+        got = geo.verdicts(['Bochum, Germany;', cut, 'Bielefeld, Germany; Nowhere Land', 'Bielefeld, Germany; Bochum, Germany'], words, Client())
+        self.assertEqual(got['bochum, germany;'], 'out')
+        self.assertNotIn(geo.norm(cut), got)
+        self.assertNotIn('bielefeld, germany; nowhere land', got)
+        self.assertEqual(got['bielefeld, germany; bochum, germany'], 'out')
+        rights = geo.verdicts(['München, Germany; Nürnberg, Germany; Augsburg, Germany', 'Bielefeld, Germany; Bochum, Germany'], {**words, 'work_rights': ['DE']}, Client())
+        self.assertEqual(rights, {'bielefeld, germany; bochum, germany': 'out'})
 
     def test_remote_is_left_to_the_model(self):
         asked = []
