@@ -277,7 +277,7 @@ def capture_engine(prompts=False):
     slots = NS(carry=lambda function, *level: function, priority=lambda level: __import__("contextlib").nullcontext(), NORMAL=1, TITLES=0)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
                    time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None, now=time.monotonic, scored_beside=lambda: False),
-                   keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}))
+                   keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}), providers=NS(who=lambda: 'Claude'))   # geo._ask says its map round (#4219)
     geo = load('src/geo.py', ['BATCH', 'KINDS', 'MAX_RADIUS', 'SCHEMA', 'SYSTEM', 'valid', '_ask'], slots=slots)
     strings = ['zurich, switzerland', 'remote']
     client = Client({'places': [{'n': 1, 'kind': 'city', 'cc': 'CH', 'lat': 47.37, 'lon': 8.54, 'r_km': 15},

@@ -187,9 +187,15 @@ def _ask(client, keys):
 
     batches = [keys[start:start + BATCH] for start in range(0, len(keys), BATCH)]
     out = {}
+    # Why (#4199 try 3, sa): the map's AI round said nothing, so a search's log could not show where 16 s went (pair 43604153744, d05)
+    from .ai import providers
+    from . import time_budget
+    began = time_budget.now()
+    print(f'Map: asking {providers.who()} where {len(keys)} place name(s) are, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.at_once()))) as pool:
         for found in pool.map(slots.carry(one), batches):
             out.update(found)
+    print(f'Map: {providers.who()} placed {len(out)} of {len(keys)} place name(s) in {time_budget.now() - began:.0f} s', flush=True)
     return out
 
 

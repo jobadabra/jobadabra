@@ -15,6 +15,7 @@ Moved here from src/time_budget.py (plan 2026-11-07-the-press 4/6, a pure move):
 process has one Clock; src/time_budget.py is its shim (its module namespace IS that Clock's attribute dictionary, so `time_budget.DEADLINE`,
 `time_budget.over` and a test's `mock.patch.object(time_budget, ...)` still reach it). The numbers are rows of src/press/budget.json. The
 stage table (name, owner file, budget row, runs-beside) is src/press/stages.py. Attribute names are the ones time_budget always had."""
+import contextlib
 import json
 import os
 import threading
@@ -80,6 +81,7 @@ class Clock:
         self.SCORING = budget.value('time_budget.SCORING')   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof
         #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
         self.SCORE_FIRST = False
+        self._end_pass = threading.local()   # this thread runs the search's last judging pass (to_the_end, at_the_end)
         self._said = set()   # the stages that said their time-up line in this search (later)
         self.FLOOR = budget.value('time_budget.FLOOR')     # the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: "Yes, always 3"): a new user sees fits in press 1
         self._scored = [0]  # scores started in this search (may_score)
@@ -117,6 +119,7 @@ class Clock:
         if seconds:
             budget_tape.new_search(name)
         self.score_first(False)
+        self._end_pass = threading.local()
         self._said.clear()
         resume.begin()
         self._scored[0] = 0   # a new search: its first FLOOR scores start again whatever the clock
@@ -212,6 +215,37 @@ class Clock:
         10 Nov 2026, owner asked via AskUserQuestion: "Yes, facts later"): the 25 s kept were read as "0 of 74, Time is up" on every night log, while 71 jobs waited for a score."""
         self.SCORE_FIRST = on
 
+    @contextlib.contextmanager
+    def to_the_end(self):
+        """For the block, in this thread and the calls it carries (carried), the search's last judging pass (src/sources/board_pass.py): every step's AI
+        calls stop at the run's end (TAIL before the deadline, as ended()), and its rounds take all the time left, not a share: no step comes after it
+        to keep seconds for. Never past ended(): no AI call starts in the run's last seconds (L04). Other threads keep their reserves and shares.
+        Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)")."""
+        before = self.at_the_end()
+        self._end_pass.on = True
+        try:
+            yield
+        finally:
+            self._end_pass.on = before
+
+    def at_the_end(self):
+        """This thread runs the search's last judging pass (to_the_end)."""
+        return bool(getattr(self._end_pass, 'on', False))
+
+    def carried(self, fn):
+        """`fn` to run in another thread (the title queue's workers, the place pool's) with the calling thread's to_the_end mode.
+        Why (Gitar on #4187): a process-wide mode let scoring and the lane's own calls skip their reserves while the pass ran."""
+        on = self.at_the_end()
+
+        def run(*args, **kwargs):
+            before = self.at_the_end()
+            self._end_pass.on = on
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                self._end_pass.on = before
+        return run
+
     def reserve(self, step):
         """Seconds before the deadline at which `step` starts no new call (this run's part of them, the TAIL included)."""
         if step == 'titles' and self.scored_beside():
@@ -240,6 +274,8 @@ class Clock:
 
     def _stop(self, step):
         """When `step` starts no new call: the run's end minus what the later steps keep (reserve) and the TAIL. One line, drawn here, for over() and for the rounds that fit before it."""
+        if self.at_the_end():
+            return self.end() - self.part(self.TAIL)
         return min(self.DEADLINE - self.reserve(step), self.end() - self.part(self.TAIL))
 
     def _over(self, step, now):
@@ -269,7 +305,7 @@ class Clock:
         stop = self.end()   # a stage's own end comes first; scoring keeps no seconds for the facts (ts, 10 Nov 2026)
         left = stop - (now if now is not None else time.monotonic()) - self.part(self.TAIL)
         pace = max(0.5, self._paces().get(step, self.PACE[step]))
-        share = 1.0 if step == 'title_rounds' and self.scored_beside() else self.SHARE[step]
+        share = 1.0 if self.at_the_end() or (step == 'title_rounds' and self.scored_beside()) else self.SHARE[step]
         n = max(floor, min(wanted, int(left * share / pace)))
         if not say:
             return n
