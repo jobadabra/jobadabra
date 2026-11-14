@@ -328,7 +328,7 @@ class Discover(unittest.TestCase):
 
 
 class OwnDatabase(unittest.TestCase):
-    """Discovery keeps its own database so it never saves over the Scout's memory; it starts once from the Scout's facts, and the Scout publishes both."""
+    """Discovery keeps its own database so it never saves over the Scout's memory; it takes the Scout's new or newer facts in at every pass (test_scout_board_merge.py), and the Scout publishes both."""
     def setUp(self):
         folder = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, folder, True)
@@ -338,14 +338,14 @@ class OwnDatabase(unittest.TestCase):
             scout_cells._set(scout_db, 'serp_waiting', {'ee': [{'host': 'wait.example'}]})
             scout_db.commit()
 
-    def test_it_starts_from_the_scout_s_facts_once(self):
+    def test_it_starts_from_the_scout_s_facts_and_takes_only_new_or_newer_ones_after(self):
         own = sqlite3.connect(self.own_path)
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 1)
         self.assertEqual(cells.strength(own, TODAY)[('fr', 'kitchen')], 1, 'a covered cell is not read first again')
         self.assertEqual(scout_cells._meta(own, 'serp_waiting', {}), {'ee': [{'host': 'wait.example'}]}, "Google's sites waiting to be judged come along")
         fact(own, 'b.example', 'de', ['kitchen'])
         own.commit()
-        self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
+        self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'merged every pass: nothing new or newer than discovery holds, nothing taken')
         self.assertEqual(cells.seed(sqlite3.connect(':memory:'), os.path.join(os.path.dirname(self.own_path), 'none.sqlite'), out=lambda line: None), 0)
 
     def test_seeded_facts_keep_every_column_the_rule_included(self):
