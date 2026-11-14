@@ -11,6 +11,8 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+from tests.ship_watch_guard import WATCH_HANG_GUARD_S
+
 ROOT = Path(__file__).resolve().parents[3]
 FRESH = '~/.claude/skills/reopen-pr-fresh/reopen-fresh.sh o/r 7'
 
@@ -41,7 +43,7 @@ class ShipWatchGitarStaleTest(unittest.TestCase):
         (self.tmp / 'peek.sh').chmod(0o755)
         env['SHIP_WATCH_GITAR_PEEK'] = str(self.tmp / 'peek.sh')
         env.pop('SHIP_WATCH_DRAFT_OK', None)
-        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=30, check=True)
+        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=WATCH_HANG_GUARD_S, check=True)
         calls = [c for c in (self.tmp / 'calls').read_text().splitlines() if c.startswith('pr comment')]
         return self.log.read_text().splitlines()[1:], calls
 

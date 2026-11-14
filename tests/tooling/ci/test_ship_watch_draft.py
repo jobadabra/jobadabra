@@ -11,6 +11,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.ship_watch_guard import WATCH_HANG_GUARD_S
+
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -36,7 +38,7 @@ class ShipWatchDraftTest(unittest.TestCase):
         env.pop('SHIP_WATCH_DRAFT_OK', None)
         if draft_ok:
             env['SHIP_WATCH_DRAFT_OK'] = '1'
-        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=30, check=True)
+        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=WATCH_HANG_GUARD_S, check=True)
         self.flips = [line for line in (self.tmp / 'calls').read_text().splitlines() if line.startswith('pr ready')]
         return self.log.read_text().splitlines()[1:]
 
