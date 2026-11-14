@@ -208,7 +208,7 @@ class Activation(unittest.TestCase):
         self.assertEqual((len(self.shown), len(self.rows())), (0, 2))
         time_budget.start(0)
         run_counts.reset()
-        _, items = waiting_jobs.judge(self.db, {}, datetime.now(timezone.utc), out=lambda line: None)
+        _, items = waiting_jobs.judge(self.db, {}, datetime(2026, 11, 14, tzinfo=timezone.utc), out=lambda line: None)
         self.assertEqual({item['url'] for item in items}, {job['url'] for job in self.jobs[1:]})
 
     def test_a_pass_failing_before_its_plan_reports_the_error_not_never_started(self):

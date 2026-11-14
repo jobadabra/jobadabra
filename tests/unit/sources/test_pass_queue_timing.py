@@ -29,8 +29,10 @@ class PassTime(unittest.TestCase):
     def test_measured_rounds_are_clamped_by_the_budget_rows(self):
         for pace, allowance in ((0.1, read_budget.PASS_MIN), (100, read_budget.PASS_MAX)):
             with self.subTest(pace=pace):
+                time_budget.start(180, now=1000)
                 self.paces.return_value = {'place_rounds': pace, 'title_rounds': pace}
                 self.assertEqual(read_budget.run_end() - read_budget.pass_at(), time_budget.part(allowance))
+        time_budget.start(180, now=1000)
         self.paces.return_value = {}
         self.assertEqual(read_budget.run_end() - read_budget.pass_at(), 27)
 
@@ -52,6 +54,16 @@ class PassTime(unittest.TestCase):
             self.assertTrue(read_budget.past_cut(now=lane_end))
         self.assertEqual(read_budget.cut_at(), 1090)
 
+
+    def test_the_read_gate_and_worker_share_the_first_published_cut(self):
+        self.paces.return_value = {'place_rounds': 20, 'place_vague': 4, 'title_rounds': 1}
+        self.assertEqual(read_budget.pass_at(), 1125)
+        self.paces.return_value['place_rounds'] = 12.5
+        self.assertEqual(read_budget.pass_at(), 1125, 'pace changes before worker startup must not move the read gate')
+        with slots.in_lane(1165):
+            self.assertTrue(read_budget.past_cut(now=1130))
+        time_budget.start(180, now=1000)
+        self.assertEqual(read_budget.pass_at(), 1135, 'the next run publishes its own cut')
 
 
 class SettledQueue(unittest.TestCase):
