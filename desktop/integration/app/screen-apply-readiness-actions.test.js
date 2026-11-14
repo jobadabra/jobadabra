@@ -79,7 +79,7 @@ test('a to-do whose question the queue does not hold opens nothing: never the wh
 });
 
 test('"Fix all" is the same press for this job\'s first item: the queue focused on it, never another question first; the job drawer comes back on close', live, () => {
-  // Design (14 Nov 2026, owner: "Simple: open the queue at this job's first item (Recommended)"): the whole queue opens, on this job's first item; the job's other items follow in the queue's own ranking.
+  // Design (14-15 Nov 2026, owner: "The queue should have only the questions on this particular job"): the queue opens on this job's first item and holds only the job's items, Your details first, then its questions (#4421 Gitar).
   assert.match(screen.result.fixAll.text, /What is your nationality\?/);
   assert.doesNotMatch(screen.result.fixAll.text, /notice period/);
 });

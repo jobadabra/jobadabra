@@ -10,12 +10,14 @@ const ids = ['questions', 'questions-count', 'questions-details', 'questions-err
 for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
 globalThis.localStorage = {getItem: () => null, setItem: () => {}};
 const answered = new Set();
+let DETAILS = [];   // Your details items (the job-wide scope test sets one)
 globalThis.window.pilot = new Proxy({
-  openQuestions: async () => ({details: [], learned: LIST.filter(q => !answered.has(q.key)).map(q => ({...q})), hidden: [], consent: 0, dismissed: {details: [], learned: []}}),
+  openQuestions: async () => ({details: DETAILS.filter(q => !answered.has(q.key)).map(q => ({...q})), learned: LIST.filter(q => !answered.has(q.key)).map(q => ({...q})), hidden: [], consent: 0, dismissed: {details: [], learned: []}}),
   answerQuestion: async key => { answered.add(key); return {ok: true, homeName: 'What we learned'}; },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions} = await import('../../../renderer/pages/jobs-questions.js');
 const review = await import('../../../renderer/pages/question-review.js');
+const slot = await import('../../../renderer/overlay-slot.js');
 const $ = id => globalThis.document.getElementById(id);
 const panel = () => $('review-panel');
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -63,4 +65,34 @@ test('Back closes the drawer and calls onClose once; with no other questions the
   [...panel().querySelectorAll('button')].find(b => /Back to/.test(b.textContent)).click();
   assert.equal($('review-drawer-layer').hidden, true);
   assert.equal(closed, 1);
+});
+
+test('Fix all spans both drawers: the job\'s detail, then its question, and the finish card only after both (#4421 Gitar)', async () => {
+  answered.clear();
+  DETAILS = [{key: 'n', question: 'What is your nationality?', format: text, details: {kind: 'missing', where: 'Work eligibility', fact: 'Nationality'}}];
+  await loadQuestions({force: true});
+  await review.openQuestionReview({queue: 'details', start: 'n', jobKeys: ['n', 'b'], onClose: () => {}});
+  assert.match(asked(), /nationality/i, 'Your details first');
+  await answerShown();
+  assert.equal(asked(), 'Question b?', 'then the job\'s question in the other drawer, never the finish card');
+  assert.doesNotMatch(panel().textContent, /This job's questions are done/);
+  await answerShown();
+  assert.match(panel().textContent, /This job's questions are done/);
+  review.closeQuestionReview();
+  DETAILS = [];
+});
+
+test('a job\'s queue displaced by another overlay comes back as that job\'s queue (#4421 Gitar)', async () => {
+  answered.clear();
+  await loadQuestions({force: true});
+  let closed = 0;
+  await review.openQuestionReview({queue: 'learned', start: 'b', jobKeys: ['b', 'c'], onClose: () => { closed += 1; }});
+  slot.registerOverlay('other', {close: () => {}, open: () => {}});
+  slot.claimOverlay('other');
+  slot.reopenOverlay('review');
+  await flush(); await flush();
+  assert.match(panel().textContent, /Question 1 of 2/, 'still only b and c');
+  assert.match(panel().textContent, /Fill this job's gaps/);
+  review.closeQuestionReview();
+  assert.equal(closed, 2, 'away once, then the real close: the job drawer can come back');
 });

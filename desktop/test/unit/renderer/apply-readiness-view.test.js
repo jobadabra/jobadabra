@@ -74,8 +74,8 @@ test('every to-do gets its one button: the site for a sign-in, an account or a c
     ['sign-in', {type: 'site'}], ['check', {type: 'site'}],
     ['detail', {type: 'queue', queue: 'details', label: 'Salary expectation'}],
     ['answer', {type: 'queue', queue: 'learned', label: 'How did you perform in mathematics at high school?'}]]);
-  assert.deepEqual(fixAllOf(todo), {count: 2, first: {queue: 'details', label: 'Salary expectation', labels: ['Salary expectation']}}, 'the first queue item, Your details before the questions; the count is what the queue can still close');
-  assert.deepEqual(fixAllOf(todo.filter(item => item.kind === 'answer')), {count: 1, first: {queue: 'learned', label: 'How did you perform in mathematics at high school?', labels: ['How did you perform in mathematics at high school?']}});
+  assert.deepEqual(fixAllOf(todo), {count: 2, first: {queue: 'details', label: 'Salary expectation', labels: ['Salary expectation'], others: ['How did you perform in mathematics at high school?']}}, 'the first queue item, Your details before the questions; the other drawer\'s items follow in the same scope, so the count covers both (#4421 Gitar)');
+  assert.deepEqual(fixAllOf(todo.filter(item => item.kind === 'answer')), {count: 1, first: {queue: 'learned', label: 'How did you perform in mathematics at high school?', labels: ['How did you perform in mathematics at high school?'], others: []}});
   assert.equal(fixAllOf(readinessOf(READS.login).todo), null, 'a sign-in alone has no queue to fix');
   assert.equal(readinessOf(READS.details).blocked, false, 'a question in the queue is not the posting that blocks');
 });

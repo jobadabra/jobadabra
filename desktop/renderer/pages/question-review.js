@@ -209,6 +209,18 @@ async function answer(q, value) {
   loadQuestions({force: true});   // Jobs' card counts again
 }
 
+// A job's scope spans both drawers (Fix all: its details, then its questions): with the open one done, the other drawer's items of this job follow; false when none is left.
+// Why (15 Nov 2026, #4421 Gitar: "Fix all N" counted both drawers, the queue covered the first): the finish card shows only when the whole job is done.
+function otherDrawer() {
+  const other = state.kind === 'details' ? 'learned' : 'details';
+  if (!(questionsNow()[other] || []).some(q => state.scope.has(q.key))) return false;
+  state.kind = other;
+  Object.assign(state, listOf(questionsNow(), other));
+  state.at = 0;
+  state.saved = '';
+  return true;
+}
+
 // The questions asked for are all answered (state.scope, the ONE state of a job's queue; its one owner is this file).
 // Why (14 Nov 2026, #4325, owner: "When it finishes, the user should have 2 options: return back to the job apply readiness, or continue with other (general) questions in the queue" · "if he chooses the 2nd, then we bring the global pool of questions"): Back closes (the opener's onClose reads the check again); Continue drops the scope, so the normal ranked queue shows every open question.
 function finishCard() {
@@ -235,6 +247,7 @@ export function draw() {
     return;
   }
   const q = current();
+  if (!q && state.scope && otherDrawer()) { draw(); return; }
   if (!q && state.scope) { panel.replaceChildren(header(), finishCard()); return; }
   if (!q) {
     const done = stateCard({icon: 'check', tone: 'good', title: DRAWERS[state.kind].done, text: DRAWERS[state.kind].doneText});
@@ -316,10 +329,13 @@ export function closeQuestionReview(options) {
   releaseOverlay('review');
   $('review-drawer-layer').hidden = true;
   const done = state.onClose;
+  // Why (15 Nov 2026, #4421 Gitar): another overlay that takes the slot may give it back (its Back); a job's queue then returns as that job's queue, never the global one.
+  parked = options?.away === true && state.scope ? {jobKeys: [...state.scope], onClose: done} : null;
   state.onClose = null;
   state.scope = null;
   done?.({away: options?.away === true});
 }
+let parked = null;   // a job's queue another overlay displaced: its scope and onClose, restored when the slot gives the drawer back
 
 // Profile → What we learned on its Confirmed view (a question's "covered by"; the drawer header's button opens All), searched for a saved answer's name when one is given.
 export async function manageAnswers(query = '', view = 'confirmed') {
@@ -331,7 +347,7 @@ export async function manageAnswers(query = '', view = 'confirmed') {
   profileTab('answers');
 }
 
-registerOverlay('review', {close: () => closeQuestionReview({away: true}), open: () => openQuestionReview({queue: state.kind})});   // back to the drawer it was
+registerOverlay('review', {close: () => closeQuestionReview({away: true}), open: () => openQuestionReview({queue: state.kind, ...(parked || {})})});   // back to the drawer it was
 $('review-drawer-backdrop')?.addEventListener('click', closeQuestionReview);
 $('questions-review')?.addEventListener('click', () => openQuestionReview({queue: 'details'}));
 $('learned-review')?.addEventListener('click', () => openQuestionReview({queue: 'learned'}));

@@ -28,19 +28,21 @@ async function back(job, {away}) {
 }
 
 /**
- * Opens the queue for a job's missing items: `queue` 'details' | 'learned', `labels` the to-dos' labels in that drawer (a row button: its one label; Fix all: the job's items of the first drawer).
+ * Opens the queue for a job's missing items: `queue` 'details' | 'learned', `labels` the to-dos' labels in that drawer (a row button: its one label; Fix all: the job's items of the first drawer), `others` Fix all's labels of the other drawer (they follow in the same scope).
  * The queue opens scoped to this job's questions (question-review.js `scope`), on the first of them (a row button: that exact one). When the job's last one is answered the finish card offers "Back to Apply readiness" (re-reads the stored check) or "Continue with the other questions" (the global queue). A label the queue does
  * not hold (set aside, "Don't keep") is left out; none held = nothing opens and the job's check is read again.
  * Design (14 Nov 2026, owner: "Simple: open the queue at this job's first item (Recommended)" · "Close and return to the job (Recommended)"): one scope, no chain; the other drawer is one more press. Refined (owner, 14 Nov 2026): "The queue should have only the questions on this particular job" · "return back to the job apply readiness. or continue with other (general) questions".
  */
-export async function openReadinessQueue(job, {queue, labels}) {
+export async function openReadinessQueue(job, {queue, labels, others = []}) {
   latest = job.url;
   const queued = await Promise.resolve().then(() => window.pilot.queueJobMissing(job)).catch(error => ({ok: false, reason: String(error?.message || error)}));   // written before the queue is read
   if (queued?.skipped?.length) window.pilot?.uiLog?.('readiness: questions with no stored verdict were not queued', String(queued.skipped.length));   // counts only, never the questions
   if (!queued?.ok) window.pilot?.uiLog?.('readiness: the job\'s questions were not added to the queue', String(queued?.reason || queued?.error || 'refused').slice(0, 200));   // the queue still opens as it is, never claiming the items are in it
   await loadQuestions({force: true});
-  const keys = labels.map(label => keyFor(questionsNow(), queue, label)).filter(Boolean);
+  const other = queue === 'details' ? 'learned' : 'details';
+  const mine = labels.map(label => keyFor(questionsNow(), queue, label)).filter(Boolean);
+  const keys = [...mine, ...others.map(label => keyFor(questionsNow(), other, label)).filter(Boolean)];   // Fix all: the other drawer's items of this job follow in the same scope
   // Why (14 Nov 2026, #4401 Gitar): nothing asked for is in the queue (set aside, "Don't keep"): open nothing and read the check again, so the drawer shows what is still missing; never the whole queue.
   if (!keys.length) { window.pilot?.uiLog?.('readiness: none of the job\'s items is in the queue', String(labels.length)); await back(job, {away: false}); return; }
-  await openQuestionReview({queue, start: keys[0] || '', jobKeys: keys, onClose: closed => back(job, closed)});
+  await openQuestionReview({queue: mine.length ? queue : other, start: keys[0] || '', jobKeys: keys, onClose: closed => back(job, closed)});
 }

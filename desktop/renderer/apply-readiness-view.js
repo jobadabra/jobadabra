@@ -41,12 +41,13 @@ function todoOf(read) {
   return out;
 }
 
-/** The to-dos the queue can close: {count, first: {queue, label, labels}}, or null when none. `first` is the drawer to open (Your details before the questions) with the labels of this job's items in it. */
+/** The to-dos the queue can close: {count, first: {queue, label, labels, others}}, or null when none. `first` is the drawer to open (Your details before the questions) with the labels of this job's items in it; `others` the labels of the other drawer, which follows in the same queue (#4421 Gitar: the count covers both). */
 export function fixAllOf(todo) {
   const queued = (todo || []).filter(item => item.action?.type === 'queue');
   const queue = queued.some(item => item.action.queue === 'details') ? 'details' : queued[0]?.action.queue;
   const labels = queued.filter(item => item.action.queue === queue).map(item => item.action.label);
-  return queued.length ? {count: queued.length, first: {queue, label: labels[0], labels}} : null;
+  const others = queued.filter(item => item.action.queue !== queue).map(item => item.action.label);
+  return queued.length ? {count: queued.length, first: {queue, label: labels[0], labels, others}} : null;
 }
 
 /**
