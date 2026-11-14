@@ -7,6 +7,8 @@ import {checkJob, readOf} from './jobs-triage.js';
 /** The menu entry for one job: {icon, label, run}; its label and action come from menuItemOf(the stored check). `openPanel(job, tab)` opens the drawer (pages/job-panel.js openJobPanel, passed in so this module imports no page). */
 export function readinessItem(job, openPanel) {
   const {action, label} = menuItemOf(readOf(job.url));
-  if (action === 'fix') return {icon: 'target', label, run: () => { nextPart.set(job.url, 'readiness'); openPanel(job, 'application'); }};
-  return {icon: 'search', label, run: () => checkJob(job)};
+  const showReadiness = () => { nextPart.set(job.url, 'readiness'); openPanel(job, 'application'); };
+  if (action === 'fix') return {icon: 'target', label, run: showReadiness};
+  // Why (14 Nov 2026, #4325, owner: "then I should see the end result, the outcome. The job drawer should open with [Apply readiness]"): a finished check of this job ends in its drawer.
+  return {icon: 'search', label, run: () => checkJob(job).then(done => { if (done?.read || done?.failed) showReadiness(); })};
 }
