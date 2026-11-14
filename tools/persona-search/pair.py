@@ -8,7 +8,7 @@ tools/persona-search/gate-personas.json, and the profiles, search-profiles.json)
   pair.py table <results> <pr> <main sha> <pr sha> -> the PR comment's markdown on stdout
   pair.py pending < body                         -> the people of the body's "→ pending" Moves lines as a dispatch list ([1, "b02"]), nothing when none (tools/ship-search-hold.sh)
   pair.py row <results> <people> <attempt> <newer 0|1> -> row.json: the "Search before/after" check run's conclusion, title and summary, and the people to run once more (pair_row.py)
-  pair.py reach <files.txt>                      -> 1 when a listed file is one the search reads (tools/pr-body-check.py SEARCH_FILES), else 0; the word TRUNCATED counts as read
+  pair.py head <state> <measured> <now> <compare.json> -> "<moved> <newer>" (0|1 each): whether the PR's head moved since the pair measured, and whether it moved in a way these numbers no longer stand for (head_verdict)
   pair.py settle <results> <view.json> <attempt> <people> -> settle.json: the body with the numbers written, the title (hold lifted or kept), the people to run again, the verdict
 """
 import importlib.util
@@ -250,11 +250,22 @@ def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
 
 
 def search_changed(files):
-    """True when any file is one Find jobs reads, keeps, scores or orders: tools/pr-body-check.py's SEARCH_FILES, the one list ship and the body check use. 'TRUNCATED' (a compare cut at 300 files) counts as changed."""
+    """True when any file is one Find jobs reads, keeps, scores or orders: tools/pr-body-check.py's SEARCH_FILES, the one list ship and the body check use. """
     spec = importlib.util.spec_from_file_location('pr_body_check', HERE.parent / 'pr-body-check.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return any(name == 'TRUNCATED' or module.SEARCH_FILES.match(name) for name in files)
+    return any(module.SEARCH_FILES.match(name) for name in files)
+
+
+def head_verdict(state, measured, now, compare):
+    """(moved, newer) for the pair that measured `measured` while the PR's head is `now`: `compare` is GitHub's `{status, files}` for measured...now ({} when it could not be read).
+    A move that changed no file the search reads leaves the numbers true (moved, not newer). Everything else is newer, so a doubt never writes numbers for code nobody measured:
+    a compare that is not a plain "ahead" (a rebase, a force push), an empty file list (nothing to prove it), a list cut at 300 files, a search file in it. A merged PR has no head to follow."""
+    if state == 'MERGED' or not now or now == measured:
+        return False, False
+    files = list(compare.get('files') or [])
+    known = compare.get('status') == 'ahead' and 0 < len(files) < 300
+    return True, not known or search_changed(files)
 
 
 def main(argv):
@@ -275,8 +286,9 @@ def main(argv):
     if command == 'table' and len(argv) == 6:
         print(table(argv[2], argv[3], argv[4], argv[5]))
         return 0
-    if command == 'reach' and len(argv) == 3:
-        print(1 if search_changed(Path(argv[2]).read_text(encoding='utf-8').split()) else 0)
+    if command == 'head' and len(argv) == 6:   # head <state> <measured sha> <now sha> <compare.json> -> "<moved 0|1> <newer 0|1>", what search-pair.yml's comment job reads
+        moved, newer = head_verdict(argv[2], argv[3], argv[4], json.loads(Path(argv[5]).read_text(encoding='utf-8') or '{}'))
+        print(f'{int(moved)} {int(newer)}')
         return 0
     if command == 'pending' and len(argv) == 2:
         found = pending(sys.stdin.read())
