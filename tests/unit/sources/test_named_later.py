@@ -7,7 +7,17 @@ from unittest import mock
 
 from src import first_jobs
 from src.ai import board_ideas
-from src.sources import board_later, board_yield, read_budget
+from src.sources import board_later, board_yield, careers, read_budget
+
+_READER = careers.READER
+
+
+def setUpModule():   # no test here reaches a real model through a page read (guard: tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 
 def board(n, **extra):
@@ -42,9 +52,13 @@ class JoinTests(unittest.TestCase):
             self.assertIn(expected, text)
 
     def test_a_board_pick_leaves_out_says_its_reason(self):
+        """The wiring found_boards passes: board_yield.why_skipped over the board memory (Gitar on #4175: a stub `why` left it untested)."""
         kept = {'b2.example': {'state': 'browser', 'name': 'B2', 'search_url': 'https://b2.example'}}
-        _, said = self.run_join([board(1), board(2)], set(), free=5, kept=kept)
-        self.assertIn('2. B2 (b2.example): not picked', '\n'.join(said))   # without a `why` the generic reason; found_boards passes board_yield.why_skipped
+        said = []
+        with mock.patch('builtins.print', lambda *a, **k: said.append(' '.join(map(str, a)))):
+            started = board_later.join([board(1), board(2)], pick(kept), set(), 5, lambda b: b['host'], lambda b: board_yield.why_skipped(b, kept))
+        self.assertEqual(started, ['b1.example'])
+        self.assertIn('2. B2 (b2.example): refuses automated reading', '\n'.join(said))
 
     def test_why_skipped_names_dead_refusing_and_not_a_board(self):
         self.assertIn('dead', board_yield.why_skipped(board(1), {}, dropped={'b1.example'}))
