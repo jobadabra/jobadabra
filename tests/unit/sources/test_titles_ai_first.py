@@ -117,7 +117,8 @@ class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
             text = path.read_text()
             if rel in self.EXEMPT or not re.search(r'\bwanted_title\(', text):
                 continue
-            if not re.search(r'\btriage(_with_places)?\(', text):   # feed_places.triage_with_places: the place call beside the hub, then feeds.triage (#2920)
+            # title_triage.decide: the AI sort itself, asked directly by the search's last pass (src/sources/board_pass.py, #4224: its titles beside the places)
+            if not re.search(r'\b(triage(_with_places)?|title_triage\.decide)\(', text):   # feed_places.triage_with_places: the place call beside the hub, then feeds.triage (#2920)
                 missing.append(rel)
         self.assertEqual(missing, [], 'these keep jobs by feeds.wanted_title without feeds.triage: the role words alone decide there')
 
