@@ -279,6 +279,12 @@ import src.desktop
             outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True, judged=judged if judged != 'bogus' else None, cards=None)
         ensure.assert_called_with(self.db)
         self.assertEqual(self.db.commit.call_count, 5)
+        # Gitar on #4303: CI's reused cards cross this boundary: only objects, at most 200; anything but a list is no cards
+        many = [{'title': f'T{i}', 'url': f'{URL}/j/{i}'} for i in range(205)]
+        for cards, expect in (([1, 'x', None, *many], many[:200]), ('not a list', None)):
+            self.page.write_text(json.dumps({'url': URL, 'step': 'headless', 'cards': cards}))
+            self.call('refused-outcome', {'name': 'Zürich', 'ok': True}, str(self.page))
+            self.assertEqual(outcome.call_args.kwargs['cards'], expect)
         self.assertEqual(self.db.execute.call_args.args[1], ('feed', 'Zürich', 'now'))
 
     # Pin browser-read inputs and sequential feed registration effects.

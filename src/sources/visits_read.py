@@ -39,9 +39,9 @@ def _from_cards(cards, url):
         rest = [line for line in lines if line != title]
         # The place from the card's lines, else from its title (7 Oct 2026: Dior's "Conseiller de vente - Genève (F/H)" had no place line
         # and was left out of the search as placeless).
-        # A card may name its place and employer (CI's shared mark hands back a job read before, tools/persona-search/board-mark.mjs toCard); the extension's cards do not.
+        # A card may name its place, employer and posting date (CI's shared mark hands back a job read before, tools/persona-search/board-mark.mjs toCard); the extension's cards do not.
         named = {key: re.sub(r'\s+', ' ', str(card.get(key) or '')).strip()[:160] for key in ('place', 'company')}
-        job = ats._job(hashlib.sha1(link.encode()).hexdigest()[:16], title, named['place'] or _place(rest) or _title_place(title), link)
+        job = ats._job(hashlib.sha1(link.encode()).hexdigest()[:16], title, named['place'] or _place(rest) or _title_place(title), link, date_posted=str(card.get('date') or '').strip()[:40])
         company = named['company'] or next((line for line in rest if line != job['location'] and not re.search(r'\d+\s*(day|hour|week|month|jour|tag|stunde)|ago|il y a|vor\s', line, re.I)), '')
         if company:
             job['employer'] = company[:120]

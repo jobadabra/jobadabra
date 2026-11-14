@@ -14,8 +14,8 @@ const SKIP = {
   reading: 'another CI search is still reading this page; not opened twice',
 };
 
-/** A kept job ({title, url, company, place, date}) as a card the engine reads (src/sources/visits_read.py _from_cards: title, url, its named place and company). */
-export const toCard = job => ({title: job.title, url: job.url, place: job.place || '', company: job.company || ''});
+/** A kept job ({title, url, company, place, date}) as a card the engine reads (src/sources/visits_read.py _from_cards: title, url, its named place, company and date). */
+export const toCard = job => ({title: job.title, url: job.url, place: job.place || '', company: job.company || '', date: job.date || ''});
 
 /**
  * The broker's answer for one call: (body) -> {status, json}. `post` is injected by tests; the default signs in with this job's GitHub run token.

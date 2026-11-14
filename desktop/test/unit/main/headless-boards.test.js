@@ -219,6 +219,13 @@ test('CI: a page another CI search read today is reused from its jobs (cards): n
   assert.match(lines.join('\n'), /another CI search read today, nothing sent/);
 });
 
+test('Gitar on #4303: shared jobs the engine gave no answer for are said as such, never as a plain skip, and nothing is counted', async () => {
+  const b = board(1), cards = [{title: 'Nurse', url: 'https://board1.example.net/job/1'}];
+  const {result, lines} = await run([b], {}, {ask: async () => ({go: false, cards}), outcomeFor: () => null});
+  assert.equal(result.jobs, 0);
+  assert.match(lines.join('\n'), /Board 1: not read \(no answer from the engine for the jobs another CI search read\)/);
+});
+
 test('CI: a page the mark refuses is skipped with its reason and the next board is still read; a read tells the mark how it ended', async () => {
   const [b1, b2] = [board(1), board(2)], told = [];
   const ask = async item => (item.url === b1.url ? {go: false, why: 'turned CI\'s browser away before, so no CI search opens it again'} : {go: true});

@@ -94,7 +94,8 @@ async function readTurn(item, {browser, openCdp, begin, judge, outcome, ask, tol
     tried.add(item.url);
     const reused = verdict.cards ? await outcome({url: item.url, status: 200, html: '', title: '', final: item.url, step: 'headless', cards: verdict.cards}).catch(() => null) : null;
     if (reused) { total.jobs += reused.jobs || 0; total.fits += reused.fits || 0; }
-    tee(reused ? `Job boards: ${name}: ${reused.jobs || 0} job(s) another CI search read today, nothing sent` : `Job boards: ${name}: ${verdict.why || 'not read'}`);
+    tee(reused ? `Job boards: ${name}: ${reused.jobs || 0} job(s) another CI search read today, nothing sent`
+      : verdict.cards ? `Job boards: ${name}: not read (no answer from the engine for the jobs another CI search read)` : `Job boards: ${name}: ${verdict.why || 'not read'}`);
     return true;
   }
   if (!(await begin(item).catch(() => false))) { tee(WORDS.spent); return false; }   // spent before the page loads: a read killed mid-way is not repeated today

@@ -22,7 +22,7 @@ test('only a go opens the page; every other answer of the mark is a skip with it
   }
   const {post} = answers([{status: 200, json: {go: false, state: 'opened', jobs: [job], read_by: 'pair#1'}}]);
   assert.deepEqual(await markSeams(post).ask(item), {go: false, cards: [toCard(job)], from: 'pair#1'});
-  assert.deepEqual(toCard(job), {title: 'Шофьор', url: 'https://www.trans.bg/job/1', place: 'София', company: 'Acme'});
+  assert.deepEqual(toCard(job), {title: 'Шофьор', url: 'https://www.trans.bg/job/1', place: 'София', company: 'Acme', date: '2026-11-13'});
 });
 
 test('no answer from the mark is never a read: a failed call, a non-200 and a CI run with no token all skip', async () => {
