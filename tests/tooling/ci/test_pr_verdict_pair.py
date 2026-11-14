@@ -40,8 +40,9 @@ class Gh:
             if self.fail:
                 raise RuntimeError('HTTP 403')
             return ''
-        if args[:2] == ('run', 'list'):
-            return json.dumps(self.runs)
+        if 'actions/workflows/search-pair.yml/runs' in text:   # the REST run list, one json object per line (the window is asked server-side: a param here)
+            self.queries.append(text)
+            return '\n'.join(json.dumps(r) for r in self.runs)
         if 'filter=all' in text:
             return json.dumps([r.get('output[title]', '') for r in self.rows])
         if '/check-runs?per_page=100&check_name=' in text:
@@ -139,7 +140,8 @@ class TheVerdictStartsThePair(unittest.TestCase):
         for _ in range(12):
             play(gh, now=NOW + timedelta(minutes=minute))
             minute += 4
-        self.assertEqual(len(gh.dispatched), mod.CAP[0], 'one try per 3 minutes up to the cap, then the row says "pair limit" and nothing is dispatched')
+        self.assertEqual(len(gh.dispatched), mod.FAIL_CAP, 'one try per 3 minutes up to the bound, then the row says "pair limit" and nothing is dispatched')
+        self.assertIn('failed', gh.rows[-1]['output[title]'])
         self.assertIn('pair limit', gh.rows[-1]['output[title]'])
         self.assertIn('gh workflow run', gh.rows[-1]['output[summary]'])
 
@@ -153,6 +155,15 @@ class TheVerdictStartsThePair(unittest.TestCase):
         self.assertEqual(play(reruns), 'start')
         other = Gh(runs=[run_of(60 * k + 10, number=8) for k in range(4)] + [run_of(26 * 60)])   # another PR's pairs and one over a day old do not count
         self.assertEqual(play(other), 'start')
+
+    def test_the_run_list_is_read_for_the_24_hour_window_server_side_and_paged(self):
+        """Gitar on #4221: the newest 100 runs of every PR can span less than a day, so a PR's own starts fell out of the list and the cap let a 5th through."""
+        gh = Gh(runs=[run_of(60 * k + 10) for k in range(4)])
+        play(gh)
+        asked = next(q for q in gh.queries if 'actions/workflows/search-pair.yml/runs' in q)
+        self.assertIn('--paginate', asked)
+        self.assertIn('created=>=2026-11-13T13:00:00Z', asked, 'the window starts 24 h before the verdict, asked of the API, not cut from the newest N')
+        self.assertNotIn('-L', asked.split())
 
     def test_moves_nothing_is_green_with_its_why_and_starts_no_pair(self):
         gh = Gh()
@@ -246,7 +257,7 @@ class TheSecondRunSaysSo(unittest.TestCase):
 
 
 class TheDecisionIsPure(unittest.TestCase):
-    BASE = dict(reach=True, row=None, last=None, delta=None, nothing=False, people=[3], starts=0, head=SHA)
+    BASE = dict(reach=True, row=None, last=None, delta=None, nothing=False, people=[3], starts=0, failed=0, head=SHA)
 
     def test_each_verdict_in_the_order_the_design_says(self):
         d = lambda **o: mod.decide(**{**self.BASE, **o})[0]
@@ -258,6 +269,8 @@ class TheDecisionIsPure(unittest.TestCase):
         self.assertEqual(d(people=[], nothing=True), 'nothing')
         self.assertEqual(d(people=[]), 'needed')
         self.assertEqual(d(starts=4), 'capped')
+        self.assertEqual(d(failed=3), 'capped')
+        self.assertEqual(d(starts=3, failed=2), 'start')
         self.assertEqual(d(last={'sha': OLD, 'people': ['p3']}, delta=(True, False)), 'carry')
         self.assertEqual(d(last={'sha': OLD, 'people': ['p3']}, delta=(True, True)), 'start')
 

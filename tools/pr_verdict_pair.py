@@ -9,7 +9,7 @@ Design: states / one owner / verdicts. Plan docs/superpowers/plans/2026-11-14-pr
     the earlier measured head M moved to H by no search file          -> CARRY: "ran on <M7>, search files unchanged since: <its title>" (neutral link, no pair)
     Moves says nothing and no person is named                         -> row "nothing" (green, the why): no pair, nothing to measure
     no person named (pending Moves lines, or the last pair's people)  -> row "pair needed: name the people in the body's Moves lines"
-    4 starts for this PR in 24 h                                      -> row "pair limit", with the command to start it by hand
+    4 pairs started for this PR in 24 h, or 3 failed tries on this head -> row "pair limit", with the command to start it by hand (two bounds, one source each: see CAP and FAIL_CAP)
     otherwise                                                         -> row "pair queued", THEN the dispatch (a failed dispatch moves the row to "pair not started: <why>; <command>")
 - Never needed for a PR outside SEARCH_FILES. A fork PR gets nothing (current_open_head, tools/pr_verdict_rows.py).
 """
@@ -24,7 +24,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROW = 'Search before/after'
 FAILED = 'pair not started'   # the title of a row whose dispatch failed: written by publish(), counted by failed_starts()
 JUST = timedelta(minutes=3)   # a dispatch is listed within seconds; a start tried this recently is not tried again
-CAP = (4, 24)   # starts per PR in this many hours: the broker bound (2 searches per person per pair), owner via sa 14 Nov 2026
+CAP = (4, 24)   # pairs started per PR in this many hours: the BROKER bound (2 searches per person per pair), counted from the workflow's own runs, owner via sa 14 Nov 2026
+FAIL_CAP = 3    # failed dispatches per head: the RETRY bound (a failed dispatch costs the broker nothing but a quota that is out is not asked every 3 minutes for ever), counted from the head's own rows
 META = re.compile(r'<!-- search-pair-meta (\{.*?\}) -->')   # the pair comment's last line (tools/persona-search/pair.py table): the head it measured and its people
 
 
@@ -53,7 +54,7 @@ def people_of(pair, body, last):
     return pair.pending(body) or [int(p[1:]) if p[0] == 'p' and p[1:].isdigit() else p for p in kept][:pair.MAX_PEOPLE]
 
 
-def decide(*, reach, row, last, delta, nothing, people, starts, head, busy=False):
+def decide(*, reach, row, last, delta, nothing, people, starts, failed, head, busy=False):
     """-> (action, why) for head `head`. action: none | carry | nothing | needed | capped | start. Pure: every input is read by publish().
     row: the head's existing "Search before/after" row's state name or None; last: {sha, people} of the last pair comment or None; delta: head_verdict's (moved, newer) for last.sha...head or None;
     busy: the row is `waiting` and a pair of this PR is queued, running or under 3 min old, or the row is `unnamed` and under 3 min old (one retry per 3 min after a failed dispatch).
@@ -71,24 +72,29 @@ def decide(*, reach, row, last, delta, nothing, people, starts, head, busy=False
     if not people:
         return 'needed', 'no person named'
     if starts >= CAP[0]:
-        return 'capped', f'{starts} starts or failed tries'
+        return 'capped', f'{starts} pairs started in {CAP[1]} h'
+    if failed >= FAIL_CAP:
+        return 'capped', f'the dispatch failed {failed} times on this head'
     return 'start', 'search files changed on this head'
 
 
 def pairs_of(gh, repo, number, now):
     """(starts in the last CAP[1] hours, runs queued, running or started within 3 min) for PR `number`: the workflow's run list, whose run names start `Search pair · #<n> `.
-    The list is the workflow's newest 100 runs of every PR: a PR whose pairs are older than those counts fewer, which only lets one more start through.
+    Read from the workflow's runs created in the window (REST, paged), not the newest N of every PR: a busy day cannot push a PR's own runs out of the list (Gitar on #4221).
     A start is a run that is not the pair's own second run (its name ends ` · again`, search-pair.yml run-name): the cap counts heads started, not reruns."""
-    runs = json.loads(gh('run', 'list', '-R', repo, '--workflow', 'search-pair.yml', '-L', '100', '--json', 'createdAt,displayTitle,status') or '[]')
-    mine = [r for r in runs if str(r.get('displayTitle', '')).startswith(f'Search pair · #{number} ')]
     since = now - timedelta(hours=CAP[1])
+    lines = gh('api', '-X', 'GET', '--paginate', f'repos/{repo}/actions/workflows/search-pair.yml/runs', '-f', f"created=>={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", '-f', 'per_page=100',
+               '--jq', '.workflow_runs[] | {createdAt: .created_at, displayTitle: .display_title, status}') or ''
+    runs = [json.loads(line) for line in lines.splitlines() if line.strip()]   # one object per line, whatever the page
+    mine = [r for r in runs if str(r.get('displayTitle', '')).startswith(f'Search pair · #{number} ')]
     return (sum(1 for r in mine if not str(r['displayTitle']).endswith(' · again') and datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= since),
             sum(1 for r in mine if r.get('status') != 'completed' or datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= now - JUST))
 
 
 def failed_starts(gh, repo, sha):
     """How many dispatches failed for this head: its rows titled FAILED (a failed start leaves one; the next try writes a new row beside it).
-    Why (Gitar on #4212): a failed dispatch makes no run, so the run list never counted it and a quota that stays out was tried again every 3 minutes for ever; these count toward CAP."""
+    Why (Gitar on #4212 and #4221): a failed dispatch makes no run, so the run list never counted it and a quota that stays out was tried again every 3 minutes for ever. It is a bound of its own (FAIL_CAP per head),
+    not part of CAP: a failed dispatch spends no broker search, so each new head may try again, once its own bound allows, when the quota is back."""
     from urllib.parse import quote
     titles = json.loads(gh('api', f'repos/{repo}/commits/{sha}/check-runs?per_page=100&filter=all&check_name={quote(ROW)}', '--jq', '[.check_runs[] | .output.title // ""]') or '[]')
     return sum(1 for title in titles if str(title).startswith(FAILED))
@@ -149,10 +155,10 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
         delta = pair.head_verdict('OPEN', last['sha'], sha, compare)
     people = people_of(pair, body, last)
     starts, active = pairs_of(gh, repo, number, now) if open_row and people else (0, 0)
-    starts += failed_starts(gh, repo, sha) if state == 'unnamed' and people else 0   # only a retry has failed rows to count
+    failed = failed_starts(gh, repo, sha) if state == 'unnamed' and people else 0   # only a retry has failed rows to count
     done_at = datetime.fromisoformat(old['completed_at'].replace('Z', '+00:00')) if old.get('completed_at') else None   # a completed row (unnamed) knows when; a queued one does not
     busy = bool(active) if state == 'waiting' else done_at is not None and now - done_at < JUST
-    action, why = decide(reach=reach, row=state, last=last, delta=delta, people=people, starts=starts, nothing=says_nothing(check, body), head=sha, busy=busy)
+    action, why = decide(reach=reach, row=state, last=last, delta=delta, people=people, starts=starts, failed=failed, nothing=says_nothing(check, body), head=sha, busy=busy)
     print(f'search pair for #{number} {sha[:7]}: {action} ({why})')
     if dry_run or action == 'none':
         return action
@@ -164,8 +170,8 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
               'needed': lambda: {'kind': 'opened', 'verdict': 'unnamed', 'people': [], 'title': "pair needed: name the people in the body's Moves lines",
                                  'summary': "Add `Moves: p<n> <number> <before> -> pending (1 run a side, same minute, usual difference <d>)` for each person this change reaches (one could-hurt person too); the pair starts by itself on the next check."},
               'capped': lambda: {'kind': 'opened', 'verdict': 'unnamed', 'people': [],   # no people: a row with the failed tries' people would read as the same row (pair_row._place)
-                                 'title': f'pair limit: {starts} starts or failed tries; start it by hand',
-                                 'summary': f'This PR started or tried to start {starts} pairs (each takes 2 AI searches per person from the broker; the cap is {CAP[0]} in {CAP[1]} hours, failed tries on this commit included). Start one by hand: `{command}`'},
+                                 'title': f'pair limit: {why}; start it by hand',
+                                 'summary': f'Limit reached: {why} (at most {CAP[0]} pairs per PR in {CAP[1]} hours, each takes 2 AI searches per person from the broker; at most {FAIL_CAP} failed dispatches per commit). Start one by hand: `{command}`'},
               'start': lambda: {'kind': 'opened', 'verdict': 'waiting', 'people': people, 'title': 'pair queued: starting',
                                 'summary': f'Before/after pair for {shown}, starting for this commit.'}}
     # the row first: a dispatch that fails then moves it, a PR never has none (Gitar on #4044/#4077)
