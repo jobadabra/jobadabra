@@ -281,9 +281,9 @@ def take_boards_first(first, feed_db, so_far, until=None):
 def keep_late_boards(lane, so_far, wait=False):
     """The boards lane's groups that landed after the gather, kept and shown now (imported into the list, src/jobs_so_far.py): the main thread
     owns the job cache, so it hands them over between the stages after the gather (lanes 4a). Not scored this run when it has no time left:
-    they wait in the list for the next run's scoring (4b). wait: the run's last hand-over (boards_first.Beside.last_pass): the groups until the
-    last judging pass, which places and judges what the lane read (owner, 14 Nov 2026: "Judge in search + show both (Recommended)"), then the
-    rest until the lane ends, at most to the run's own end (read_budget.run_end); between the stages nothing is waited for.
+    they wait in the list for the next run's scoring (4b). wait: the run's last hand-over (boards_first.Beside.last_pass): it keeps what the
+    lane's own last judging pass answered (owner, 14 Nov 2026: "Judge in search + show both (Recommended)"), then the rest until the lane ends,
+    at most to the run's own end (read_budget.run_end); between the stages nothing is waited for.
     Why (11 Nov 2026, #3835, owner: "A: read boards to 180 s", asked via AskUserQuestion; run 43103313269): a first search with little to score
     ended at 68 s with 7 boards open in the lane; the lane's threads end with the process, so the rest of its time read no board."""
     if lane is None:

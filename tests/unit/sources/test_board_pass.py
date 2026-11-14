@@ -21,6 +21,7 @@ from tests.unit.ai.test_titles_with_places import Model
 SEARCH = {'role_keywords': ['known role'], 'preferences': {'locations': {'best': ['Known town']}}}
 NOW = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
 PACES = {'place_rounds': 8.0, 'title_rounds': 7.0}   # this computer's measured rounds: the pass needs 15 s, inside the floor and the ceiling
+PASS = 165 - 15   # the pass time at those paces, in s of the app's 180 (run end 180 - TAIL 15)
 
 
 def at(second, budget=180):
@@ -121,20 +122,44 @@ class TheLastPass(unittest.TestCase):
         self.addCleanup(self.db.close)
         self.db.execute('CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))')
 
+    def pass_time(self, lane, wait=True):
+        """The clock set at the pass's time and the lane told so; with `wait`, until its pass ended (a hang guard, never the clock the test depends on)."""
+        at(PASS)
+        lane.wake()
+        if wait:
+            self.assertTrue(lane.passed.wait(timeout=30), 'the lane ran its pass at the pass time')
+
     def lane(self, read):
         """The boards' lane with one stand-in group source; the title sort of the lane's own threads had no time for its jobs (the AI's stop came first)."""
         no_time = lambda jobs: feeds._triaged().__setitem__(feeds.ASKED, True)
         with mock.patch('src.sources.board_reader.read', side_effect=read), mock.patch.object(feeds, 'triage', no_time):
             lane = boards_first.Beside(SEARCH)
+            self.addCleanup(lane.close)
             shown = []
             lane.take(self.db, shown.extend, until=read_budget.pass_at())
         return lane, shown
+
+    def test_the_lane_judges_at_the_pass_time_while_scoring_holds_the_main_thread_past_the_runs_end(self):
+        """Pair 43601353056 (14 Nov 2026): the main thread reached the last hand-over at 161-174 s, past the run's end (165 s), held by scoring;
+        a pass run by that hand-over asked nothing on any side. The lane asks at the pass time; the late hand-over only lists."""
+        at(100)   # the lane reads before the pass time
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        self.pass_time(lane)
+        self.assertIn('place answered', self.model.log, 'asked by the lane, not by the main thread')
+        at(170)   # scoring held the main thread past the run's end (165 s)
+        asked = len(self.model.log)
+        lane.last_pass(self.db, shown.extend)
+        self.assertEqual(sorted(job['title'] for job in shown), ['Known role 0', 'Late role 0', 'Late role 1'], 'listed by the late hand-over')
+        self.assertEqual(len(self.model.log), asked, 'the late hand-over asks no AI (L04)')
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0)
+        self.assertIn(f'Board pass: asked 1 place(s), 3 title(s), listed 3, at {PASS} s', self.said)
 
     def test_a_board_job_read_before_the_pass_is_placed_and_judged_in_the_search(self):
         at(100)
         lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
         self.assertEqual([job['title'] for job in shown], [], 'positive control: before the pass nothing is listed (no answer yet)')
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 3, 'positive control: the three wait for the queue')
+        self.pass_time(lane)
         lane.last_pass(self.db, shown.extend)
         self.assertEqual(sorted(job['title'] for job in shown), ['Known role 0', 'Late role 0', 'Late role 1'], 'placed and judged in the search')
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'listed in the search: the queue owes them nothing')
@@ -155,14 +180,15 @@ class TheLastPass(unittest.TestCase):
         judge = board_pass.judge
 
         def judged_then_the_page_lands(jobs):
-            answered = judge(jobs)
+            done = judge(jobs)
             passed.set()
-            return answered
+            return done
         with mock.patch('src.sources.board_reader.read', side_effect=read), mock.patch.object(board_pass, 'judge', judged_then_the_page_lands):
             lane = boards_first.Beside(SEARCH)
+            self.addCleanup(lane.close)
             shown = []
-            with mock.patch.object(read_budget, 'pass_at', lambda: time_budget.now()):   # the pass's time has come
-                lane.last_pass(self.db, shown.extend)
+            self.pass_time(lane, wait=False)   # its page is still being read
+            lane.last_pass(self.db, shown.extend)
         self.assertEqual(shown, [], 'read after the pass: not judged in the search')
         self.assertFalse(self.model.asked('titles late role'), 'no title call for it in the search')
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 2, 'it waits for the queue after the search')
@@ -173,6 +199,7 @@ class TheLastPass(unittest.TestCase):
         at(100)
         self.model.out = {'late town'}
         lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        self.pass_time(lane)
         lane.last_pass(self.db, shown.extend)
         self.assertEqual([job['title'] for job in shown], ['Known role 0'])
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'placed outside by the pass: the queue owes it nothing')
@@ -182,14 +209,16 @@ class TheLastPass(unittest.TestCase):
         lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
         lane.last_pass(self.db, shown.extend)
         self.assertEqual(self.model.log, [], 'no pass: an untimed run judges each group as it comes')
-        self.assertFalse(any(line.startswith('Board pass:') for line in self.said))
+        self.assertIn('Board pass: not run: the search has no time budget', self.said, 'said, never silent')
 
     def test_the_pass_asks_nothing_in_the_runs_last_seconds(self):
         at(170)   # in the TAIL (L04)
         owed = board()[1:]
         feeds._triaged()[feeds.ASKED] = True
-        self.assertEqual(board_pass.judge(owed), [])
+        done = board_pass.judge(owed)
+        self.assertEqual((done.answered, done.why), ([], 'the run had ended (its last seconds start no AI call)'))
         self.assertEqual(self.model.log, [], 'no AI call started')
+        self.assertIn('Board pass: not run at 170s: the run had ended (its last seconds start no AI call)', self.said)
 
     def test_the_stage_log_says_each_job_read_and_each_job_kept_waiting(self):
         at(100)

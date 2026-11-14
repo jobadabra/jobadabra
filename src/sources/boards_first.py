@@ -50,9 +50,12 @@ class Beside:
         self.count, self.left = threading.Lock(), len(reads)
         self.urls = set()   # the links handed board by board: a list that returns copies of them hands none twice
         self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
-        self.read = []   # every job the lane put, in the order read: the last judging pass asks about the ones still owed an answer (last_pass)
+        self.read = []   # every job the lane put, in the order read: the last judging pass asks about the ones still owed an answer (_pass)
+        self.passed, self.closed, self.woken, self.done_pass = threading.Event(), threading.Event(), threading.Event(), None   # the pass ended (its Done in done_pass); close() ends its wait, wake() re-reads its time
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
+        if read_budget.pass_at() is not None:   # Why (#4187 try 2, pair 43601353056): the main thread came to the last hand-over at 161-174 s, held by scoring
+            self.threads.append(threading.Thread(target=slots.carry(self._pass), name='boards-pass', daemon=True))
         for thread in self.threads:
             thread.start()
 
@@ -177,25 +180,60 @@ class Beside:
         self.deliver(feed_db, on_jobs)
         return self._in_list_order(self.matched)
 
+    def _pass(self):
+        """The lane's last judging pass, in a thread of its own at the pass's time (read_budget.pass_at), whatever the main thread is doing: the jobs the
+        lane read that the AI still owes an answer are placed, then title-judged (src/sources/board_pass.py), into the shared answer stores only.
+        Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; sa, try 2 of #4187)."""
+        from . import board_pass, read_budget
+        try:
+            while not self.closed.is_set():   # the pass's time read again every BETWEEN_S (a grain, never a deadline) or when woken
+                left = read_budget.seconds_left(read_budget.pass_at())
+                if not left:
+                    break
+                self.woken.wait(min(left, read_budget.BETWEEN_S))
+                self.woken.clear()
+            if self.closed.is_set():
+                return
+            with self.count:
+                read = list(self.read)
+            self.done_pass = board_pass.judge(read)
+        finally:
+            self.passed.set()
+
+    def close(self):
+        """The search ends without its last hand-over (a test): the pass waiting for its time asks nothing."""
+        self.closed.set()
+        self.woken.set()
+
+    def wake(self):
+        """The pass reads its time again now, not at its next grain (a test that sets the clock)."""
+        self.woken.set()
+
     def last_pass(self, feed_db, on_jobs):
-        """The run's last hand-over (daily_search.keep_late_boards), in the thread that owns the job cache: the groups that land by the pass's time
-        (read_budget.pass_at) kept and shown; then every job the lane read that the AI still owes an answer placed and title-judged in this search
-        (src/sources/board_pass.py) and kept again, the ones it settled (listed or refused) taken off the queue's list; then the groups of the
-        reads still open, to the run's end, which wait for the queue after the search as before.
+        """The run's last hand-over (daily_search.keep_late_boards), in the thread that owns the job cache, whenever scoring lets it come (past the
+        run's end too): the groups that landed kept and shown; the lane's pass (_pass) waited for, at most to the deadline; the jobs it answered kept
+        again (no AI call: kept() reads the answers it left), the ones it settled (listed or refused) taken off the queue's list; then the groups of
+        the reads still open, to the run's end, which wait for the queue after the search as before. Says what the pass did, or that it did not run.
         Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; L05: "Yes, stop new reads then (Recommended)")."""
+        from .. import time_budget
         from . import board_pass, read_budget, waiting_jobs
         at, end = read_budget.pass_at(), read_budget.run_end()
         if at is not None and not self.done.is_set() and read_budget.seconds_left(at):
             self.take(feed_db, on_jobs, until=at)
         self.deliver(feed_db, on_jobs)
-        with self.count:
-            read = list(self.read)
-        answered = board_pass.judge(read) if at is not None else []
-        if answered:
-            self._queue(answered)
+        if at is not None:
+            self.passed.wait(read_budget.seconds_left(time_budget.end()))
+        done = self.done_pass if self.passed.is_set() else None
+        listed = 0
+        if done is not None and done.answered:
+            before = len(self.matched)
+            self._queue(done.answered)
             self.deliver(feed_db, on_jobs)
+            listed = len(self.matched) - before
             # Why (Gitar on #4187): a job the pass refused (title no, place outside) kept its waiting row and the queue asked about it again
-            waiting_jobs.listed(feed_db, [job.get('url') for job in answered if not board_pass.owed([job])])   # listed or refused: settled
+            waiting_jobs.listed(feed_db, [job.get('url') for job in done.answered if not board_pass.owed([job])])   # listed or refused: settled
+        print(done.said(listed) if done is not None else 'Board pass: not run: ' + ('the search has no time budget' if at is None
+              else 'it had not ended by the deadline'), flush=True)
         if end is not None and not self.done.is_set() and read_budget.seconds_left(end):
             print("Job boards: still being read; the search waits for them to its own end", flush=True)
             self.take(feed_db, on_jobs, until=end)
