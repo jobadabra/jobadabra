@@ -1,4 +1,4 @@
-"""A job a listing page names with no link of its own keeps its own identity from the read to the Jobs list (src/notion/dedupe.py unlinked_job_url).
+"""A job a listing page names with no link of its own keeps its own identity from the read to the Jobs list (src/job_identity.py unlinked_job_url).
 Why (xc, 14 Nov 2026, baseline searches 43531583871/43531603203/43531622998): the AI page reader gave every link-less job the page as its address and
 the board read keeps one job per address (LisboaUX 22 -> 1, Finance.nl 10 -> 1); a served layout gave `page#title`, whose fragment the store's URL key
 dropped, so one row per page took every job and its title was overwritten (the Madrid electrician board 54 kept -> 8 new, prace.cz 56 -> 23).
@@ -12,6 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src import read_methods, store  # noqa: E402
+from src.job_identity import unlinked_job_url  # noqa: E402
 from src.ai import page_reader  # noqa: E402
 from src.sources import board_ai_read, careers, found_boards  # noqa: E402
 
@@ -96,6 +97,14 @@ class UnlinkedJobsTests(unittest.TestCase):
         self.assertEqual(sorted(job['location'] for job in jobs), ['Alcobendas', 'Getafe'], 'two places, two jobs; the same three values twice, one')
         self.assertEqual(imported(self.db, [{**job, 'company': 'Staffing Example'} for job in jobs]), ['new', 'new'],
                          'store.same_job tells two cities apart too, so the store agrees')
+
+    def test_a_place_worded_two_ways_is_one_job_and_fields_never_run_together(self):
+        """Gitar on #4183: the AI words a place freely ('Madrid' one read, 'Madrid, España' the next), and an employer, title and place flattened
+        into one word list let the title 'Dev Madrid' be the title 'Dev' in 'Madrid'."""
+        self.assertEqual(unlinked_job_url(PAGE, 'Electricista', 'Acme', 'Madrid'), unlinked_job_url(PAGE, 'Electricista', 'Acme', 'Madrid, España'))
+        self.assertEqual(unlinked_job_url(PAGE, 'Técnico', '', 'Málaga'), unlinked_job_url(PAGE, 'Tecnico', '', 'malaga'))
+        self.assertNotEqual(unlinked_job_url(PAGE, 'Dev Madrid'), unlinked_job_url(PAGE, 'Dev', '', 'Madrid'))
+        self.assertNotEqual(unlinked_job_url(PAGE, 'Sales Rep', 'Acme'), unlinked_job_url(PAGE, 'Acme Sales Rep'))
 
     def test_a_job_with_its_own_link_keeps_it(self):
         link = 'https://board.example/oferta/123/oficial-electricista'
