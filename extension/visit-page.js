@@ -12,9 +12,12 @@ export function extractPage() {
   const here = new URL(location.href);
   // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids (idsOf: letters or digits, #3877) are all ids the page's own address
   // already holds (the selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
-  // Why (#3877, Gitar on #4278): an id is any value of 5+ word characters with a digit (abc123, 3870321), not only a 5-digit number: with numbers
-  // only, a same-path posting with a letter id (/viewjob?jk=def456) named no id and read as the page; a page number or a tracking word is no id.
-  const idsOf = url => [...url.searchParams.values()].filter(value => /^(?=.*\d)[\w-]{5,}$/.test(value));
+  // Why (#3877, Gitar on #4278 and #4282): an id is a value of 5+ word characters with a digit (abc123, 3870321), read only under the names the
+  // page's own address holds its ids in (jk): with 5-digit numbers only, a same-path posting with a letter id (/viewjob?jk=def456) read as the page; with
+  // every name, a date or tracking value (date=2024-11-12) made the selected job's header a posting. A page with no id of its own reads every name.
+  const ID = /^(?=.*\d)[\w-]{5,}$/;
+  const idNames = new Set([...here.searchParams].filter(([, value]) => ID.test(value)).map(([name]) => name));
+  const idsOf = url => [...url.searchParams].filter(([name, value]) => (!idNames.size || idNames.has(name)) && ID.test(value)).map(([, value]) => value);
   const ownIds = new Set(idsOf(here));
   const toPage = href => {
     const at = new URL(href);
