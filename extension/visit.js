@@ -370,7 +370,8 @@ export async function siteUnreachable(tabId, url, error) {
   if (!found || !why || started.has(tabId)) return;   // a reading in progress says it itself; an aborted load (a redirect) is not an error
   const ticket = found[3] || '';
   await api(await settings(), '/extension/visit-done', {method: 'POST', body: JSON.stringify({url: url.slice(0, -found[0].length), ticket, jobs: 0, pages: 0,
-    stopped: `the site could not be reached: ${why} (${String(error).replace(/^net::/, '')})`, unreachable: String(error).replace(/^net::ERR_/, '')})}).catch(() => {});
+    stopped: `the site could not be reached: ${why} (${String(error).replace(/^net::/, '')})`, unreachable: String(error).replace(/^net::ERR_/, '')})})
+    .catch(failure => console.warn('visit-done (site unreachable) not delivered to the app', String(failure)));   // Why (Gitar on #4254): a lost report is the 30 s silence again; it says so
   await chrome.storage.session.remove(`readmark:${tabId}`).catch(() => {});
   await chrome.tabs.remove(tabId).catch(() => {});
 }

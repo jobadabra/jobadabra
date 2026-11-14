@@ -184,6 +184,8 @@ for (const [kind, verdict, words, name] of [
     assert.equal(r.mine().last?.state, verdict);
     assert.equal(r.linkedin.searches(), 1, 'the read stopped at the wall: no retry, no next search');
     assert.ok(run.log.some(line => words.test(line)), `the run says why it stopped (its lines: ${JSON.stringify(run.log.slice(-6))})`);
+    // Why (Gitar on #4254): a loop and the sign-in page share a verdict, but the run's own line still tells them apart.
+    if (kind === 'loop') assert.ok(run.log.some(line => /redirect loop/.test(line)), `the run's line says LinkedIn looped (its lines: ${JSON.stringify(run.log.slice(-6))})`);
     assert.deepEqual(r.browser.linkedinCookies(), [], 'the session left the browser');
     assert.equal(r.browser.tabs.size, 0, 'the tab is closed');
     assert.deepEqual(r.linkedin.sent.filter(method => !['Network.enable', 'Page.navigate'].includes(method)), [], 'the page got no click, typing or script from the app: a check is never answered');
