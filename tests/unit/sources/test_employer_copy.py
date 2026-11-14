@@ -19,8 +19,6 @@ class EmployerCopy(unittest.TestCase):
     def fetch(self, feeds):
         def read(ats, slug):
             self.reads.append((ats, slug))
-            if isinstance(feeds, Exception):
-                raise feeds
             return feeds
         return read
 
@@ -47,7 +45,7 @@ class EmployerCopy(unittest.TestCase):
         self.assertEqual(job['url'], LINKEDIN['url'])
 
     def test_a_feed_that_fails_keeps_linkedin(self):
-        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(OSError('down')), log=lambda line: None)
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(None), log=lambda line: None)
         self.assertEqual(job['url'], LINKEDIN['url'])
 
     def test_each_feed_is_read_once_and_at_most_the_limit_of_employers(self):
@@ -63,7 +61,7 @@ class LinkedInRow(unittest.TestCase):
         from unittest import mock
         from src.sources import reader_rows
         with mock.patch('src.sources.linkedin_guest.read', return_value=[LINKEDIN]), mock.patch('src.employer_index.load', return_value=INDEX), \
-                mock.patch('src.sources.ats.fetch', return_value=FEED), mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': ''}):
+                mock.patch('src.sources.ats.probe', return_value=FEED), mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': ''}):
             [job] = reader_rows._linkedin_read(None, {})
         self.assertEqual(job['url'], 'https://job-boards.greenhouse.io/canonical/jobs/5517891')
 

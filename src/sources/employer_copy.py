@@ -46,16 +46,13 @@ def match(job, feed):
 
 def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print):
     """`jobs` (LinkedIn's, as read) with each one its employer's feed lists under the employer's address, description and date; LinkedIn's place stays (it is the place
-    the job was listed for). A feed that fails or is past `limit` leaves its jobs as they were. -> a new list; never raises on a feed."""
-    fetch = fetch or ats.fetch   # looked up at call time, so a test's stand-in is the one read
+    the job was listed for). `fetch(ats, slug)` -> jobs or None (src/sources/ats.py probe). A feed that fails or is past `limit` leaves its jobs as they were. -> a new list."""
+    fetch = fetch or ats.probe   # looked up at call time, so a test's stand-in is the one read; None for a feed that is down, empty or changed shape
     feeds, out, moved = {}, [], 0
     for job in jobs:
         where = feed_of(job.get('company'), index)
         if where and where not in feeds and len(feeds) < limit:
-            try:
-                feeds[where] = list(fetch(*where))
-            except Exception:   # a feed that is down or changed shape: LinkedIn's copy stays
-                feeds[where] = []
+            feeds[where] = list(fetch(*where) or ())   # a feed that is down or changed shape: LinkedIn's copy stays
         hit = match(job, feeds.get(where) or ()) if where else None
         if hit:
             moved += 1
