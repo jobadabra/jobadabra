@@ -198,6 +198,40 @@ class HostedRun(unittest.TestCase):
         self.assertEqual({k: got['posting'][k] for k in ('description', 'location', 'posted_at', 'source', 'source_kind')},
                          {'description': 'Fly the Global 7500.', 'location': 'Rheinmünster, Germany', 'posted_at': '2026-11-12', 'source': 'LinkedIn', 'source_kind': 'job board'})
 
+    def test_a_failed_postings_read_still_posts_the_runs_jobs(self):
+        import subprocess
+        FakeWorker.state = tar_of({'data/x': '1'})
+        with mock.patch.object(hosted_run, 'read_matches', side_effect=[[], [{'url': 'https://a/2', 'title': 'New', 'fit': 7}]]), \
+                mock.patch.object(hosted_run, 'read_postings', side_effect=subprocess.CalledProcessError(1, 'x')):
+            body = hosted_run.run(self.site, 'HR1.r.t', self.folder, search=lambda env: 0)
+        self.assertEqual((body['status'], [m['title'] for m in body['matches']]), ('ok', ['New']))
+        self.assertNotIn('description', body['matches'][0])
+
+    def test_keep_posting_fills_only_what_the_mac_lacks_and_never_writes_onto_another_sites_posting(self):
+        from src import store
+        with tempfile.TemporaryDirectory() as tmp, mock.patch('src.paths.DATA', Path(tmp)):
+            db = store.connect(Path(tmp) / 'jobs.sqlite')
+            own, _ = store.upsert_job(db, {'url': 'https://a/own', 'title': 'Pilot', 'company': 'Air', 'location': 'Geneva', 'city': 'Geneva', 'work_mode': 'On-site'}, 'Board')
+            other, _ = store.upsert_job(db, {'url': 'https://employer.example/7', 'title': 'Chief Pilot', 'company': 'Wings', 'location': 'Bern'}, 'Wings careers', '', 'employer')
+            db.commit()
+            hosted_run.keep_posting('https://a/own', {'title': 'Pilot', 'description': 'Text', 'posted': '2026-11-12', 'apply_route': 'LinkedIn Easy Apply'})   # an older run's bare wire
+            hosted_run.keep_posting('https://www.linkedin.com/jobs/view/9/', {'title': 'Chief Pilot', 'company': 'Wings', 'location': 'Bern', 'apply_route': 'LinkedIn Easy Apply'})
+            row = lambda i: dict(db.execute('SELECT location, city, work_mode, description, posted_at, apply_route FROM jobs WHERE id=?', (i,)).fetchone())
+            self.assertEqual(row(own), {'location': 'Geneva', 'city': 'Geneva', 'work_mode': 'On-site', 'description': 'Text', 'posted_at': '2026-11-12', 'apply_route': 'linkedin'})
+            self.assertEqual(row(other)['apply_route'], None, "the employer's posting keeps its own route")
+
+    def test_merge_saves_every_match_when_a_posting_cannot_be_written_or_the_site_sent_none(self):
+        import os, shutil, subprocess, sys
+        shutil.copytree(hosted_run.DEFAULT_CONFIG, self.folder / 'config'); (self.folder / 'data').mkdir()
+        (self.folder / 'data' / 'jobs.sqlite').mkdir()   # the jobs file cannot be opened: every posting write fails
+        inbox = self.folder / 'inbox.json'
+        inbox.write_text(json.dumps([{'url': 'https://a/1', 'title': 'One', 'description': 'Text'}, {'url': 'https://a/2', 'title': 'Two'}]))   # Two: an older site, no posting
+        env = {**os.environ, 'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_CONFIG_DIR': str(self.folder / 'config'), 'JOBADABRA_DATA_DIR': str(self.folder / 'data')}
+        out = subprocess.run([sys.executable, '-m', 'src', 'hosted', '--merge', str(inbox)], env=env, capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn('2 new matches added', out.stdout)
+        self.assertIn('posting not saved', out.stderr)
+
     def test_the_server_runs_one_run_per_post_and_refuses_a_bad_token(self):
         import urllib.request
         from http.server import HTTPServer
