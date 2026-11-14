@@ -17,10 +17,10 @@ def relay(waits_ms):
                    for w in waits_ms)
 
 
-def profile_folder(tmp, pid, waits_ms, right, ai='codex / gpt-6-luna'):
+def profile_folder(tmp, pid, waits_ms, right, ai='codex / gpt-6-luna', eures=None):
     out = Path(tmp) / f'search-profile-{pid}'
     (out / 'draw').mkdir(parents=True)
-    (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'started': '2026-11-13T02:50:00Z', 'seconds': 180}) + '\n')
+    (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'started': '2026-11-13T02:50:00Z', 'seconds': 180, **({'eures': eures} if eures else {})}) + '\n')
     rows = [{'role': 'yes', 'place': 'yes', 'first_seen': '2026-11-13T02:51:00Z'}] * right + [{'role': 'no', 'place': 'yes'}]
     (out / 'judged.json').write_text(json.dumps({'rows': rows, 'judged_jobs': len(rows), 'agreement': {'ai': ['codex']}}))
     (out / 'run.log').write_text(f'AI: {ai}\n' + relay(waits_ms))
@@ -92,6 +92,17 @@ class StarvedProfileTest(unittest.TestCase):
             self.assertEqual((row['boards_read'], row['boards_gave_jobs'], row['boards_with_relevant'], row['boards_refused'], row['boards_cut']), (4, 2, 1, 2, 3))
             profiles.table(tmp, Path(tmp) / 'table.md')
             self.assertIn('| boards that gave jobs | boards with relevant | boards refused | boards cut at the end |', (Path(tmp) / 'table.md').read_text())
+
+
+class EuresModeTest(unittest.TestCase):
+    def test_the_table_header_says_eures_on_only_for_a_press_that_ran_with_it(self):
+        """Gitar on #4170: the header said EURES off from a fixed string; it reads the press's own "eures" now (14 Nov 2026, owner: the card number is with EURES on)."""
+        for mode, word in (('on', 'EURES on'), (None, 'EURES off')):
+            with tempfile.TemporaryDirectory() as tmp:
+                out = profile_folder(tmp, 'b04', [2000] * 5, right=3, eures=mode)
+                self.assertEqual(json.loads((out / 'row.json').read_text())['eures_on'], mode == 'on')
+                profiles.table(tmp, Path(tmp) / 'table.md')
+                self.assertIn(f'fresh installs, {word}):', (Path(tmp) / 'table.md').read_text())
 
 
 if __name__ == '__main__':
