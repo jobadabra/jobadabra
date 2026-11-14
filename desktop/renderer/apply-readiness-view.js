@@ -23,21 +23,37 @@ export function menuItemOf(read) {
   return fixable(read) ? {action: 'fix', label: t('pagesReadinessTab.fix')} : {action: 'check', label: t('pagesReadinessTab.checkAgain')};
 }
 
-/** What is missing, in the person's words: a sign-in, an account, a check only they can do, then the saved details the form asks for. */
-function missingOf(read) {
+/** What is missing, in the person's words, each with its kind ('sign-in' | 'account' | 'check' | 'detail'): a sign-in, an account, a check only they can do, then the saved details the form asks for. */
+function todoOf(read) {
   const out = [];
-  if (read.login === true) out.push(t('pagesReadinessTab.signIn'));
-  else if (read.accountCreation === true) out.push(t('pagesReadinessTab.account'));
-  if (read.captcha === true) out.push(t('pagesReadinessTab.personCheck'));
-  for (const item of read.match?.missing || []) if (item?.label) out.push(String(item.label));   // Why (14 Nov 2026, #4325): the match's items are {kind, label} (lib/triage-match.js missingOf); a read of `name` listed none
+  if (read.login === true) out.push({kind: 'sign-in', words: t('pagesReadinessTab.signIn')});
+  else if (read.accountCreation === true) out.push({kind: 'account', words: t('pagesReadinessTab.account')});
+  if (read.captcha === true) out.push({kind: 'check', words: t('pagesReadinessTab.personCheck')});
+  for (const item of read.match?.missing || []) if (item?.label) out.push({kind: 'detail', words: String(item.label)});   // Why (14 Nov 2026, #4325): the match's items are {kind, label} (lib/triage-match.js missingOf), so the label is read, never `name`; each becomes a 'detail' to-do with its own icon
   return out;
 }
 
-/** The drawer's "Apply readiness" part: {checked, chip: {label, tone}, found (the chip's detail), missing [words], button ("Check apply readiness" or "Check again")}. */
+/**
+ * The form's required questions as counts: {questions, answered, unjudged}, each null when the check did not read or match them (never a guess).
+ * Invariant: answered = questions − missing details − unjudged, so the three never add up to more than the form asked.
+ */
+function countsOf(read) {
+  const questions = Array.isArray(read.questions) ? read.questions.length : null;
+  if (questions === null || !read.match) return {questions, answered: null, unjudged: null};
+  const unjudged = Number(read.match.unjudged) || 0;
+  return {questions, answered: Math.max(0, questions - (read.match.missing || []).length - unjudged), unjudged};
+}
+
+/**
+ * The drawer's "Apply readiness" part: {checked, chip: {label, tone}, found (the chip's detail), todo [{kind, words}], missing [words], counts {questions, answered, unjudged}, blocked (a sign-in,
+ * an account or a person's check: the posting is where the person does it), button ("Check apply readiness" or "Check again")}.
+ */
 export function readinessOf(read) {
   const {label, tone, detail} = chipOf(read);
-  if (!read) return {checked: false, chip: {label, tone}, found: '', missing: [], button: t('pagesReadinessTab.check')};
-  return {checked: true, chip: {label, tone}, found: detail, missing: missingOf(read), button: t('pagesReadinessTab.checkAgain')};
+  if (!read) return {checked: false, chip: {label, tone}, found: '', todo: [], missing: [], counts: {questions: null, answered: null, unjudged: null}, blocked: false, button: t('pagesReadinessTab.check')};
+  const todo = todoOf(read);
+  return {checked: true, chip: {label, tone}, found: detail, todo, missing: todo.map(item => item.words), counts: countsOf(read), blocked: todo.some(item => item.kind !== 'detail'),
+    button: t('pagesReadinessTab.checkAgain')};
 }
 
 /**

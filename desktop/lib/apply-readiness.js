@@ -11,7 +11,7 @@ import {readsQuestions} from '../renderer/apply-triage-mode.js';
 export const VERSION = 1;
 /** Notion's text column holds 2000 characters: a stored check stays under this (the questions go first, then the match's names). */
 export const MAX_CHARS = 1800;
-const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why'];   // words-ok: the field names of our own read (lib/triage-reader.js), not page words
+const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why', 'steps'];   // words-ok: the field names of our own read (lib/triage-reader.js), not page words
 
 /** A read worth keeping: not unreadable, and a simple form either has no question to match or has its match with every question judged (a form the AI never judged is "answers not checked", never stored as done). Pure. */
 export const storable = read => !!read && read.unreadable !== true && !(readsQuestions(read) && read.questions?.length && (!read.match || read.match.unjudged !== 0));
@@ -116,5 +116,22 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
     return found || {};
   }
 
-  return {storedCheck, applyReadiness, settle, cancel: () => { cancels += 1; waiting.clear(); }};
+  /**
+   * Keeps a check's step log ([{step, ms}], renderer/readiness-steps.js) with the job's stored check, so "Took" and the check log survive a restart. Only a check already stored gets one, for the
+   * same posting and time it was stored at; a malformed log is cut to at most 8 named steps. -> true when kept. Never throws.
+   * Why (14 Nov 2026, #4325, owner asked via AskUserQuestion: "Yes, store it (Recommended)").
+   */
+  async function keepSteps(url, steps) {
+    const clean = (Array.isArray(steps) ? steps : []).filter(item => /^[a-z]{1,20}$/.test(String(item?.step)) && Number.isFinite(Number(item?.ms))).slice(0, 8)
+      .map(({step, ms}) => ({step, ms: Math.min(600000, Math.max(0, Math.round(Number(ms))))}));
+    if (!clean.length) return false;
+    const record = await recordOf(url);
+    const entry = unpack(record?.apply_readiness);
+    if (!record?.id || !entry) return false;
+    const text = pack({...entry.read, steps: clean}, {posted: entry.posted, now: Number.isNaN(Date.parse(entry.at)) ? clock() : new Date(entry.at)});
+    if (!text) return false;
+    return call(storage, 'applications', 'update', {app_id: record.id, fields: {apply_readiness: text}}).then(() => true, error => { log('apply', 'readiness: the steps were not stored', {error: String(error?.message || error).slice(0, 200)}); return false; });
+  }
+
+  return {storedCheck, applyReadiness, settle, keepSteps, cancel: () => { cancels += 1; waiting.clear(); }};
 }
