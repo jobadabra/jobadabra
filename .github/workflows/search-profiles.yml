@@ -27,11 +27,11 @@ on:
         type: choice
         options: [claude, codex]
         default: claude
-      # Why (13 Nov 2026, sa: the c04/d02 board jobs "read but never judged" need each job's stage to tell which pass lost it): off by default, one dispatch away.
+      # Why (13 Nov 2026, sa: the c04/d02 board jobs "read but never judged" need each job's stage to tell which pass lost it): on by default since 14 Nov 2026 (sa, for the per-search funnel table, board_funnel.py: it is log lines only; owner: "let's fix also this"); a by-hand dispatch can switch it off.
       stage_log:
         description: 'One run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), as the night logs'
         type: boolean
-        default: false
+        default: true
 
 # Why (12 Nov 2026, sa): its own group, never search-personas: GitHub keeps one pending run per group, so joining the night's group could replace a queued night.
 concurrency:
