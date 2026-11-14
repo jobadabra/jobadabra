@@ -204,9 +204,9 @@ async function answer(q, value) {
   state.saved = value ? t('pagesDynamicProfileReady.m307', {"value1": result.homeName || t('pagesCommon.learned')}) : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
-  if (state.scope && !state.queue.length) await loadQuestions({force: true});   // the finish card counts the other open questions: read them without this answer
+  if (state.scope && !state.queue.length) await loadQuestions({force: true}).catch(() => {});   // the finish card counts the other open questions: read them without this answer; a failed read keeps the last list, the card still draws (#4424 Gitar)
   draw();
-  loadQuestions({force: true});   // Jobs' card counts again
+  loadQuestions({force: true}).catch(() => {});   // Jobs' card counts again (a failed read keeps the last list)
 }
 
 // A job's scope spans both drawers (Fix all: its details, then its questions): with the open one done, the other drawer's items of this job follow; false when none is left.

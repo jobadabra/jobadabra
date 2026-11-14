@@ -10,9 +10,10 @@ const ids = ['questions', 'questions-count', 'questions-details', 'questions-err
 for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
 globalThis.localStorage = {getItem: () => null, setItem: () => {}};
 const answered = new Set();
-let DETAILS = [];   // Your details items (the job-wide scope test sets one)
+let DETAILS = [];
+let failRead = false;   // the store's read rejects (the IPC failed)   // Your details items (the job-wide scope test sets one)
 globalThis.window.pilot = new Proxy({
-  openQuestions: async () => ({details: DETAILS.filter(q => !answered.has(q.key)).map(q => ({...q})), learned: LIST.filter(q => !answered.has(q.key)).map(q => ({...q})), hidden: [], consent: 0, dismissed: {details: [], learned: []}}),
+  openQuestions: async () => { if (failRead) throw new Error('ipc down'); return {details: DETAILS.filter(q => !answered.has(q.key)).map(q => ({...q})), learned: LIST.filter(q => !answered.has(q.key)).map(q => ({...q})), hidden: [], consent: 0, dismissed: {details: [], learned: []}}; },
   answerQuestion: async key => { answered.add(key); return {ok: true, homeName: 'What we learned'}; },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions} = await import('../../../renderer/pages/jobs-questions.js');
@@ -95,4 +96,16 @@ test('a job\'s queue displaced by another overlay comes back as that job\'s queu
   assert.match(panel().textContent, /Fill this job's gaps/);
   review.closeQuestionReview();
   assert.equal(closed, 2, 'away once, then the real close: the job drawer can come back');
+});
+
+test('a failed read after the job\'s last answer still draws the finish card (#4424 Gitar)', async () => {
+  answered.clear();
+  await loadQuestions({force: true});
+  await review.openQuestionReview({queue: 'learned', start: 'b', jobKeys: ['b'], onClose: () => {}});
+  failRead = true;
+  await answerShown().catch(() => {});
+  await flush();
+  failRead = false;
+  assert.match(panel().textContent, /This job's questions are done/);
+  review.closeQuestionReview();
 });
