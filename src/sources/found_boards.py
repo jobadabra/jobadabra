@@ -283,24 +283,6 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     return made or stands(before)
 
 
-def _kept_spares(taken, lock, read_items, keep):
-    """Keep, right after each of `read_items`, the boards read in its place (taken: {host: [(spare item, result)]}), in the order they were read.
-    Why (12 Nov 2026): they were kept after the whole read loop, which waits for the slowest board up to the cut: a replacement read at 19 s
-    reached the title judge at 124 s, after its AI time was gone, and its titles went unjudged. Each board's replacements follow it in its turn."""
-    for read_item in read_items:
-        with lock:
-            chain = taken.pop(read_item[0]['host'], [])
-        for spare_item, result in chain:
-            keep(spare_item, result, read_item)
-
-
-def _hand(turn, found, on_board):
-    """One kept board's jobs: kept at its turn in the list (turn), and handed to on_board(jobs) at once when given and not empty."""
-    turn.extend(found)
-    if on_board is not None and found:
-        on_board(found)
-
-
 def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None, later=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
@@ -353,7 +335,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                             if board['host'] not in hosts))
     taken, lock = {}, threading.Lock()   # taken: {a board's host: [(spare item, result)]} the boards read in place of it while it refused
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
-    rounds = board_rounds.Rounds(lambda read_item, found: _hand(by_turn[order.get(id(read_item), -1)], board_yield.placed(found), on_board)) if on_board is not None else None
+    rounds = board_rounds.Rounds(lambda read_item, found: board_later.hand(by_turn[order.get(id(read_item), -1)], board_yield.placed(found), on_board)) if on_board is not None else None
 
     def one(read_item):   # one board's pages; what is kept of it is decided below, in the list's order, in this thread
         board, entry, pages, fetched, _ = read_item
@@ -429,7 +411,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             late_reads.keep('board', board['host'], [answer[0], answer[1], route])
             print(f"Job boards found: {board['name']} {len(answer[0])} job(s), 0 relevant; its other ways wait for the next search", flush=True)
             run_counts.looked(answer[0])
-            _hand(turn, rounds.rest(read_item, answer[0]) if rounds else answer[0], on_board)
+            board_later.hand(turn, rounds.rest(read_item, answer[0]) if rounds else answer[0], on_board)
         late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
         if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
             return wait((found, state))
@@ -456,7 +438,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
-        _hand(turn, rounds.rest(read_item, found) if rounds else found, on_board)
+        board_later.hand(turn, rounds.rest(read_item, found) if rounds else found, on_board)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
     order = {id(read_item): n for n, read_item in enumerate(reads)}   # by item, not host: two items of one host keep their own turns (Gitar, #3892)
     by_turn.extend([] for _ in range(len(reads) + 1))   # the last: a board not in the list (none expected)
@@ -476,7 +458,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got[1] not in REPLACED else None)
             continue
         keep(read_item, result)
-        _kept_spares(taken, lock, [read_item], keep)
+        board_later.kept_spares(taken, lock, [read_item], keep)
         ticker.tick(done, f" · {read_item[0]['name']}")
     if rounds:   # the rounds a board still open ended before the search's time: this search's, the rest of that board is the next one's
         rounds.take()
@@ -485,7 +467,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)
         waiting += left
     for read_item in reads:   # a board still open at the cut: its replacements read before it
-        _kept_spares(taken, lock, [read_item], keep)
+        board_later.kept_spares(taken, lock, [read_item], keep)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
     board_ideas.save_read(data, base)
     jobs = [job for turn in by_turn for job in turn]
