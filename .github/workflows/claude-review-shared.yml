@@ -110,4 +110,5 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR: ${{ steps.gate.outputs.pr }}
+          CLAUDE_REVIEW_ENABLED: ${{ vars.CLAUDE_REVIEW_ENABLED }}
         run: node cr-tools/tools/claude-label.mjs "$PR"

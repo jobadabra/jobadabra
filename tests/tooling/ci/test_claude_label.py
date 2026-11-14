@@ -48,10 +48,21 @@ class ClaudeLabelTest(unittest.TestCase):
                     'commits': {'nodes': []}, 'reviews': {'nodes': nodes}, 'comments': {'nodes': []}, 'labels': {'nodes': [{'name': n} for n in labels]}}}}}
         reads = [pr([], []), pr([1], ['Claude: not reviewed']), pr([1], ['Claude: approved'])]   # the review lands between the first and second read
         script = ("(() => { const reads = %s; const seen = []; const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(reads.shift()); seen.push(a.slice(0, 5).join(' ')); return ''; };"
-                  " return [m.sync('o/r', 7, run), seen]; })()") % json.dumps(reads)
+                  " return [m.sync('o/r', 7, run, true), seen]; })()") % json.dumps(reads)
         wanted, seen = node(script)
         self.assertEqual(wanted, 'Claude: approved')
         self.assertEqual(seen, ['pr edit 7 --add-label Claude: not reviewed', 'pr edit 7 --add-label Claude: approved', 'pr edit 7 --remove-label Claude: not reviewed'])
+
+    def test_off_really_is_off_no_label_is_written_and_every_claude_label_is_removed(self):
+        """14 Nov 2026 (owner: "disable Claude for now"): a repository without CLAUDE_REVIEW_ENABLED=true keeps no "Claude: …" label, so none can hold a PR out of READY."""
+        self.assertEqual(node("[m.enabled({}), m.enabled({CLAUDE_REVIEW_ENABLED: ''}), m.enabled({CLAUDE_REVIEW_ENABLED: 'false'}), m.enabled({CLAUDE_REVIEW_ENABLED: 'TRUE'}), m.enabled({CLAUDE_REVIEW_ENABLED: 'true'})]"), [False, False, False, False, True])
+        pr = {'data': {'repository': {'pullRequest': {'number': 7, 'state': 'OPEN', 'isDraft': False, 'title': 't', 'headRefOid': A, 'baseRefName': 'main', 'headRepository': {'nameWithOwner': 'o/r'},
+              'commits': {'nodes': []}, 'reviews': {'nodes': []}, 'comments': {'nodes': []}, 'labels': {'nodes': [{'name': 'Claude: not reviewed'}, {'name': 'Gitar: approved'}]}}}}}
+        script = ("(() => { const reads = [%s, %s]; const seen = []; const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(reads.shift()); seen.push(a.slice(0, 5).join(' ')); return ''; };"
+                  " return [m.sync('o/r', 7, run, false), seen]; })()") % (json.dumps(pr), json.dumps(json.loads(json.dumps(pr).replace('{"name": "Claude: not reviewed"}, ', ''))))
+        wanted, seen = node(script)
+        self.assertEqual(wanted, '')
+        self.assertEqual(seen, ['pr edit 7 --remove-label Claude: not reviewed'])   # nothing added, "Gitar: approved" untouched
 
     def test_a_push_during_a_review_leaves_no_reviewing_and_the_same_inputs_give_the_same_label(self):
         """No writer can leave a "reviewing" label, and a stray one (written by an earlier build) is removed; a second writer on the same inputs changes nothing."""
@@ -60,7 +71,7 @@ class ClaudeLabelTest(unittest.TestCase):
                     'commits': {'nodes': []}, 'reviews': {'nodes': [{'author': {'login': 'github-actions'}, 'submittedAt': '2026-11-14T10:00:00Z', 'body': f'**Claude review: ✅ Approve** on x\n<!-- claude-review sha={A} -->'}]},
                     'comments': {'nodes': []}, 'labels': {'nodes': [{'name': n} for n in labels]}}}}}
         script = ("(() => { const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(%s); seen.push(a.slice(0, 5).join(' ')); return ''; }; const seen = [];"
-                  " const first = m.sync('o/r', 7, run); const calls = seen.splice(0); return [first, calls, m.wantedLabel([{sha: '%s', verdict: 'APPROVE'}], '%s'), m.LABELS.reviewing || null]; })()") % (json.dumps(read(['Claude: reviewing', 'Claude: approved'])), A, B)
+                  " const first = m.sync('o/r', 7, run, true); const calls = seen.splice(0); return [first, calls, m.wantedLabel([{sha: '%s', verdict: 'APPROVE'}], '%s'), m.LABELS.reviewing || null]; })()") % (json.dumps(read(['Claude: reviewing', 'Claude: approved'])), A, B)
         first, calls, wanted, reviewing = node(script)
         self.assertEqual(first, 'Claude: approved · not re-reviewed', 'the head moved past the reviewed one: a push during a review')
         self.assertIn('pr edit 7 --remove-label Claude: reviewing', calls)

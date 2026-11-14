@@ -27,7 +27,7 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads=''):
+    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads='', claude=None):
         """One look per line of mergestates, then the PR closes. Every look: Gitar approved, the gate green (newest row), no draft."""
         self.log.write_text('ship: opened\n')
         looks = len(mergestates)
@@ -37,6 +37,9 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
             (self.tmp / name).write_text(text)
         if reviews is not None:
             (self.tmp / 'reviews.json').write_text(json.dumps(reviews))
+        if claude is not None:   # the repository variable CLAUDE_REVIEW_ENABLED (REST body); None = no such variable (404)
+            (self.tmp / 'rest').mkdir(exist_ok=True)
+            (self.tmp / 'rest' / 'repos_o_r_actions_variables_CLAUDE_REVIEW_ENABLED').write_text(json.dumps({'name': 'CLAUDE_REVIEW_ENABLED', 'value': claude}))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
         env.pop('SHIP_WATCH_DRAFT_OK', None)
@@ -64,7 +67,7 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         def review(sha, verdict, at):
             return {'node_id': at, 'user': {'login': 'github-actions[bot]'}, 'state': 'COMMENTED', 'submitted_at': at, 'body': f'**Claude review: {verdict}**\n\n<!-- claude-review sha={sha} findings= -->'}
         ok, no = review(SHA, '✅ Approve', '2026-11-14T10:00:00Z'), review(SHA, '⛔ Request changes', '2026-11-14T11:00:00Z')
-        ready = lambda labels, reviews: any('READY' in line for line in self.watch(['clean', 'clean'], labels=labels, reviews=reviews, heads=SHA))
+        ready = lambda labels, reviews: any('READY' in line for line in self.watch(['clean', 'clean'], labels=labels, reviews=reviews, heads=SHA, claude='true'))
         self.assertTrue(ready('Claude: approved', [ok]))
         self.assertTrue(ready('Claude: approved,Gitar: reviewing', [ok]), 'Gitar\'s own state no longer matters on a Claude PR')
         filler = [{'node_id': f'f{n}', 'user': {'login': 'github-actions[bot]'}, 'state': 'COMMENTED', 'submitted_at': '2026-11-13T%02d:00:00Z' % (n % 24), 'body': 'x'} for n in range(100)]
@@ -74,6 +77,15 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         self.assertFalse(ready('Claude: approved', []), 'no review of ours at all')
         for labels in ('Claude: not reviewed,Gitar: approved', 'Claude: changes requested,Gitar: approved', 'Claude: reviewing,Gitar: approved', 'Claude: approved · not re-reviewed,Gitar: approved', 'Claude: approved,Working on PR comments'):
             self.assertFalse(ready(labels, [ok]), labels)
+
+    def test_with_the_reviewer_off_a_leftover_claude_label_never_holds_a_pr_back(self):
+        """14 Nov 2026 (owner: "disable Claude for now"; coordinator mac-95): every new PR carried "Claude: not reviewed" and could never be READY. Off (no variable, or not "true") = Gitar's label alone;
+        on = the Claude rule above."""
+        for claude in (None, 'false', ''):
+            lines = self.watch(['clean', 'clean'], labels='Claude: not reviewed,Gitar: approved', heads=SHA, claude=claude)
+            self.assertTrue(any('READY' in line for line in lines), (claude, lines))
+        self.assertFalse(any('READY' in line for line in self.watch(['clean', 'clean'], labels='Claude: not reviewed,Gitar: approved', heads=SHA, claude='true')), 'on: the Claude rule holds it')
+        self.assertFalse(any('READY' in line for line in self.watch(['clean', 'clean'], labels='Claude: not reviewed,Gitar: reviewing', heads=SHA)), 'off: Gitar still has to approve')
 
     def test_a_computing_merge_state_holds_ready_and_does_not_re_arm_it(self):
         lines = self.watch(['clean', 'unknown', 'clean'])

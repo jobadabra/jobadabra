@@ -14,6 +14,11 @@ const GH_RETRY = fileURLToPath(new URL('./gh_retry.py', import.meta.url));
 const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024});
 export const OLD = ' · not re-reviewed';
 
+/** The one switch of the Claude reviewer's label: the repository variable CLAUDE_REVIEW_ENABLED is exactly "true" (a missing variable is off).
+ * Why (14 Nov 2026, owner: "I think we can disable Claude for now"; coordinator mac-95): with the reviewer off, a leftover "Claude: not reviewed" label held every new PR out of READY (tools/ship-watch.sh reads Claude's label first);
+ *   one switch, read by this writer and by the watcher, means off really is off, and turning it back on is: enable the 2 workflows + set the variable to "true". */
+export const enabled = (env = process.env) => env.CLAUDE_REVIEW_ENABLED === 'true';
+
 export const LABELS = {
   approved: {name: 'Claude: approved', color: '0e8a16', description: 'Claude reviewed the current head and found no high or medium problem'},
   changes: {name: 'Claude: changes requested', color: 'd73a4a', description: 'Claude found a high or medium problem on the current head'},
@@ -53,14 +58,14 @@ export function setLabel(repo, pr, wanted, have, run = gh) {
 /** Reads the PR and writes its label until a fresh read wants no change (at most 4 rounds); a closed or merged PR is left alone. -> the label name, or '' when it was left.
  * Why (13 Nov 2026, Gitar's finding on #4119): the review job and the push's pr-labels run both write this label, in different concurrency groups; a writer that read before the other one's review landed could
  * leave a stale state. Each writer therefore re-reads after its write and corrects until the PR agrees with the newest review. */
-export function sync(repo, pr, run = gh) {
+export function sync(repo, pr, run = gh, on = enabled()) {
   let wanted = '';
   for (let round = 1; round <= 4; round++) {
     const {pr: p, reviews} = readPr(repo, pr, run);
     if (p.state !== 'OPEN') return wanted;
-    wanted = wantedLabel(reviews, p.head);
+    wanted = on ? wantedLabel(reviews, p.head) : '';   // off: no label at all, so setLabel removes every "Claude: …" one
     const changed = setLabel(repo, pr, wanted, p.labels, run);
-    console.log(`claude-label: #${pr} → ${wanted}${changed ? '' : ' (unchanged)'}`);
+    console.log(`claude-label: #${pr} → ${wanted || '(reviewer off: no label)'}${changed ? '' : ' (unchanged)'}`);
     if (!changed) break;
   }
   return wanted;

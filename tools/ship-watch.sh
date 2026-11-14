@@ -88,7 +88,7 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     fi
   done <<<"$rows"
 }
-waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; held=""; flipfail=""
+waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; held=""; flipfail=""; claude_on=false
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
@@ -141,12 +141,16 @@ while :; do
     #   Why (6 Nov 2026, owner: "red" on web #459, Gitar approved): a push and a body edit left a cancelled run beside the green one; this watcher read the newest row per check name (green) while GitHub's merge state read BLOCKED, so READY was told for a PR the owner could not merge. READY also needs GitHub's own verdict: mergeable_state "clean" (or "has_hooks"; a draft reads "draft" and counts only with SHIP_WATCH_DRAFT_OK=1). "unknown" (still computing) holds READY for one look without re-arming it. Normal states cannot hold it forever: "unstable" is a failing non-required check, which already blocks GREEN; "behind" cannot happen (strict_required_status_checks_policy is off in the ruleset); no review is required.
     mstate="$(jq -r '.mergeState // "unknown"' <<<"$view" 2>/dev/null)"
     draft="$(jq -r '.isDraft // false' <<<"$view" 2>/dev/null)"
-    # Why (13 Nov 2026, cr 2a; owner: "We should replace Gitar" / "With Claude Code review"; coordinator: READY needs the Claude ✅ only): a PR that carries a "Claude: …" label (every jobadabra PR, from pr-labels) is READY on
+    # Why (13 Nov 2026, cr 2a; owner: "We should replace Gitar" / "With Claude Code review"; coordinator: READY needs the Claude ✅ only): a PR that carries a "Claude: …" label (every jobadabra PR while CLAUDE_REVIEW_ENABLED is "true", from pr-labels; off since 14 Nov 2026, see below) is READY on
     #   "Claude: approved" AND the newest review of ours reads Approve for THIS head's sha (a stale label never makes it READY: owner, 14 Nov 2026, #4115 had "Gitar: approved" and a Claude "Request changes" on one head); a PR of a repo without the reviewer yet (web, lab, benchmarks until cr PR 3) keeps the Gitar rule.
     #   TODO(AI): drop the Gitar branch when cr PR 3 and 2b land (13 Nov 2026).
-    approved='(.labels // []) as $l | (.headRefOid // "") as $head | (if ($l | any(startswith("Claude: "))) then (($l | index("Claude: approved")) and ([.reviews[]? | select(((.author.login // "") | sub("\\[bot\\]$"; "")) == "github-actions" and (.body | test("<!-- claude-review sha=[0-9a-f]{40}")))] | sort_by(.submittedAt) | last | ((.body | test("claude-review sha=" + $head)) and (.body | test("^\\*\\*Claude review: ✅ Approve\\*\\*"))))) else (($l | index("Gitar: approved")) and ($l | index("Gitar: reviewing") | not) and ($l | index("Gitar: not started") | not)) end) and ($l | index("Working on PR comments") | not)'
+    # Why (14 Nov 2026, owner: "I think we can disable Claude for now"; coordinator mac-95: a leftover "Claude: not reviewed" label blocked every new PR): the Claude rule below applies only while the repository variable
+    #   CLAUDE_REVIEW_ENABLED is "true" (tools/claude-label.mjs enabled(); a missing variable is a 404 and means off); off, every PR is READY by Gitar's label alone, whatever Claude labels it still carries.
+    #   A read that fails keeps the last answer, so a blip never turns a Claude-reviewed repository into a Gitar-only one; the read is an ETag read, free while it does not change.
+    if cv="$(pr_get "repos/$repo/actions/variables/CLAUDE_REVIEW_ENABLED")" && [ -n "$cv" ]; then [ "$(jq -r '.value // empty' <<<"$cv" 2>/dev/null)" = true ] && claude_on=true || claude_on=false; fi
+    approved='(.labels // []) as $l | (.headRefOid // "") as $head | (if ($on and ($l | any(startswith("Claude: ")))) then (($l | index("Claude: approved")) and ([.reviews[]? | select(((.author.login // "") | sub("\\[bot\\]$"; "")) == "github-actions" and (.body | test("<!-- claude-review sha=[0-9a-f]{40}")))] | sort_by(.submittedAt) | last | ((.body | test("claude-review sha=" + $head)) and (.body | test("^\\*\\*Claude review: ✅ Approve\\*\\*"))))) else (($l | index("Gitar: approved")) and ($l | index("Gitar: reviewing") | not) and ($l | index("Gitar: not started") | not)) end) and ($l | index("Working on PR comments") | not)'
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
-      && jq -e "(.mergeState == \"clean\" or .mergeState == \"has_hooks\" or (.isDraft == true and .mergeState == \"draft\")) and $approved" <<<"$view" >/dev/null 2>&1; then
+      && jq -e --argjson on "$claude_on" "(.mergeState == \"clean\" or .mergeState == \"has_hooks\" or (.isDraft == true and .mergeState == \"draft\")) and $approved" <<<"$view" >/dev/null 2>&1; then
       if [ "$draft" != true ] || [ "${SHIP_WATCH_DRAFT_OK:-}" = 1 ]; then   # already ready (or the AI fixer's draft, which the owner marks ready himself)
         [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
       elif grep -q 'DONT MERGE' <<<"$(jq -r '.title // empty' <<<"$view")"; then   # a hold a person or ship set: never flipped here

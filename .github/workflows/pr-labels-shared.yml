@@ -84,6 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
+          CLAUDE_REVIEW_ENABLED: ${{ vars.CLAUDE_REVIEW_ENABLED }}   # not "true" = the reviewer is off: this step removes the label instead of writing one
         run: node tools/claude-label.mjs "$PR"
       - name: Set the label from Gitar's verdict
         if: ${{ !cancelled() && github.event_name != 'check_run' }}
