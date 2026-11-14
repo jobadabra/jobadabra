@@ -155,3 +155,19 @@ test('a kit draft is its own step: the window hears "drafting" before the draft 
   await readiness.applyReadiness({url: 'https://jobs.example.test/h', code: 'h1', kit: true});
   assert.deepEqual(heard, [{url: 'https://jobs.example.test/k', step: 'drafting', drafted: 0}]);
 });
+
+test('a check\'s step log is kept with its stored check, so "Took" and the log survive a restart; no stored check keeps nothing', async () => {
+  // Why (14 Nov 2026, #4325, owner asked via AskUserQuestion: "Yes, store it (Recommended)").
+  const stored = pack({...SIMPLE, match: {missing: [], unjudged: 0}}, {posted: '2026-11-01', now: NOW});
+  const {readiness, calls, record} = make({record: {id: 'r1', apply_readiness: stored}});
+  const steps = [{step: 'ready', ms: 900}, {step: 'drafting', ms: 41000}, {step: 'looking', ms: 8000}, {step: 'not a step!', ms: 5}, {step: 'matching', ms: 'x'}];
+  assert.equal(await readiness.keepSteps(JOB.url, steps), true);
+  const kept = unpack(record().apply_readiness);
+  assert.deepEqual(kept.read.steps, [{step: 'ready', ms: 900}, {step: 'drafting', ms: 41000}, {step: 'looking', ms: 8000}], 'malformed steps are dropped');
+  assert.equal(kept.at, NOW.toISOString(), 'the check keeps the time it was stored at');
+  assert.equal(kept.read.simple, true, 'the check itself is unchanged');
+  const none = make({record: {id: 'r2', apply_readiness: ''}});
+  assert.equal(await none.readiness.keepSteps(JOB.url, steps), false);
+  assert.equal(none.calls.store.filter(([, method]) => method === 'update').length, 0);
+  assert.ok(calls.store.some(([, method]) => method === 'update'));
+});
