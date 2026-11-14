@@ -59,8 +59,8 @@ class Beside:
         self.listed_urls = set()
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
-        # Why (14 Nov 2026, owner: "Judge in search + show both (Recommended)"): scoring can hold the cache owner past the judging clock.
-        if read_budget.pass_at() is not None:
+        # Why (14 Nov 2026, owner: "Judge in search + show both (Recommended)"; #4416): start beside scoring when budgeted, without freezing a cutoff here.
+        if end is not None:
             self.threads.append(threading.Thread(target=slots.carry(self._pass), name='boards-pass', daemon=True))
         for thread in self.threads:
             thread.start()
@@ -166,19 +166,21 @@ class Beside:
 
     def _put(self, found):
         from . import feeds, read_budget
-        at = read_budget.pass_at()
         with self.count:
-            # Why (14 Nov 2026): a delayed pass worker must not judge a page that arrived after its scheduled cutoff.
-            if at is None or read_budget.seconds_left(at):
+            # Why (#4416): publication and snapshot share this lock; pages admitted before publication belong to that snapshot.
+            at = read_budget.pass_at(published=True)
+            late = at is not None and not read_budget.seconds_left(at)
+            if not late:
                 self.read += found
-        feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)
-        self._queue(found)
+        if not late:
+            feeds.triage(found)   # the cache owner receives a copy of this reader's answers
+        self._queue(found, waiting=late)
 
-    def _queue(self, found):
-        """`found` to be kept and shown by the thread that owns the job cache (deliver), with a copy of the answers this thread sees."""
+    def _queue(self, found, *, waiting=False):
+        """Hand jobs and this reader's answers to the cache owner; `waiting` bypasses judging/listing for late pages."""
         import copy
         from ..ai import batch_scope
-        self.groups.put((found, copy.deepcopy(batch_scope.current())))
+        self.groups.put((found, copy.deepcopy(batch_scope.current()), waiting))
         self.arrived.set()
         self._notify()
 
@@ -209,10 +211,11 @@ class Beside:
     def _deliver(self, feed_db, on_jobs):
         import queue
         from ..ai import batch_scope
-        from . import aggregators, boards_ahead
+        from . import aggregators, boards_ahead, waiting_jobs
+        from .. import time_budget
         while True:
             try:
-                found, views = self.groups.get_nowait()
+                found, views, waiting = self.groups.get_nowait()
             except queue.Empty:
                 return
             # Why (#4302, #4367): only the cache owner remembers successful URL deliveries; unlisted jobs can retry after answers arrive.
@@ -223,6 +226,10 @@ class Beside:
                 if url and url not in self.listed_urls:
                     fresh.setdefault(url, job)
             with batch_scope.using(views):
+                if waiting:
+                    # Why (#4416): a late page gets no reader AI call or role-word shortcut; only the queue judges it next time.
+                    waiting_jobs.keep(feed_db, boards_ahead.NAME, list(fresh.values()), time_budget.wall(), search=self.search)
+                    continue
                 matched = aggregators.kept(feed_db, boards_ahead.NAME, list(fresh.values()))
             if matched:
                 on_jobs(matched)
@@ -259,6 +266,8 @@ class Beside:
                     self.woken.wait(min(left, read_budget.BETWEEN_S))
                     self.woken.clear()
                 with self.count:
+                    # Why (#4416): only the worker publishes, immediately before its snapshot, using the last estimate it waited on.
+                    read_budget.pass_at(started=at)
                     read = list(self.read)
                 self.track = board_pass.Track()
                 self.done_pass = board_pass.judge(read, self.track)

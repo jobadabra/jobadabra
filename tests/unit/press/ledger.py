@@ -218,7 +218,9 @@ FIXES = (
          'tests/unit/sources/test_board_pass.py::test_a_board_read_after_the_pass_waits_and_the_queue_lists_its_jobs',
          'tests/unit/sources/test_board_pass_waits.py::test_untimed_and_expired_calls_start_no_rounds',
          'tests/unit/sources/test_pass_queue_timing.py::test_measured_rounds_are_clamped_by_the_budget_rows',
-         'tests/unit/press/test_clock_to_the_end.py::test_default_reserve_and_share_then_opt_in_until_the_existing_tail'),
+         'tests/unit/sources/test_board_pass.py::test_only_the_worker_publishes_after_construction_using_the_latest_paces',
+         'tests/unit/sources/test_board_pass.py::test_a_late_role_word_match_starts_no_ai_and_is_only_kept_waiting',
+         'tests/unit/sources/test_board_pass.py::test_d03_refreshed_paces_finish_the_26_second_title_round_before_the_deadline'),
         owner='Judge in search + show both (Recommended)',
         notes=('owner, 14 Nov 2026, asked via AskUserQuestion (relayed by session sa)',)),
 )
