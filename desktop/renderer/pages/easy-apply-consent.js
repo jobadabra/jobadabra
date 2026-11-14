@@ -27,7 +27,7 @@ async function turnOn(warned) {
   else say(t('pagesEasyApply.stayedOff'), '', NO_PLACE.itself, 'warn');
 }
 
-/** The one flow behind every door: manage while on; else, with no sign-in kept, Easy Apply's own dialog (warning + how to sign in), on once the sign-in came; else the warning once, then on. Resolves when its last step is done. */
+/** The one flow behind every door: manage while on and active; sign in again while on but inactive; else, with no sign-in kept, Easy Apply's own dialog (warning + how to sign in), on once the sign-in came; else the warning once, then on. Resolves when its last step is done. */
 export async function openEasyApply() {
   await refreshEasyApply();
   const step = nextStep(view);
@@ -35,6 +35,11 @@ export async function openEasyApply() {
     const kept = await openLinkedinConsent({mode: 'easy-apply'});   // its Continue is the warned yes; resolves once the sign-in came (the Chrome way waits for its copy)
     await refreshEasyApply().catch(() => {});
     return kept ? turnOn(true) : undefined;   // Not now, closed, or the copy never came: Easy Apply stays off and its Turn on asks again
+  }
+  if (step === 'renew') {   // on but inactive: the one sign-in again; the switch is already on, so it is active once the sign-in came
+    await openLinkedinConsent({mode: 'renew'});
+    await refreshEasyApply().catch(() => {});
+    return undefined;
   }
   if (step === 'turn-on') return turnOn(false);
   const answer = await showConsent(step === 'manage' ? EASY_APPLY.manage : EASY_APPLY.warn);

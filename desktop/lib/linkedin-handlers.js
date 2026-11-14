@@ -19,7 +19,7 @@ export function linkedinRoutes(storage, deps = {}) {
       if (saved.ok && wanted) session.clearWanted(storage);
       return saved;
     },
-    pending: () => { const pressed = note.look(); return {revoke: !session.signedIn(storage), refresh: (session.state(storage).on && pressed) || session.copyIsOld(storage)}; },   // a Find jobs press, or a kept copy 12 h old (Easy Apply alone); the permissions stay while a sign-in is kept
+    pending: () => ({revoke: !session.signedIn(storage), refresh: (session.state(storage).on && note.look()) || session.copyIsOld(storage)}),   // a Find jobs press, or a kept copy 12 h old (Easy Apply alone); the permissions stay while a sign-in is kept
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
 }

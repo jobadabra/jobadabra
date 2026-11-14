@@ -45,10 +45,27 @@ test('turning off keeps LinkedIn jobs as it was: its switch, its 24 h pause and 
   assert.deepEqual(state(storage), {on: false, warnedAt: NOW.toISOString()});
 });
 
-test('with no sign-in kept Easy Apply reads as off, whatever was saved', () => {
+test('with no sign-in kept Easy Apply sends nothing, and the window draws it as on but inactive', () => {
   const storage = store({linkedinJobs: {on: false}, easyApply: {on: true, warnedAt: NOW.toISOString()}});
-  assert.equal(state(storage).on, false);
-  assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, signedIn: false, warned: true, offered: true});
+  assert.equal(state(storage).on, false, 'inactive: nothing is sent');
+  assert.deepEqual(viewOf(storage, {packaged: false}), {on: true, signedIn: false, warned: true, offered: true}, 'the saved switch is shown, with the lost sign-in');
+});
+// Owner, 14 Nov 2026 (asked via AskUserQuestion after Gitar on #4289): "Lost sign-in … the one off stays off. The one on, is still on but inactive … Renew sign in bring the one on back to on and active".
+test('a Chrome sign-out leaves each switch as saved; any new sign-in makes the one on active again, the one off stays off', () => {
+  const storage = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true, warnedAt: NOW.toISOString()}}), kc = keychain();
+  linkedin.saveSession(storage, LI, {keychain: kc});
+  linkedin.refreshSession(storage, [], {keychain: kc});
+  assert.equal(state(storage).on, false, 'inactive after the sign-out');
+  assert.equal(viewOf(storage, {packaged: false}).on, true, 'still on, drawn inactive');
+  linkedin.saveSession(storage, LI, {keychain: kc, for: 'jobs'});
+  assert.equal(state(storage).on, true, 'the sign-in is back: Easy Apply is active again');
+  assert.equal(linkedin.state(storage).on, true, 'LinkedIn jobs: the switch that asked');
+  const off = store({linkedinJobs: {on: true, signedIn: true}, easyApply: {on: false}}), kc2 = keychain();
+  linkedin.saveSession(off, LI, {keychain: kc2, for: 'jobs'});
+  linkedin.refreshSession(off, [], {keychain: kc2});
+  linkedin.saveSession(off, LI, {keychain: kc2});
+  assert.equal(state(off).on, false, 'the one off stays off');
+  assert.equal(linkedin.state(off).on, true, 'the one on is active again');
 });
 
 // Why (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times. Once logged in, then we should share it for the other"

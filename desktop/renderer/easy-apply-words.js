@@ -15,17 +15,21 @@ export const EASY_APPLY = {
 
 /**
  * The step a press on the row or ⌘K takes, from the window's read of the switch (lib/easy-apply-switch.js viewOf):
- * 'manage' (on: Keep on / Turn off) | 'sign-in' (no LinkedIn sign-in kept: Easy Apply's own dialog, its warning and how to sign in; owner, 14 Nov 2026: "a turn on should focus just on that
+ * 'manage' (on: Keep on / Turn off) | 'renew' (on but inactive: the sign-in was lost; sign in again) | 'sign-in' (no LinkedIn sign-in kept: Easy Apply's own dialog, its warning and how to sign in; owner, 14 Nov 2026: "a turn on should focus just on that
  * specific case") | 'warn' (the first turn-on, a sign-in kept) | 'turn-on' (warned once already).
  */
 export function nextStep(view) {
-  if (view.on) return 'manage';
+  if (view.on) return view.signedIn ? 'manage' : 'renew';   // on but inactive: the sign-in was lost; signing in again makes it active (owner, 14 Nov 2026)
   if (!view.signedIn) return 'sign-in';
   return view.warned ? 'turn-on' : 'warn';
 }
 
-/** The Connections row: shown only where offered (dev builds until plan 4/5), on, and the word beside the button while off. */
-export const rowOf = view => ({shown: !!(view?.loaded && view.offered), on: !!view?.on, words: t('pagesCommon.off')});   // it no longer needs LinkedIn jobs on (two switches, owner 14 Nov 2026)
+/** On but inactive: the saved switch is on and no LinkedIn sign-in is kept, so nothing is sent until the person signs in again. */
+export const inactive = view => !!(view?.on && !view.signedIn);
+// Why (owner, 14 Nov 2026, asked via AskUserQuestion after Gitar on #4289): "Lost sign-in, means they are not active anymore … The one on, is still on but inactive (UI should represent this state).
+// Renew sign in bring the one on back to on and active": a lost sign-in never writes a switch; the row says Sign-in needed until any new sign-in.
+/** The Connections row: shown only where offered (dev builds until plan 4/5), on, needs (on but inactive), and the word beside the button. */
+export const rowOf = view => ({shown: !!(view?.loaded && view.offered), on: !!view?.on, needs: inactive(view), words: inactive(view) ? t('helperState.needsSignIn') : t('pagesCommon.off')});
 
 /** The ⌘K command that opens the same flow as the row (`run`), or null where the switch is not offered. */
 export const commandOf = (view, run) => (view?.loaded && view.offered
