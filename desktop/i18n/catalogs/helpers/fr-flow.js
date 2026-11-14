@@ -34,6 +34,7 @@ export const messages = {
   "linkedinStayedOff": "Recherche LinkedIn restée désactivée",
   "linkedinNotKept": "Vous êtes connecté, mais Jobadabra n’a pas pu conserver la connexion.",
   "linkedinKeptNotOn": "Vous êtes connecté et la connexion est conservée, mais LinkedIn jobs n’a pas pu s’activer. Appuyez de nouveau sur Activer.",
+  "linkedinChromeNoCopy": "Chrome n’a pas envoyé à temps une connexion LinkedIn utilisable. Connectez-vous à LinkedIn dans Chrome, puis rouvrez la connexion LinkedIn.",
   "linkedinPopupEnded": "Google ou Apple peuvent refuser la connexion dans cette fenêtre.",
   "linkedinChromeWay": "Connectez-vous plutôt via Chrome : rouvrez la connexion LinkedIn et choisissez Utiliser ma connexion LinkedIn de Chrome.",
   "linkedinChromeMissing": "Connectez-vous plutôt via Chrome : connectez l’extension dans Paramètres → Connexions → Extension Chrome, puis choisissez Utiliser ma connexion LinkedIn de Chrome.",

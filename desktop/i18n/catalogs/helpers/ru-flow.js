@@ -34,6 +34,7 @@ export const messages = {
   "linkedinStayedOff": "Поиск LinkedIn остался выключенным",
   "linkedinNotKept": "Вы вошли, но Jobadabra не удалось сохранить вход.",
   "linkedinKeptNotOn": "Вход выполнен и сохранён, но LinkedIn jobs не удалось включить. Нажмите «Включить» ещё раз.",
+  "linkedinChromeNoCopy": "Chrome не прислал вовремя пригодный вход в LinkedIn. Войдите в LinkedIn в Chrome и снова откройте вход в LinkedIn.",
   "linkedinPopupEnded": "Google или Apple могут запрещать вход в этом окне.",
   "linkedinChromeWay": "Войдите через Chrome: снова откройте вход в LinkedIn и выберите Использовать мой вход в LinkedIn из Chrome.",
   "linkedinChromeMissing": "Войдите через Chrome: подключите расширение в Настройки → Подключения → Расширение Chrome, затем выберите Использовать мой вход в LinkedIn из Chrome.",
