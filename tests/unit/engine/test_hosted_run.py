@@ -96,6 +96,11 @@ class HostedRun(unittest.TestCase):
         after = before + [{'url': 'https://a/2', 'title': 'Two', 'company': 'C', 'fit': 5, 'reason': 'ok'}, {'url': 'https://a/3', 'title': 'Three', 'fit': 8}]
         self.assertEqual([m['title'] for m in hosted_run.new_matches(before, after)], ['Three', 'Two'])
 
+    def test_an_unscored_match_travels_with_no_fit_and_after_the_scored_ones(self):
+        """#4375 (the owner's screenshot): the "new matches" mail showed a green 0 on every job; an unscored match was posted as fit 0."""
+        after = [{'url': 'https://a/1', 'title': 'Unscored'}, {'url': 'https://a/2', 'title': 'Scored', 'fit': 72}, {'url': 'https://a/3', 'title': 'Blank', 'fit': ''}]
+        self.assertEqual([(m['title'], m['fit']) for m in hosted_run.new_matches([], after)], [('Scored', 72), ('Unscored', None), ('Blank', None)])
+
     def test_the_pushed_config_sits_on_the_engines_own_config_files(self):
         # 17 Oct 2026 (hosted e2e): the folder held only search/profile/cv, and `daily` died on a missing config/preferences.json
         self.assertTrue(hosted_run.pull_config(self.site, 'HR1.r.t', self.folder))
@@ -149,18 +154,20 @@ class HostedRun(unittest.TestCase):
         import os, shutil, subprocess, sys
         shutil.copytree(hosted_run.DEFAULT_CONFIG, self.folder / 'config'); (self.folder / 'data').mkdir()   # an install's config: merge writes its jobs file too
         inbox = self.folder / 'inbox.json'
-        inbox.write_text(json.dumps([{'url': 'https://a/1', 'title': 'One', 'company': 'Co', 'fit': 7, 'line': 'good'}, {'url': '', 'title': 'no url'}]))
+        inbox.write_text(json.dumps([{'url': 'https://a/1', 'title': 'One', 'company': 'Co', 'fit': 7, 'line': 'good'}, {'url': '', 'title': 'no url'},
+                                     {'url': 'https://a/2', 'title': 'Unscored', 'company': 'Co', 'fit': None}]))   # #4375: no score travels as none, never 0
         env = {**os.environ, 'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_CONFIG_DIR': str(self.folder / 'config'), 'JOBADABRA_DATA_DIR': str(self.folder / 'data')}
         run = lambda: subprocess.run([sys.executable, '-m', 'src', 'hosted', '--merge', str(inbox)], env=env, capture_output=True, text=True, check=True).stdout
-        self.assertIn('1 new matches added', run())
+        self.assertIn('2 new matches added', run())
         self.assertIn('0 new matches added', run())   # the second time the job is already there
-        self.assertEqual([m['title'] for m in hosted_run.read_matches(env)], ['One'])
+        self.assertEqual(sorted((m['title'], m.get('fit')) for m in hosted_run.read_matches(env)), [('One', 7), ('Unscored', None)], 'the app shows no score for it (job-page-view.js: fit null)')
         # the run card: one row of this Mac's run history for the one time something arrived, on our servers, in Always on's words
         code = 'import json; from src import store_access; print(json.dumps(store_access.open_run().cron_runs.list(), default=str))'
         rows = json.loads(subprocess.run([sys.executable, '-c', code], env=env, capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1])
-        self.assertEqual([(r['kind'], r['where'], r['trigger'], r['summary']) for r in rows], [('scheduled', 'cloud', 'Always on', '1 new job while you were away')])
+        self.assertEqual([(r['kind'], r['where'], r['trigger'], r['summary']) for r in rows], [('scheduled', 'cloud', 'Always on', '2 new jobs while you were away')])
         self.assertIn('Always on', rows[0]['title'])
         self.assertIn('New job: One | Co | https://a/1 | 7', rows[0]['log'].split('\n'))   # the run card's item, with its fit (renderer/new-jobs-card.js)
+        self.assertIn('New job: Unscored | Co | https://a/2', rows[0]['log'].split('\n'), 'no fit, no " | 0" (new-jobs-card.js reads it as unscored)')
 
     def test_a_cloud_found_job_reaches_the_macs_drawer_with_its_posting_and_facts(self):
         # Why (owner, 14 Nov 2026: "Test the entire flow of a linkedin found job"; asked via AskUserQuestion: "Yes, both PRs (Recommended)"): a job Always on found
