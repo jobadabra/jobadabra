@@ -83,10 +83,12 @@ def _owner_alive(base):
         return True   # cannot tell (no pid, no permission): keep waiting up to the limit
 
 
-def _await(base, asked, limit):
+def _await(base, asked, limit, what=''):
     """The other search's record at `base`, after the seconds its live ask took (counted from `asked`), or None when it never came or its process is gone."""
+    _log('wait_start', what or os.path.basename(base), 0)   # Why (14 Nov 2026, sa): a follower that never ends a round must show which address it waits on
     while not os.path.exists(base + '.json') and time.monotonic() < asked + limit and _owner_alive(base):
         time.sleep(0.05)
+    _log('wait_end', what or os.path.basename(base), time.monotonic() - asked)
     if not os.path.exists(base + '.json'):
         return None
     with open(base + '.json', encoding='utf-8') as file:
@@ -150,7 +152,7 @@ def _urlopen(real):
         if role == 'first':
             _count('live')
             return _fetch(real, request, data, timeout, args, kwargs, base, url)
-        record = _await(base, asked, WAIT_PAGE_S) if role == 'other' else None
+        record = _await(base, asked, WAIT_PAGE_S, url) if role == 'other' else None
         if record is None:   # its own second ask, or the other search never finished: a real run asks the site
             _count('own_again' if role == 'own' else 'live')
             _log('own_again' if role == 'own' else 'live_after_wait', url, 0)
@@ -197,7 +199,7 @@ class _Messages:
             _write(base + '.json', json.dumps(record).encode())
             _log('ai_live', key, record['seconds'])
             return answer
-        record = _await(base, asked, WAIT_AI_S) if role == 'other' else None
+        record = _await(base, asked, WAIT_AI_S, key) if role == 'other' else None
         if record is None:
             _count('ai_own_again' if role == 'own' else 'ai_live')
             return self.live().messages.create(**params)

@@ -1,8 +1,10 @@
 """Is a same-inputs pair valid? The pure classification of each side's failed calls (the "Technical:" lines contract.detail writes), used by same_inputs_report.py.
 Why (14 Nov 2026, sa, owner's pair rule): a failed call whose text starts with the engine's clock-rule words (cli_base.CLOCK_UP) is the press clock's own drop, counted per side and flagged only when the sides differ by more than 3; any other failed call, or one with no text, makes the pair NOT VALID."""
+import json
 import os
 import re
 import sys
+from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from src.ai.providers.cli_base import CLOCK_UP  # noqa: E402
@@ -36,3 +38,56 @@ def classify(lines):
     verdict = 'NOT VALID' if faults else 'valid, clock-rule gap over %d (flag)' % GAP if gap > GAP else 'valid'
     why = ' (no log lines for side %s)' % ', '.join(side.upper() for side in empty) if empty else ' (text not captured: a build without the same-inputs text capture, cause unknown)' if faults and not any(c['other'] for c in counts.values()) else ''
     return {'verdict': verdict, 'why': why, 'counts': counts, 'shown': shown}
+
+
+PAGES_MIN, PAGES_RATIO = 30, 2.0   # a host is flagged when its larger side read at least this many pages and at least this many times the other side's
+UNFINISHED = re.compile(r"Job boards: (.+?) still being read at the search's time")
+READ_KINDS = ('live', 'shared', 'own_again', 'live_after_wait')   # the shared layer's page rows (src/same_inputs.py _log), not its AI rows
+
+
+def reads_by_side(rows, sides):
+    """rows: {log id: [the shared layer's jsonl rows]}, sides: {'a': id, 'b': id} -> {'a': {host: pages read}, 'b': {...}}; a log of no side is ignored."""
+    out = {side: {} for side in sides}
+    for side, log_id in sides.items():
+        for row in rows.get(log_id, []):
+            if row.get('kind') in READ_KINDS and str(row.get('url', '')).startswith('http'):
+                host = urlparse(row['url']).netloc
+                out[side][host] = out[side].get(host, 0) + 1
+    return out
+
+
+def read_logs(folder):
+    """The shared layer's logs kept by same-inputs.mjs in <work>/logs -> {log id: rows}."""
+    found = {}
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if name.startswith('log-') and name.endswith('.jsonl'):
+            rows = []
+            with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as file:
+                for line in file:
+                    try:
+                        rows.append(json.loads(line))
+                    except ValueError:   # a run cut mid-write leaves a truncated last row: skipped, never a crash
+                        pass
+            found[name[4:-6]] = rows
+    return found
+
+
+def page_flags(reads, lines):
+    """Where the two searches did not get the same pages: [text, ...], empty when they did.
+    A host one side read at least PAGES_MIN pages of and the other less than 1/PAGES_RATIO of that; a board whose read the search's time cut on one side only.
+    Why (14 Nov 2026, sa for the owner: "is the same-input pair reporting wrong?"): the same-code control of b01 read 113 pages of one board on one side and 37 on the other and still said valid, because only failed calls were counted."""
+    flags = []
+    for host in sorted(set(reads['a']) | set(reads['b'])):
+        a, b = reads['a'].get(host, 0), reads['b'].get(host, 0)
+        if max(a, b) >= PAGES_MIN and max(a, b) >= PAGES_RATIO * min(a, b):
+            flags.append(f'{host} read {a} times on A, {b} on B')
+    cut = {side: {name for line in lines[side] for group in UNFINISHED.findall(line) for name in group.split(', ')} for side in ('a', 'b')}   # found_boards.py joins the boards left with ', ' in completion order: compare them one by one
+    for side, other in (('a', 'b'), ('b', 'a')):
+        for name in sorted(cut[side] - cut[other]):
+            flags.append(f"{name} still being read at the search's time on {side.upper()} only")
+    return flags
+
+
+def against_spread(difference, spread):
+    """'inside' when a pair's difference in a count is no bigger than the person's own same-code spread (a control pair's difference), else 'outside'."""
+    return 'inside' if abs(difference) <= abs(spread) else 'outside'
