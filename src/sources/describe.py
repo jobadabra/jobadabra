@@ -185,9 +185,11 @@ def _keep_refused(hosts):
 
 
 def _write_read(db, job_id, text, route):
-    """Write a read posting's text on its job, and where its Apply goes when the page named it: one that names none never clears a known route
+    """Write a read posting's text on its job, and where its Apply goes when the page named it, each only when the page gave it: a page with a route and no
+    text still keeps the route (Gitar on #4173: the LinkedIn request is spent either way); one that names none never clears a known route
     (ea's "LinkedIn account" chip reads it: spec 2026-11-13-linkedin-easy-apply-design.md)."""
-    db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
+    if text:
+        db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
     if route:
         db.execute('UPDATE jobs SET apply_route=? WHERE id=?', (route, job_id))
 
@@ -251,7 +253,7 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             refused_before[host(url)] = {'at': now.isoformat(), 'why': str(error)}
         elif kind == 'gone':   # the posting was taken down: the job expired, not unscored
             db.execute("UPDATE jobs SET state='expired' WHERE id=?", (job_id,))
-        elif kind == 'filled':
+        elif kind in ('filled', 'empty'):
             _write_read(db, job_id, text, route)
     filled, gone, failed, empty, later = (seen[kind] for kind in ('filled', 'gone', 'failed', 'empty', 'later'))
     db.commit()
@@ -331,7 +333,8 @@ def read_posting(url, now=None):
     try:
         if not readable(url) or refused_lately(url, now) or read_routes.skip(url, visits.pool_facts().get('route') or {}, now):
             return ''
-        _ROUTE.route = None
+        # Only backfill keeps a page's Apply route: it holds the job's row; this read has none, so it leaves the value unread (Gitar on #4173).
+        _ROUTE.route, _ROUTE.apply = None, ''
         text = fetch(url)
         read_routes.record(url, _ROUTE.route if text else 'browser_only', now)
         return text

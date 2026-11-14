@@ -271,18 +271,25 @@ class GuestTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         pages = {'4489915925': 'job-page-easy-apply.html', '4490552642': 'job-page-employer-site.html', '4484998755': 'job-page.html'}
-        site = self.site(lambda url: fixture(pages[url.rstrip('/').rsplit('/', 1)[1]]))
+        easy = fixture('job-page-easy-apply.html')
+        textless = easy[:easy.index('<section class="description">')]   # Gitar on #4173: a route with no text is kept, the request is spent either way
+
+        def answer(url):
+            job = url.rstrip('/').rsplit('/', 1)[1]
+            return textless if job == '4489915926' else fixture(pages[job])
+        site = self.site(answer)
         db = sqlite3.connect(':memory:')
         db.execute('CREATE TABLE jobs (id INTEGER PRIMARY KEY, url TEXT, state TEXT, description TEXT, first_seen_at TEXT, apply_route TEXT)')
         now = datetime(2026, 11, 14, 3, 30, tzinfo=timezone.utc)
         db.executemany('INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?)', [
             (1, 'https://www.linkedin.com/jobs/view/4489915925/', 'open', '', now.isoformat(timespec='seconds'), None),
             (2, 'https://www.linkedin.com/jobs/view/4490552642/', 'open', '', now.isoformat(timespec='seconds'), None),
-            (3, 'https://www.linkedin.com/jobs/view/4484998755/', 'open', '', now.isoformat(timespec='seconds'), 'linkedin')])
+            (3, 'https://www.linkedin.com/jobs/view/4484998755/', 'open', '', now.isoformat(timespec='seconds'), 'linkedin'),
+            (4, 'https://www.linkedin.com/jobs/view/4489915926/', 'open', '', now.isoformat(timespec='seconds'), None)])
         describe.backfill(db, now=now)
-        self.assertEqual(len(site.requests), 3, 'one request a job: the route comes with the text')
+        self.assertEqual(len(site.requests), 4, 'one request a job: the route comes with the text')
         rows = {row[0]: row[1:] for row in db.execute('SELECT id, apply_route, length(description) > 200 FROM jobs')}
-        self.assertEqual(rows, {1: ('linkedin', 1), 2: ('employer', 1), 3: ('linkedin', 1)})
+        self.assertEqual(rows, {1: ('linkedin', 1), 2: ('employer', 1), 3: ('linkedin', 1), 4: ('linkedin', 0)})
 
     def test_an_older_jobs_file_gets_the_route_column_at_its_next_open(self):
         path = Path(self.dir.name) / 'jobs.db'
