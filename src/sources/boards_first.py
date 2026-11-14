@@ -180,7 +180,7 @@ class Beside:
     def last_pass(self, feed_db, on_jobs):
         """The run's last hand-over (daily_search.keep_late_boards), in the thread that owns the job cache: the groups that land by the pass's time
         (read_budget.pass_at) kept and shown; then every job the lane read that the AI still owes an answer placed and title-judged in this search
-        (src/sources/board_pass.py) and kept again, the ones both answers say yes to listed and taken off the queue's list; then the groups of the
+        (src/sources/board_pass.py) and kept again, the ones it settled (listed or refused) taken off the queue's list; then the groups of the
         reads still open, to the run's end, which wait for the queue after the search as before.
         Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; L05: "Yes, stop new reads then (Recommended)")."""
         from . import board_pass, read_budget, waiting_jobs
@@ -190,12 +190,12 @@ class Beside:
         self.deliver(feed_db, on_jobs)
         with self.count:
             read = list(self.read)
-        answered = board_pass.judge(read)
+        answered = board_pass.judge(read) if at is not None else []
         if answered:
-            before = {id(item) for item in self.matched}
             self._queue(answered)
             self.deliver(feed_db, on_jobs)
-            waiting_jobs.listed(feed_db, [item.get('url') for item in self.matched if id(item) not in before])
+            # Why (Gitar on #4187): a job the pass refused (title no, place outside) kept its waiting row and the queue asked about it again
+            waiting_jobs.listed(feed_db, [job.get('url') for job in answered if not board_pass.owed([job])])   # listed or refused: settled
         if end is not None and not self.done.is_set() and read_budget.seconds_left(end):
             print("Job boards: still being read; the search waits for them to its own end", flush=True)
             self.take(feed_db, on_jobs, until=end)

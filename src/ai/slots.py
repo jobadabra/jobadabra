@@ -88,13 +88,14 @@ def waited(reset=False):
 
 def carry(fn, at=None):
     """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry(), and in its reading lane
-    (in_lane), so a board's pool threads end where the job boards' lane ends."""
+    (in_lane), so a board's pool threads end where the job boards' lane ends; also in the caller's last-pass mode (time_budget.carried)."""
     at, end = level() if at is None else at, lane()   # a lane's reads end at its own end in every thread it starts
 
     def run(*args, **kwargs):
         with priority(at), in_lane(end):
             return fn(*args, **kwargs)
-    return run
+    from .. import time_budget
+    return time_budget.carried(run)   # and the search's last judging pass, when the caller runs it (time_budget.to_the_end)
 
 
 class Slots:

@@ -4,7 +4,7 @@ Design (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, build it (Recommend
 - A job a reader gave is listed (the AI said its title is the person's kind and its place is theirs), not for the person (the AI said no: the
   title and place stores remember it), or WAITING: the AI has not answered for its title or its place yet (job_stage 'never_asked').
 - One owner of waiting: this table. Only a search adds to it (aggregators.kept, the one place a reader's jobs get their stage); the queue
-  takes from it (judge), and so does the search's own last judging pass, for the jobs it listed (listed; src/sources/board_pass.py, owner,
+  takes from it (judge), and so does the search's own last judging pass, for the jobs it settled (listed; src/sources/board_pass.py, owner,
   14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"). Nothing else reads it.
 - The queue asks the titles first, then the places of the ones whose title fits (a location that names no town: from its posting), and lists what both say yes to.
   A job is never listed on a guess.
@@ -69,7 +69,7 @@ def keep(db, name, jobs, now, search=None, places=None):
 
 
 def listed(db, urls):
-    """The rows of jobs this search listed after all (its last judging pass, src/sources/board_pass.py) leave: the queue owes them nothing.
+    """The rows of jobs this search settled after all (its last judging pass, src/sources/board_pass.py: listed, or refused by an answer) leave: the queue owes them nothing.
     Never raises into the run: a row left behind is listed once more by the queue, never lost."""
     from ..press import stage
     urls = [url for url in urls if url]

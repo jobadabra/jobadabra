@@ -31,7 +31,7 @@ def judge(jobs):
     from .. import time_budget
     from . import feed_places, feeds
     waiting = owed(jobs)
-    if not waiting or time_budget.ended():
+    if not waiting or time_budget.DEADLINE is None or time_budget.ended():   # an untimed run judged them as they came: no pass
         return []
     # only the places still open: a job the place words put in your places waits for its title alone (job_stage.of)
     unplaced = [job for job in waiting if feeds.place_of(job) is None and not feeds.wanted_location(job) and (job.get('location') or '').strip()]

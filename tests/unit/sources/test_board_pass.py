@@ -82,6 +82,18 @@ class ThePassTime(unittest.TestCase):
             self.assertTrue(time_budget.over('titles', now=time.monotonic()))
             self.assertEqual(time_budget.batch('title_rounds', 3, now=time.monotonic(), say=False), 0)
 
+    def test_only_the_pass_and_the_calls_it_carries_run_to_the_end(self):
+        at(150)
+        seen = {}
+        with time_budget.to_the_end():
+            others = [threading.Thread(target=lambda: seen.__setitem__('other', time_budget.over('titles', now=time.monotonic()))),
+                      threading.Thread(target=time_budget.carried(lambda: seen.__setitem__('carried', time_budget.over('titles', now=time.monotonic())))),
+                      threading.Thread(target=slots.carry(lambda: seen.__setitem__('pool', time_budget.over('titles', now=time.monotonic()))))]
+            for thread in others:
+                thread.start()
+                thread.join(timeout=5)
+        self.assertEqual(seen, {'other': True, 'carried': False, 'pool': False}, 'scoring and the lane keep their stops; the pass\'s workers do not')
+
 
 class TheLastPass(unittest.TestCase):
     def setUp(self):
@@ -156,6 +168,21 @@ class TheLastPass(unittest.TestCase):
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 2, 'it waits for the queue after the search')
         checked, items = waiting_jobs.judge(self.db, SEARCH, NOW, out=lambda line: None)
         self.assertEqual(sorted(item['title'] for item in items), ['Late role 0', 'Late role 1'], 'the queue lists them')
+
+    def test_a_job_the_pass_refuses_leaves_the_queues_list(self):
+        at(100)
+        self.model.out = {'late town'}
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        lane.last_pass(self.db, shown.extend)
+        self.assertEqual([job['title'] for job in shown], ['Known role 0'])
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'placed outside by the pass: the queue owes it nothing')
+
+    def test_an_untimed_run_makes_no_pass(self):
+        time_budget.start(0)
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        lane.last_pass(self.db, shown.extend)
+        self.assertEqual(self.model.log, [], 'no pass: an untimed run judges each group as it comes')
+        self.assertFalse(any(line.startswith('Board pass:') for line in self.said))
 
     def test_the_pass_asks_nothing_in_the_runs_last_seconds(self):
         at(170)   # in the TAIL (L04)
