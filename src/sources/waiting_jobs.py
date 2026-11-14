@@ -61,8 +61,9 @@ def keep(db, name, jobs, now, search=None, places=None):
         print(f'{SAID}{len(jobs)} job(s) of {name}', flush=True)   # the app starts the queue on this line (desktop/lib/pipeline-tasks.js waitsOf)
         from . import job_stage
         if job_stage.listing():   # the Search check's line per job the queue will judge (tools/persona-search): never_asked and kept, not dropped by _worth
+            # Why (#4187, CI): a line of its own, not a second `Stage:` line: one Stage line per job and pass (tests/unit/sources/test_job_stage.py)
             for job in jobs:
-                print(f"Stage: {name} waiting {job['url']}\n", end='', flush=True)
+                print(f"Waiting: {name} {job['url']}\n", end='', flush=True)
         return len(jobs)
     print(f'Warning: {len(jobs)} job(s) of {name} were not kept waiting ({caught.reason})', flush=True)
     return 0

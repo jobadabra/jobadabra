@@ -196,7 +196,7 @@ class TheLastPass(unittest.TestCase):
         with mock.patch.dict('os.environ', {'JOBADABRA_STAGE_LOG': '1'}):
             lane, _shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
         self.assertIn('Stage: Job boards found read https://board.example.test/job/1\n', self.said)
-        self.assertIn('Stage: Job boards found waiting https://board.example.test/job/1\n', self.said)
+        self.assertIn('Waiting: Job boards found https://board.example.test/job/1\n', self.said)
 
 
 if __name__ == '__main__':
