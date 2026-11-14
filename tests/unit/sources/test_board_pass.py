@@ -265,6 +265,23 @@ class TheLastPass(unittest.TestCase):
         ended = board_pass.Done(done.answered, 150, 1, 1, None)
         self.assertEqual(board_pass.settled(ended, set()), [job['url']], 'an ended pass: "out" is its last word, refused')
 
+    def test_a_job_whose_place_names_no_town_is_not_listed_by_the_pass_and_waits_for_its_posting(self):
+        """c15 Valencia (ot's pair on 01870a59, 14 Nov 2026): the pass listed 28 more jobs, 0 right by the blind judge; all 28 said only "Spain"
+        (or "Southern Spain"): the place round answered "names no town" ('vague', its posting not read yet) and feeds.wanted_location lists a
+        'vague' job until its posting is read (src/sources/feeds.py, `verdict != 'out'`). The pass lists only a place the AI answered (best/in)
+        or the place words put in the person's places; a 'vague' one waits for the queue, which reads its posting."""
+        at(100)
+        country = {**board()[1], 'title': 'Known role 7', 'location': 'Spain', 'url': 'https://board.example.test/job/7', 'id': '7'}
+        real = lambda job: job['location'] == 'Known town' if feeds.place_of(job) is None else feeds.place_of(job) != 'out'   # feeds.wanted_location's rule
+        feeds.placed()['spain'] = 'out:vague'   # the place round's answer: Spain names no town; its posting is not read in the search
+        with mock.patch.object(feeds, 'wanted_location', real):
+            lane, shown = self.lane(lambda run, search, **kw: iter([('the board', [board()[0], country])]))
+            self.pass_time(lane)
+            lane.last_pass(self.db, shown.extend)
+        self.assertTrue(feeds.judged_title('Known role 7'), 'positive control: its title was judged yes in the pass')
+        self.assertEqual([job['title'] for job in shown], ['Known role 0'], 'never listed on a place nobody answered')
+        self.assertEqual([job['title'] for _, job in waiting_jobs.held(self.db, SEARCH)], ['Known role 7'], 'it waits for the queue')
+
     def test_a_board_read_after_the_pass_waits_and_the_queue_lists_its_jobs(self):
         at(100)
         passed, late = threading.Event(), board()[1:]
