@@ -100,6 +100,8 @@ def serve(batches, ask, land, parallel, rank=None):
     mine = _hub[0]
     box = mine.box if mine is not None and threading.current_thread() is mine.thread else queue.Queue()
     remaining, failed, views = [len(batches)], [], batch_scope.current()
+    from .. import time_budget
+    ask = time_budget.carried(ask)   # asked in a worker with this reader's last-pass mode (time_budget.to_the_end), as its views
 
     def landed(titles, result):
         remaining[0] -= 1

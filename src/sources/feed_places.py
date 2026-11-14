@@ -102,9 +102,10 @@ def to_place(job):
     return feeds.judged_title(job['title']) is not False and feeds.awaiting_place(job)
 
 
-def place_jobs(jobs, chosen=False):
+def place_jobs(jobs, chosen=False, land=False):
     """Ask Claude where the new locations are, for the jobs that could be kept (to_place; `chosen`: these jobs were chosen by it already); each location once per
-    version of the places. Off without AI or with JOBADABRA_DISABLE=place_triage: the place words only."""
+    version of the places. Off without AI or with JOBADABRA_DISABLE=place_triage: the place words only. land: the final answers inside the person's places
+    reach feeds.placed() as each batch lands; part 3/4 passes this flag for the search's last pass. Default False keeps the existing final update."""
     from .. import features
     from ..ai import engine
     from . import feeds
@@ -112,11 +113,12 @@ def place_jobs(jobs, chosen=False):
     locations = [job.get('location') for job in jobs if pick(job)]
     if not locations or features.disabled('place_triage') or not engine.ready():
         return
-    _guarded(lambda: _place(jobs, pick), lambda why: f'job locations not placed by {providers.who()} ({why}): the place words decide this run (remote jobs wait)')
+    _guarded(lambda: _place(jobs, pick, land), lambda why: f'job locations not placed by {providers.who()} ({why}): the place words decide this run (remote jobs wait)')
 
 
-def _place(jobs, pick):
-    """The place call for the jobs `pick` keeps: the locations nobody placed yet, best first, then which of the ones outside name no town."""
+def _place(jobs, pick, land=False):
+    """The place call for the jobs `pick` keeps: the locations nobody placed yet, best first, then which of the ones outside name no town.
+    land defaults to the final update; part 3/4 passes this flag through place_jobs for early inside answers."""
     from . import feeds
     from ..ai import place_triage
     # A refresh places a batch: the ones your place words name first, then the ones most jobs share (7 Oct 2026: it asked in feed
@@ -130,8 +132,9 @@ def _place(jobs, pick):
             count[place_triage.norm(job['location'])] += 1 + closeness(job)
     ordered = rank.titles(list(count), rank.in_your_places(lambda location: feeds.mentions(feeds.PLACE, location)), lambda location: -count[location])
     # Only what nobody placed yet: a place the map's cache gave (known_now) is never answered again after its jobs were handed (code review of sf place PR a)
-    feeds.placed().update(place_triage.decide([where for where in ordered if feeds.placed().get(where) is None], feeds._SEARCH))
-    feeds.placed().update(place_triage.vague(ordered, feeds._SEARCH))   # of the ones outside: which name no town of their own
+    placed = feeds.placed()   # this reader's view, read in its own thread: the batches land from the call's worker threads
+    placed.update(place_triage.decide([where for where in ordered if placed.get(where) is None], feeds._SEARCH, **({'land': placed.update} if land else {})))
+    placed.update(place_triage.vague(ordered, feeds._SEARCH))   # of the ones outside: which name no town of their own
 
 
 def _guarded(work, said):
