@@ -230,3 +230,23 @@ test('a machine where every call takes 200 ms does not stretch the first look: a
   assert.equal(out.picked, false);
   assert.ok(out.t < 9000, `took ${out.t} ms`);
 });
+
+// #4298 (owner, 14 Nov 2026: "this filling is very slow and ineffective"): on the plan path the AI's pick took 18.4-26.7 s a menu, and the menu's 30 s real-time
+// cap (PATIENCE.hard) counted it, so a Greenhouse form's privacy and self-identify menus were given up right as the answer came back (31.3-34.0 s, "capped").
+// The page and clicks are real; the AI "answers" in 26.7 s: 13 s really waited (past the page's old 12 s wait, page/fill-menus.js need) and 13.7 s jumped on the clock.
+test('a menu whose AI pick takes 26.7 s (the plan path, measured) is still picked, not given up as the answer arrives', async () => {
+  const browser = await chromium.launch();
+  try {
+    const p = await browser.newPage();
+    await p.setContent(sentencePage(SENTENCES.plain));
+    for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
+    await p.evaluate(() => window.__jobadabraExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
+    const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
+    const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
+    let skew = 0;
+    const now = () => Date.now() + skew;   // clock: relative, combo-click compares it only with its own start (now() at the menu's first look)
+    const choose = async seen => { await new Promise(resolve => setTimeout(resolve, 13000)); skew += 13700; return seen.choices.includes(SENTENCES.plain.want) ? SENTENCES.plain.want : ''; };
+    const {picked, capped} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0, choose, now});
+    assert.deepEqual({picked, capped, value: await p.evaluate(() => document.getElementById('rtw').value)}, {picked: true, capped: false, value: SENTENCES.plain.want});
+  } finally { await browser.close(); }
+});

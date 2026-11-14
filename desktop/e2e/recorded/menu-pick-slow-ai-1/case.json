@@ -1,0 +1,113 @@
+{
+ "origin": "hand-cut",
+ "shape": "a react-select degree menu whose choices word the answer differently (BSc vs Bachelor's Degree), so the AI picks by meaning, and the pick comes back after 26.7 s (the plan path's measured time)",
+ "why": "14 Nov 2026, #4298 (owner: \"this filling is very slow and ineffective\"): a held fill on a Greenhouse board form left the privacy and self-identify menus empty; the AI's picks took 18.4-26.7 s and the menu's 30 s real-time cap (extension/combo-click.js PATIENCE.hard) counted them, so each menu was given up as its answer arrived",
+ "control": {
+  "guard": "new case 14 Nov 2026: on origin/main the degree menu is given up (capped) when the 26.7 s pick arrives and stays empty; with the AI's time left out of the cap it is picked"
+ },
+ "sample": "hand-made from education-menus-first-page-1 (the real vendored react-select), no real site",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/acme/menu-pick-slow-ai/application",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "school--0",
+     "question": "School",
+     "value": "Example University",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    },
+    {
+     "field": "degree--0",
+     "question": "Degree",
+     "value": "BSc",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    },
+    {
+     "field": "discipline--0",
+     "question": "Discipline",
+     "value": "Computer Science",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  },
+  "/extension/pick-choice": [
+   {
+    "when": {
+     "value": "BSc"
+    },
+    "answer": {
+     "ok": true,
+     "choice": "Bachelor's Degree",
+     "_delayMs": 26700
+    }
+   },
+   {
+    "when": {
+     "value": "Example University"
+    },
+    "whenFilled": [
+     "tried"
+    ],
+    "answer": {
+     "ok": true,
+     "choice": "Other",
+     "searches": [],
+     "_delayMs": 6000
+    }
+   },
+   {
+    "when": {
+     "value": "Example University"
+    },
+    "answer": {
+     "ok": true,
+     "choice": "",
+     "searches": [
+      "Example University",
+      "Other"
+     ],
+     "_delayMs": 6000
+    }
+   },
+   {
+    "answer": {
+     "ok": true,
+     "choice": ""
+    }
+   }
+  ]
+ },
+ "expect": {
+  "present": [
+   "input[name=\"degree\"][value=\"bachelor-s-degree\"]"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 150
+ },
+ "start": "panel"
+}

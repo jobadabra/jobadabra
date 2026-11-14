@@ -53,7 +53,9 @@
   // The page asks the extension for what only it can do (real typing, the AI's pick): combo-click.js answers through __jobadabraNeedDone.
   const need = async request => {
     window.__jobadabraNeedDone = undefined; window.__jobadabraNeed = request;
-    for (let waited = 0; waited < 12000 && window.__jobadabraNeedDone === undefined; waited += 100) await sleep(100);
+    // Why (#4298, 14 Nov 2026): 12 s here cut every plan-path AI pick (18-27 s): the menu closed with "No options" before the answer came. The extension always answers
+    // (combo-click.js writes NeedDone, the pick or false) and its one clock for the pick is flow.js STEP_MS.choose (45 s); this is only a hang guard above it.
+    for (let waited = 0; waited < 60000 && window.__jobadabraNeedDone === undefined; waited += 100) await sleep(100);
     window.__jobadabraNeed = null;
     return window.__jobadabraNeedDone ?? null;
   };
