@@ -139,6 +139,21 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertIn('reviews(last:100)@include(if:$full)', graphql_view)
         self.assertNotIn('reviews(first:', graphql_view)
 
+    def test_all_checks_passed_is_read_from_a_status_or_a_check_run(self):
+        """cr 3b (14 Nov 2026): jobadabra writes "All checks passed" as a commit STATUS, jobadabra-web and -lab have it as a job (CHECK RUN); the gate must see both, and a run still going is not green."""
+        def run(conclusion, at):
+            return {'__typename': 'CheckRun', 'name': 'All checks passed', 'conclusion': conclusion, 'completedAt': at}
+        def state(commit):
+            return node(f"m.checkState({json.dumps(commit)})")
+        self.assertEqual(state({'status': {'context': {'state': 'SUCCESS'}}}), 'SUCCESS')
+        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('SUCCESS', '2026-11-14T01:00:00Z')]}}}), 'SUCCESS')
+        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('CANCELLED', '2026-11-14T01:00:00Z'), run('SUCCESS', '2026-11-14T01:01:00Z')]}}}), 'SUCCESS', 'the newest finished run decides (a cancelled twin stays on the commit)')
+        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('SUCCESS', '2026-11-14T01:00:00Z'), run(None, None)]}}}), 'PENDING', 'a re-run still going')
+        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('FAILURE', '2026-11-14T01:00:00Z')]}}}), 'FAILURE')
+        other = {'__typename': 'CheckRun', 'name': 'Gitar', 'conclusion': 'SUCCESS', 'completedAt': '2026-11-14T01:00:00Z'}
+        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [other]}}}), '', 'another check is not this one')
+        self.assertEqual(state({}), '')
+
 
 if __name__ == '__main__':
     unittest.main()

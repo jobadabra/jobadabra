@@ -115,10 +115,22 @@ export function usageLine(messages) {
   return `Claude review run: ${result.num_turns ?? '?'} turns, ${Math.round((result.duration_ms || 0) / 1000)} s, ${u.input_tokens ?? '?'} input + ${u.cache_read_input_tokens ?? 0} cached + ${u.output_tokens ?? '?'} output tokens`;
 }
 
+/** The state of "All checks passed" on a commit: the commit STATUS of that name when there is one (jobadabra: tools/pr-verdict.py writes it), else the newest completed CHECK RUN of that name (jobadabra-web and -lab: it is a job there). -> SUCCESS | FAILURE | PENDING | '' (missing).
+ * Why (14 Nov 2026, cr 3b): the gate read only the status, so a repo whose "All checks passed" is a job (web, lab) always read "missing" and never got an automatic review. `commit` is the GraphQL node {status, statusCheckRollup}. */
+export function checkState(commit) {
+  const status = commit?.status?.context?.state;
+  if (status) return status;
+  const runs = (commit?.statusCheckRollup?.contexts?.nodes || []).filter(n => n?.__typename === 'CheckRun' && n.name === CHECK);
+  if (!runs.length) return '';
+  if (runs.some(r => !r.conclusion)) return 'PENDING';   // a run still going (a re-run beside an older green one) is not green yet
+  const newest = runs.sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt))[0];
+  return newest.conclusion === 'SUCCESS' ? 'SUCCESS' : 'FAILURE';
+}
+
 // ---- the gate and the post: gh and files; the decisions above are pure ----
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
   number state isDraft title headRefOid baseRefName baseRefOid headRepository { nameWithOwner }
-  commits(last: 1) { nodes { commit { status { context(name: "${CHECK}") { state } } } } }
+  commits(last: 1) { nodes { commit { status { context(name: "${CHECK}") { state } } statusCheckRollup { contexts(last: 100) { nodes { __typename ... on CheckRun { name conclusion completedAt } } } } } } }
   reviews(last: 100) { nodes { author { login } submittedAt body } }
   comments(last: 30) { nodes { body } }
   labels(first: 50) { nodes { name } }
@@ -131,7 +143,7 @@ export function readPr(repo, number, run = gh) {
   const [owner, name] = repo.split('/');
   const p = graphql(PR_QUERY, {owner, name, pr: number}, run).pullRequest;
   return {pr: {number: p.number, state: p.state, isDraft: p.isDraft, title: p.title, head: p.headRefOid, base: p.baseRefName, headRepo: p.headRepository?.nameWithOwner || '',
-    status: p.commits.nodes[0]?.commit?.status?.context?.state || '', labels: p.labels.nodes.map(l => l.name)}, reviews: ourReviews(p.reviews.nodes), comments: p.comments.nodes.filter(Boolean).map(c => c.body)};
+    status: checkState(p.commits.nodes[0]?.commit), labels: p.labels.nodes.map(l => l.name)}, reviews: ourReviews(p.reviews.nodes), comments: p.comments.nodes.filter(Boolean).map(c => c.body)};
 }
 
 /** The reviews of ours submitted today across the 100 most recently updated PRs. */
