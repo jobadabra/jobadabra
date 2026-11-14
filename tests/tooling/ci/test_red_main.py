@@ -114,6 +114,7 @@ class RedMainTest(unittest.TestCase):
             git('add', '-A'); git('commit', '-qm', f'c{n}')
             self.shas.append(git('rev-parse', 'HEAD'))
         git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        git('remote', 'add', 'origin', 'https://github.com/x/y.git')   # the slug of the jobs read (tools/red-main.sh)
         bin_dir = self.tmp / 'bin'; bin_dir.mkdir()
         state = (self.tmp / 'gh').as_posix()
         (self.tmp / 'gh').mkdir()
@@ -121,6 +122,7 @@ class RedMainTest(unittest.TestCase):
                                     f'state="{state}"\n'
                                     'case "$1 $2" in\n'
                                     '  "run list") cat "$state/runs.json" ;;\n'
+                                    '  "api -i") path="${@: -1}"; id="$(printf "%s" "$path" | sed -E "s#.*/actions/runs/([0-9]+)/jobs.*#\\1#")"; f="$state/jobs-$id.json"; [ -f "$f" ] || exit 1; tag="v$(cksum < "$f" | cut -d" " -f1)"; cond=0; for a in "$@"; do [ "$a" = "If-None-Match: \\"$tag\\"" ] && cond=1; done; echo "$path cond=$cond" >> "$state/api-reads"; [ "$cond" = 1 ] && { printf "HTTP/2.0 304 Not Modified\\r\\n\\r\\n"; exit 1; }; printf "HTTP/2.0 200 OK\\r\\nEtag: \\"$tag\\"\\r\\n\\r\\n"; cat "$f" ;;\n'
                                     '  "run view") id="$3"; q=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && q="$2"; shift; done; jq -r "$q" "$state/jobs-$id.json" 2>/dev/null || echo 0 ;;\n'
                                     '  "run rerun") echo "$3" >> "$state/reruns" ;;\n'
                                     'esac\n')
@@ -140,7 +142,7 @@ class RedMainTest(unittest.TestCase):
 
     def state(self, **extra):
         (self.tmp / 'gh' / 'runs.json').write_text(json.dumps(list(reversed(self.runs))))   # gh lists the newest first
-        env = {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo), **extra}
+        env = {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo), 'PR_REST_CACHE': str(self.tmp / 'rest-cache'), **extra}
         result = subprocess.run(['bash', str(SCRIPT)], capture_output=True, text=True, env=env, timeout=60)
         return result.stdout.strip(), result.returncode
 
@@ -277,6 +279,29 @@ class RedMainTest(unittest.TestCase):
         self.assertEqual([c for c in counted if not any(n.startswith(c) and CLASSIFIED[n] == 'counted' for n in names)], [], 'every name in RED_WORKFLOWS is a counted workflow')
         self.assertEqual(sorted(n for n, how in CLASSIFIED.items() if how == 'counted' and n in names and not any(n.startswith(c) for c in counted)), [], 'every counted workflow is listed')
 
+
+    def test_a_second_look_at_the_same_runs_reads_their_jobs_conditionally(self):
+        """14 Nov 2026 (rb; gh-rest-report.sh: `gh run view` was 299 spent calls an hour): the jobs of a run are read through the ETag cache, so an unchanged run answers 304 and the verdict is the same."""
+        self.run_at(3, TESTS, status='in_progress', failed_jobs=1)
+        first = self.state()
+        second = self.state()
+        self.assertEqual(first, second)
+        self.assertEqual(first[0].split('|')[:2], ['red', self.shas[3][:7]])
+        reads = (self.tmp / 'gh' / 'api-reads').read_text().split()
+        self.assertEqual([r for r in reads if r.startswith('cond=')], ['cond=0', 'cond=1'], reads)
+
+
+    def test_an_origin_that_is_no_github_address_still_reads_the_jobs_through_gh(self):
+        """The push-gate fixtures' origin is a local folder: no owner/repo for the REST jobs read, so `gh run view` in the folder answers, as before (14 Nov 2026, rb). A foreign host whose path
+        contains "github.com" is no GitHub address either (Gitar on #4206: the looser regex gave it a slug, and the jobs were read from the wrong repository)."""
+        for origin in ('/some/local/folder', 'https://gitlab.com/github.com/x/y.git'):
+            (self.tmp / 'gh' / 'api-reads').unlink(missing_ok=True)
+            self.runs = []
+            self.run_at(3, TESTS, status='in_progress', failed_jobs=1)
+            subprocess.run(['git', '-C', str(self.repo), 'remote', 'set-url', 'origin', origin], check=True)
+            out, code = self.state()
+            self.assertEqual((code, out.split('|')[:2]), (1, ['red', self.shas[3][:7]]), origin)
+            self.assertFalse((self.tmp / 'gh' / 'api-reads').exists(), f'no REST read without an owner/repo: {origin}')
 
 if __name__ == '__main__':
     unittest.main()
