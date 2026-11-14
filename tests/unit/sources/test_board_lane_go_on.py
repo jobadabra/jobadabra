@@ -214,6 +214,21 @@ class TheLaneReadsOnAfterTheFirstJobsStep(unittest.TestCase):
         self.assertIn('Job boards: Stellen: next pages and other words not asked (time is up)', out.getvalue())
 
 
+class TheLaneThatHasEnded(unittest.TestCase):
+    def test_a_read_on_handed_after_the_lanes_end_says_it_is_not_read(self):
+        """Gitar, #4210: read_board says the read-on comes after the step; a lane already ended dropped it without a word."""
+        with mock.patch('src.sources.board_reader.read', return_value=iter(())), mock.patch('src.sources.feeds.triage'), \
+                redirect_stdout(io.StringIO()) as out:
+            time_budget.start(BUDGET, now=time.monotonic() - BUDGET * 100 / time_budget.PLANNED)
+            self.addCleanup(time_budget.start, 0)
+            lane = boards_first.Beside(SEARCH)
+            self.assertTrue(lane.done.wait(5))
+            asked = []
+            lane.go_on(lambda on_round: asked.append('read') or [], 'Stellen')
+        self.assertEqual(asked, [])
+        self.assertIn("Job boards: Stellen: next pages and other words not asked (the boards' lane has ended)", out.getvalue())
+
+
 class TheReadOnIsTheLanesReader(TheLaneReadsOnAfterTheFirstJobsStep):
     """Gitar, #4208: the read-on's thread judged its titles and places outside the lane's reader (batch_scope), and queued its groups with no views."""
     def test_the_read_ons_groups_carry_the_lanes_views(self):

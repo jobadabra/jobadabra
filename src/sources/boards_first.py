@@ -86,6 +86,7 @@ class Beside:
         from ..ai import slots
         with self.count:
             if self.done.is_set():   # the lane has ended: nobody would take its jobs
+                print(f'Job boards: {name}: next pages and other words not asked (the boards\' lane has ended)', flush=True)
                 return
             self.left += 1
         threading.Thread(target=slots.carry(self._read_on, slots.NORMAL), args=(read_on, name), name='boards-read-on', daemon=True).start()
@@ -109,11 +110,14 @@ class Beside:
             self._ended()
 
     def _hand_new(self, found):
-        """Of a read-on's jobs, the ones the lane has not handed yet (its slice's, its earlier rounds'), handed (_hand)."""
+        """Of a read-on's jobs, the ones the lane has not handed yet (its slice's, its earlier rounds', another board's), handed as _hand does.
+        Claimed in the same lock that picks them (Gitar, #4210): read-ons run at once, and two could pick the same job."""
         with self.count:
             new = list({job.get('url'): job for job in found or [] if job.get('url') not in self.urls}.values())
+            self.handed.update((id(job), job) for job in new)
+            self.urls.update(job.get('url') for job in new)
         if new:
-            self._hand(new)
+            self._put(new)
 
     def _known(self, wait):
         """The boards known for this field, then the web search's, waited for to the lane's end (its declared need, reader_rows LANES)."""
