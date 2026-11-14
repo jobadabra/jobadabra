@@ -59,14 +59,16 @@ def keep(db, name, jobs, now, search=None, places=None):
                            (job['url'], name, key, json.dumps(job, ensure_ascii=False, default=str), stamp))
             db.execute('DELETE FROM waiting_jobs WHERE url NOT IN (SELECT url FROM waiting_jobs ORDER BY seen_at DESC, rowid DESC LIMIT ?)', (KEPT,))
         print(f'{SAID}{len(jobs)} job(s) of {name}', flush=True)   # the app starts the queue on this line (desktop/lib/pipeline-tasks.js waitsOf)
-        from . import job_stage
-        if job_stage.listing():   # opt-in per-job diagnostics for the Search check, after _worth filters the batch
-            # Why (#4187, CI): a line of its own, not a second `Stage:` line: one Stage line per job and pass (tests/unit/sources/test_job_stage.py)
+    if caught:
+        print(f'Warning: {len(jobs)} job(s) of {name} were not kept waiting ({caught.reason})', flush=True)
+        return 0
+    from . import job_stage
+    if job_stage.listing():
+        # Why (#4187, #4345): no duplicate Stage line; a diagnostic failure cannot turn committed rows into a failed keep.
+        with stage.guard('waiting job diagnostics'):
             for job in jobs:
                 print(f"Waiting: {name} {job['url']}\n", end='', flush=True)
-        return len(jobs)
-    print(f'Warning: {len(jobs)} job(s) of {name} were not kept waiting ({caught.reason})', flush=True)
-    return 0
+    return len(jobs)
 
 
 def listed(db, urls):
@@ -76,7 +78,7 @@ def listed(db, urls):
     urls = [url for url in urls if url]
     if not urls:
         return
-    with stage.guard('jobs kept waiting') as caught:
+    with stage.guard('waiting jobs settled') as caught:
         db.execute(TABLE)
         with db:
             db.executemany('DELETE FROM waiting_jobs WHERE url = ?', [(url,) for url in urls])

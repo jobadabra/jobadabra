@@ -87,8 +87,9 @@ class SettledQueue(unittest.TestCase):
     def test_a_failed_delete_rolls_back_all_rows_and_names_its_failure(self):
         self.db.execute("CREATE TRIGGER refuse_delete BEFORE DELETE ON waiting_jobs WHEN OLD.url LIKE '%/3' BEGIN SELECT RAISE(ABORT, 'fictional failure'); END")
         output = io.StringIO()
-        with contextlib.redirect_stdout(output):
+        with contextlib.redirect_stdout(output), mock.patch('src.run_details.failed') as failed:
             waiting_jobs.listed(self.db, [job['url'] for job in self.jobs])
+        failed.assert_called_once_with('waiting jobs settled', 'IntegrityError')
         self.assertEqual(self.urls(), [job['url'] for job in self.jobs])
         self.assertIn('Warning: 4 listed job(s) still wait for the queue (IntegrityError)', output.getvalue())
 
@@ -111,3 +112,18 @@ class SettledQueue(unittest.TestCase):
         self.assertEqual(output.getvalue().splitlines(), [f'{waiting_jobs.SAID}4 job(s) of Fictional board'] +
                          [f"Waiting: Fictional board {job['url']}" for job in self.jobs])
         self.assertEqual(self.urls(), [job['url'] for job in self.jobs])
+
+    def test_failed_diagnostics_preserve_the_committed_keep_result(self):
+        said = []
+        def print_line(*args, **kwargs):
+            line = ' '.join(map(str, args))
+            if line.startswith('Waiting:'):
+                raise BrokenPipeError('fictional closed diagnostic stream')
+            said.append(line)
+        with mock.patch.dict(os.environ, {'JOBADABRA_STAGE_LOG': '1'}), mock.patch('builtins.print', print_line), \
+             mock.patch('src.run_details.failed') as failed:
+            kept = waiting_jobs.keep(self.db, 'Fictional board', self.jobs, self.now, search={})
+        self.assertEqual(kept, 4)
+        self.assertEqual(self.urls(), [job['url'] for job in self.jobs])
+        self.assertEqual(said, [f'{waiting_jobs.SAID}4 job(s) of Fictional board'])
+        failed.assert_called_once_with('waiting job diagnostics', 'BrokenPipeError')
