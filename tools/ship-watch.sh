@@ -88,7 +88,7 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     fi
   done <<<"$rows"
 }
-waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; held=""; flipfail=""; claude_on=false
+waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; held=""; flipfail=""; claude_on=false; cv_at=""
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
@@ -146,11 +146,16 @@ while :; do
     #   TODO(AI): drop the Gitar branch when cr PR 3 and 2b land (13 Nov 2026).
     # Why (14 Nov 2026, owner: "I think we can disable Claude for now"; coordinator mac-95: a leftover "Claude: not reviewed" label blocked every new PR): the Claude rule below applies only while the repository variable
     #   CLAUDE_REVIEW_ENABLED is "true" (tools/claude-label.mjs enabled(); a missing variable is a 404 and means off); off, every PR is READY by Gitar's label alone, whatever Claude labels it still carries.
-    #   A read that fails for another reason keeps the last answer, so a blip never turns a Claude-reviewed repository into a Gitar-only one; the read is an ETag read, free while it does not change.
+    #   A read that fails for another reason keeps the last answer, so a blip never turns a Claude-reviewed repository into a Gitar-only one; the read is repeated at most every SHIP_WATCH_VAR_EVERY seconds (a deleted variable is a 404 with no ETag, charged every time: rb, 14 Nov 2026), and a flip is seen at the next read.
     #   A deleted variable (404) is off at once (Gitar on #4162); only an outage or a rate limit keeps the last answer.
-    cvp="repos/$repo/actions/variables/CLAUDE_REVIEW_ENABLED"; cv="$(pr_get "$cvp")"; cvrc=$?
-    if [ "$cvrc" = 0 ] && [ -n "$cv" ]; then [ "$(jq -r '.value // empty' <<<"$cv" 2>/dev/null)" = true ] && claude_on=true || claude_on=false
-    elif [ "$(pr_last_status "$cvp")" = 404 ]; then claude_on=false; fi
+    #   Why (14 Nov 2026, rb, mac-95: gh-rest-report.sh, 214 spent calls an hour from this line): a missing variable answers 404 with no ETag, and a 404 is charged to the 5,000-an-hour token every look; read it at most every
+    #   SHIP_WATCH_VAR_EVERY seconds (default 600) and keep the answer between reads, so a flip is still noticed within ten minutes, never once per start (a watcher lives up to 48 h).
+    cvp="repos/$repo/actions/variables/CLAUDE_REVIEW_ENABLED"
+    if [ -z "$cv_at" ] || [ $((SECONDS - cv_at)) -ge "${SHIP_WATCH_VAR_EVERY:-600}" ]; then
+      cv_at=$SECONDS; cv="$(pr_get "$cvp")"; cvrc=$?
+      if [ "$cvrc" = 0 ] && [ -n "$cv" ]; then [ "$(jq -r '.value // empty' <<<"$cv" 2>/dev/null)" = true ] && claude_on=true || claude_on=false
+      elif [ "$(pr_last_status "$cvp")" = 404 ]; then claude_on=false; fi
+    fi
     approved='(.labels // []) as $l | (.headRefOid // "") as $head | (if ($on and ($l | any(startswith("Claude: ")))) then (($l | index("Claude: approved")) and ([.reviews[]? | select(((.author.login // "") | sub("\\[bot\\]$"; "")) == "github-actions" and (.body | test("<!-- claude-review sha=[0-9a-f]{40}")))] | sort_by(.submittedAt) | last | ((.body | test("claude-review sha=" + $head)) and (.body | test("^\\*\\*Claude review: ✅ Approve\\*\\*"))))) else (($l | index("Gitar: approved")) and ($l | index("Gitar: reviewing") | not) and ($l | index("Gitar: not started") | not)) end) and ($l | index("Working on PR comments") | not)'
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
       && jq -e --argjson on "$claude_on" "(.mergeState == \"clean\" or .mergeState == \"has_hooks\" or (.isDraft == true and .mergeState == \"draft\")) and $approved" <<<"$view" >/dev/null 2>&1; then

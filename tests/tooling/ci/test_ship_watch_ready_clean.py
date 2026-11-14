@@ -29,7 +29,7 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads='', claude=None, variables=None):
+    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads='', claude=None, variables=None, var_every='0'):
         """One look per line of mergestates, then the PR closes. Every look: Gitar approved, the gate green (newest row), no draft."""
         self.log.write_text('ship: opened\n')
         looks = len(mergestates)
@@ -46,6 +46,8 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
             (self.tmp / 'rest' / 'repos_o_r_actions_variables_CLAUDE_REVIEW_ENABLED').write_text(json.dumps({'name': 'CLAUDE_REVIEW_ENABLED', 'value': claude}))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
+        if var_every is not None:   # 0 = read the variable every look (the flip tests); None = the watcher's own default (every 600 s)
+            env['SHIP_WATCH_VAR_EVERY'] = var_every
         env.pop('SHIP_WATCH_DRAFT_OK', None)
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=WATCH_HANG_GUARD_S, check=True)
         return self.log.read_text().splitlines()[1:]
@@ -106,6 +108,18 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
     def test_a_non_clean_state_that_is_not_blocking_checks_never_says_ready(self):
         for state in ('unstable', 'behind', 'dirty', 'draft'):
             self.assertFalse(any('READY' in line for line in self.watch([state, state])), state)
+
+    def variable_reads(self):
+        return [c for c in (self.tmp / 'calls').read_text().splitlines() if c.startswith('api') and c.endswith('/actions/variables/CLAUDE_REVIEW_ENABLED')]
+
+    def test_the_variable_is_read_once_per_interval_not_once_per_look(self):
+        """14 Nov 2026 (rb; gh-rest-report.sh: 214 spent calls an hour, a missing variable is a 404 and a 404 is charged every look): with the default interval five looks make one read;
+        interval 0 reads it at every look, so a flip is still seen by the watcher that lives 48 h."""
+        self.watch(['clean'] * 5, variables=['404'] * 5, var_every=None)
+        self.assertEqual(len(self.variable_reads()), 1, self.variable_reads())
+        (self.tmp / 'calls').unlink()
+        self.watch(['clean'] * 5, variables=['404'] * 5, var_every='0')
+        self.assertEqual(len(self.variable_reads()), 5, self.variable_reads())
 
 
 if __name__ == '__main__':
