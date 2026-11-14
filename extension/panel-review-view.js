@@ -107,7 +107,7 @@
     }
 
     // Draw the open card's progress line and completion bar.
-    function renderProgress({pageMark, ready, readyWords, done, moved, markStepWords, state: {total, left}}, heading) {
+    function renderProgress({pageMark, ready, readyWords, done, moved, markStepWords, shownTotal: total, shownLeft: left}, heading) {
       // progress
       $('.progress-line b').textContent = progressTitle({pageMark, ready, readyWords, total, left, moved, markStepWords}, heading);
       $('.progress-line span').textContent = moved || pageMark ? '' : ready ? t("panel.allFilled", 'every required field is filled') : total ? t("panel.requiredFilled", 'required fields filled') : '';

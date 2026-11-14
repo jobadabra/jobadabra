@@ -171,13 +171,16 @@
     const tally = window.__jobadabraRequiredCount(list.map(f => ({required: f.required, filled: f.filled, type: f.el?.type})));
     const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
     counts = {total: tally.required, left: tally.left};   // the stopped note says what the page holds
-    const done = tally.required ? Math.round(100 * (tally.required - tally.left) / tally.required) : 0;
-    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total: tally.required, left: tally.left, done, account, job, session, letterMissing});
+    // Why (14 Nov 2026, Gitar on #4405): when every page-required question is filled but an answer Claude wrote is empty, `ready` is false, so the shown count is that list's (never "0 left" beside a pill that is not Ready); the bar keeps under 100 while any is left.
+    const shownTotal = tally.required, shownLeft = tally.left || left;
+    const done = shownTotal ? Math.round(100 * (shownTotal - Math.min(shownLeft, shownTotal)) / shownTotal) : 0;
+    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total: shownTotal, left: shownLeft, done, account, job, session, letterMissing});
     // A fill running (this panel's, Claude's, the popup's) or over: a field filled after it is yours.
     const busy = filling || (session?.live && session.status === 'running') || $('.fill').classList.contains('is-busy');
     jp.classList.toggle('busy', busy);   // the Stop beside the minimised pill shows while a fill runs
     const over = filledOnce || ['done', 'input'].includes(session?.status);
-    return {state: {list, left: tally.left, total: tally.required, busy, over, account}, pageMark, ready, needsYou, done, readyWords};
+    return {state: {list, left, total, busy, over, account}, shownTotal, shownLeft, pageMark,   // state is the app's report (review-payload.js): what is left as before; shownTotal/shownLeft are what the panel draws
+       ready, needsYou, done, readyWords};
   }
 
   // Keep the original preferred tip and request it only when tips are enabled.
