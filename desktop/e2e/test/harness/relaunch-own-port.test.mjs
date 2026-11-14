@@ -1,4 +1,4 @@
-// Guard: release — a restart step that chose a free port and handed it to the app stayed red when another program took the port in between (run 43607466981: the app logged EADDRINUSE, the port answered HTTP 400 for 45 s), which reds unrelated PRs and the after-merge verdict.
+// Guard: release — the after-merge e2e verdict and every PR the settings suite reaches went red when another program took the port a restart step had chosen for the app (run 43607466981: the app logged EADDRINUSE, the port answered HTTP 400 for 45 s).
 // The helper replaces a port the app says is taken; these tests play that race with a real squatter on the first port and a real stand-in for the app on the second, with no clock of their own.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
