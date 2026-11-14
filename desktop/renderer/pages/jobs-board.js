@@ -47,7 +47,7 @@ function card(job) {
   if (parts.triage) {
     const chips = el('div', 'chip-row');
     chips.append(triageChip(job, {detail: false}));
-    const account = accountChip(readOf(job.url));
+    const account = accountChip(readOf(job.url), job.apply_route);
     if (account) chips.append(account);
     body.append(chips);
   }

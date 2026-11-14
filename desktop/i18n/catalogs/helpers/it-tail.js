@@ -139,6 +139,8 @@ export const messages = {
   "accountNeeded": "Serve un account",
   "accountNeededSignIn": "La pagina di candidatura chiede di accedere a un account su quel sito.",
   "accountNeededCreate": "La pagina di candidatura chiede di creare un account su quel sito.",
+  "linkedinEasyApply": "LinkedIn Easy Apply",
+  "linkedinEasyApplyTip": "Candidatura su LinkedIn con Easy Apply: serve il tuo accesso a LinkedIn.",
   "triageUnsaved": "risposte non salvate",
   "simpleForm": "Modulo semplice",
   "couldntRead": "Non leggibile",

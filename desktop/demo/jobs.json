@@ -88,6 +88,7 @@
       "location": "Geneva",
       "work_mode": "Hybrid",
       "url": "https://example.com/jobs/4",
+      "apply_route": "linkedin",
       "posted_at": "2099-01-01",
       "first_seen_at": "2099-01-01",
       "status": "unreviewed",

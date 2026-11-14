@@ -18,10 +18,13 @@ const CASES = [
   {name: 'account to create', stored: {...clean, accountCreation: true, simple: false, why: 'account'}, label: 'Needs you', detail: 'asks you to create an account', account: 'Account needed'},
   {name: 'never checked', stored: null, label: 'Not checked', detail: '', account: ''},
   {name: 'checked for an older posting', stored: {...clean, login: true, simple: false, why: 'login'}, posted: '2098-06-01', label: 'Not checked', detail: '', account: ''},
+  // Owner, 14 Nov 2026 (asked via AskUserQuestion: "LinkedIn Easy Apply"): LinkedIn's own job page said Easy Apply (the row's apply_route, src/desktop_jobs.py): that chip, checked or not.
+  {name: 'LinkedIn Easy Apply, never checked', stored: null, route: 'linkedin', label: 'Not checked', detail: '', account: 'LinkedIn Easy Apply'},
+  {name: 'LinkedIn Easy Apply with a sign-in check', stored: {...clean, login: true, simple: false, why: 'login'}, route: 'linkedin', label: 'Needs you', detail: 'login wall', account: 'LinkedIn Easy Apply'},
 ].map((item, index) => ({...item, url: `https://jobs.stored-check.example/roles/${index + 1}`}));
 const JOBS = CASES.map((item, index) => ({id: index + 1, code: `s${index + 1}`, title: `Stored Check Engineer ${index + 1}`, company: 'Stored check fixtures', stage: null, location: 'Zurich',
   work_mode: 'Hybrid', url: item.url, posted_at: POSTED, first_seen_at: POSTED, status: 'unreviewed', fit: 90 - index, reason: 'A fictional match.', rank: 100 - index, skills: ['Go'],
-  ...(item.stored ? {apply_readiness: pack(item.stored, {posted: item.posted || POSTED})} : {})}));
+  ...(item.stored ? {apply_readiness: pack(item.stored, {posted: item.posted || POSTED})} : {}), ...(item.route ? {apply_route: item.route} : {})}));
 let seen;
 
 before(() => {
@@ -30,7 +33,7 @@ before(() => {
   const rowsOf = base => ({rows: async () => {
     await base.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await base.go('jobs');
-    await base.until(() => document.querySelectorAll('article.job-row').length >= 4, 'the four job rows');
+    await base.until(() => document.querySelectorAll('article.job-row').length >= 6, 'the six job rows');
     return [...document.querySelectorAll('article.job-row')].map(row => ({url: row.dataset.url,
       label: row.querySelector('.role > .chip-tag .chip-value')?.textContent.trim() || '', detail: row.querySelector('.role > .chip-tag .chip-detail')?.textContent.trim() || '',
       account: row.querySelector('.tags .ui-tag.is-account')?.textContent.trim() || ''}));

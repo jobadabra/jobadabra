@@ -139,6 +139,8 @@ export const messages = {
   "accountNeeded": "Konto nötig",
   "accountNeededSignIn": "Die Bewerbungsseite verlangt, dass Sie sich dort bei einem Konto anmelden.",
   "accountNeededCreate": "Die Bewerbungsseite verlangt, dass Sie dort ein Konto erstellen.",
+  "linkedinEasyApply": "LinkedIn Easy Apply",
+  "linkedinEasyApplyTip": "Bewerbung auf LinkedIn mit Easy Apply: dafür braucht es Ihre LinkedIn-Anmeldung.",
   "triageUnsaved": "nicht gespeicherte Antworten",
   "simpleForm": "Einfaches Formular",
   "couldntRead": "Nicht lesbar",

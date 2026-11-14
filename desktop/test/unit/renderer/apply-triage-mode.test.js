@@ -78,3 +78,12 @@ test('"Account needed": a sign-in page or an account to create is named; unknown
   assert.deepEqual(accountNeed({...clean, login: true, accountCreation: true}), {kind: 'site', why: 'sign-in'}, 'one chip, sign-in first');
   for (const read of [null, undefined, clean, {...clean, login: null, accountCreation: null}, {unreadable: true, login: true}]) assert.equal(accountNeed(read), null, JSON.stringify(read));
 });
+
+// Owner, 14 Nov 2026 (asked via AskUserQuestion: "LinkedIn Easy Apply"): a job LinkedIn's own page marked Easy Apply (src/desktop_jobs.py row apply_route) needs the LinkedIn account.
+test('"LinkedIn Easy Apply": the job\'s route says so, read or not, and it is the one chip; another or no route leaves the read\'s own answer', () => {
+  for (const read of [null, clean, {...clean, login: true}, {unreadable: true}]) assert.deepEqual(accountNeed(read, 'linkedin'), {kind: 'linkedin', why: 'easy-apply'}, JSON.stringify(read));
+  for (const route of ['', 'employer', undefined]) {
+    assert.equal(accountNeed(clean, route), null, String(route));
+    assert.deepEqual(accountNeed({...clean, login: true}, route), {kind: 'site', why: 'sign-in'}, String(route));
+  }
+});

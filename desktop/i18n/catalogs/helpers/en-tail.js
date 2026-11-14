@@ -139,6 +139,8 @@ export const messages = {
   "accountNeeded": "Account needed",
   "accountNeededSignIn": "Its application page asks you to sign in to an account on that site.",
   "accountNeededCreate": "Its application page asks you to create an account on that site.",
+  "linkedinEasyApply": "LinkedIn Easy Apply",
+  "linkedinEasyApplyTip": "Applied on LinkedIn with Easy Apply: it needs your LinkedIn sign-in.",
   "triageUnsaved": "answers you have not saved",
   "simpleForm": "Simple form",
   "couldntRead": "Couldn't read",

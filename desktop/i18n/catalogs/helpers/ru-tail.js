@@ -139,6 +139,8 @@ export const messages = {
   "accountNeeded": "Нужен аккаунт",
   "accountNeededSignIn": "Страница отклика просит войти в учётную запись на этом сайте.",
   "accountNeededCreate": "Страница отклика просит создать учётную запись на этом сайте.",
+  "linkedinEasyApply": "LinkedIn Easy Apply",
+  "linkedinEasyApplyTip": "Отклик на LinkedIn через Easy Apply: нужен ваш вход в LinkedIn.",
   "triageUnsaved": "есть несохранённые ответы",
   "simpleForm": "Простая форма",
   "couldntRead": "Не удалось прочитать",

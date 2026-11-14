@@ -8,7 +8,7 @@ Owner's words (13 Nov 2026): "What about the \"Easy apply\" jobs or the ones tha
 | # | What the person gets | Waits on |
 |---|---|---|
 | ✅ 1/3 (#3997) | An amber "Account needed" chip on jobs whose application page asks for a sign-in or a new account (list, board, job page); checked rows keep their check after a restart | nothing |
-| 2/3 | A "LinkedIn account" chip on Easy Apply jobs, from the moment they are found | lg's Easy Apply marker on the found rows (one marker, never a second) |
+| ✅ 2/3 | A "LinkedIn Easy Apply" chip on Easy Apply jobs (owner's words, 14 Nov 2026), from the moment LinkedIn's job page is read; a Notion "Apply route" column carries it | lg's Easy Apply marker on the found rows (one marker, never a second) |
 | ✅ 3/3 (#4001) | The Easy Apply spec `docs/superpowers/specs/2026-11-13-linkedin-easy-apply-design.md` with the owner's D1–D6 answers (13 Nov 2026): follow the Apply mode, 15/day 2 min apart, stop 24 h on LinkedIn's first warning (the one shared pause, lib/linkedin-session.js), the full warning text, the Answers setting, jobs in an Apply batch. The sending PRs are named next | nothing |
 
 ## Sending PRs (`[ea] n/5`; owner, 13 Nov 2026: "Start 1/5 now (Recommended)")
