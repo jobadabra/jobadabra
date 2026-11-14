@@ -1,12 +1,14 @@
-"""Fictional answer-store fixtures for the split's board-pass accounting API, with no search or model calls."""
+"""Fictional board-job accounting and activation: real hand-over and SQLite, temporary answer stores and model replies."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import threading
+import time
 import unittest
 from unittest import mock
 
-from src import geo
-from src.ai import place_triage
-from src.sources import board_pass, feeds
+from src import daily_search, geo, run_counts, time_budget
+from src.ai import place_triage, slots
+from src.sources import aggregators, board_pass, boards_first, feeds, read_budget, waiting_jobs
 
 
 def board():
@@ -110,3 +112,263 @@ class BoardPassAccounting(unittest.TestCase):
         feeds._triaged()[feeds.title_key('Known Role')] = True
         measured = board_pass.counts(jobs)
         self.assertEqual((measured['titles'], measured['got'][1]), (1, 1), 'one title answer covers all three spellings')
+
+    def test_a_role_word_without_an_ai_answer_is_still_owed(self):
+        feeds.placed()['known town'] = 'in'
+        feeds._triaged()[feeds.ASKED] = False
+        with mock.patch.object(feeds, 'TITLES', feeds.keyword_regex(['known role'])), \
+                mock.patch.object(feeds, 'EXCLUDED_TITLES', feeds.keyword_regex(['never-match'])):
+            self.assertTrue(feeds.wanted_title('Known role'), 'the no-answer word floor is the positive control')
+            self.assertEqual(board_pass.owed(self.jobs[:1]), self.jobs[:1])
+
+
+class Activation(unittest.TestCase):
+    def setUp(self):
+        from tests.unit.sources import test_board_handover
+        test_board_handover.HandOver.setUp(self)
+        self.db.execute('DELETE FROM waiting_jobs')
+        self.enterContext(mock.patch.object(time_budget, '_paces', return_value={'place_rounds': 8.0, 'title_rounds': 7.0}))
+
+    def rows(self):
+        return {row[0] for row in self.db.execute('SELECT url FROM waiting_jobs')}
+
+    def at(self, second):
+        time_budget.start(180, now=time.monotonic() - second)
+
+    def lane_with(self, read):
+        with mock.patch.object(boards_first.Beside, '_known', read):
+            lane = boards_first.Beside({})
+        def finish():
+            lane.now.set()
+            lane.woken.set()
+            for thread in lane.threads:
+                thread.join(timeout=10)
+        self.addCleanup(finish)
+        return lane
+
+    def hand_over(self, lane):
+        from types import SimpleNamespace
+        so_far = SimpleNamespace(listener=lambda name: self.shown.extend, flush=lambda: None)
+        with mock.patch.object(feeds, 'database', return_value=self.db):
+            daily_search.keep_late_boards(lane, so_far, wait=True)
+
+    def test_a_board_job_read_before_the_pass_is_placed_and_judged_in_the_search(self):
+        # Why (14 Nov 2026, valid controls): b01 owed 53 jobs / 49 titles / 28 places; c15 had a 13.5 s title call.
+        self.jobs = [dict(self.jobs[0], title=f'Known role {n % 49}', location=f'Fictional town {n % 28}',
+                          url=f'https://board.example.test/{n}') for n in range(53)]
+        self.enterContext(mock.patch.object(time_budget, '_paces', return_value={'place_rounds': 10.0, 'title_rounds': 1.38, 'place_vague': 4.06}))
+        self.model.thinks_first = lambda: True
+        original, finished, now = self.model.messages.create, {}, [1000.0]
+        def answer(**kwargs):
+            kind = 'titles' if 'The titles:' in kwargs['messages'][0]['content'] else 'places'
+            # Why (14 Nov 2026): the recorded place-round pace includes its visa check; charge it once.
+            system = kwargs['system'][0]['text']
+            seconds = 13.5 if kind == 'titles' else 4.06 if system == place_triage.VAGUE_SYSTEM else 0 if system == place_triage.VISA_SYSTEM else 10.0
+            finished[kind] = finished.get(kind, 0) + seconds
+            if time_budget.now() + finished[kind] >= read_budget.run_end():
+                raise TimeoutError('fictional full batch misses the last judging moment')
+            return original(**kwargs)
+        def cold_map(*args, **kwargs):
+            finished['places'] = 10.0  # the map has no pace of its own; the estimator uses the existing place-round pace
+            return {}
+        self.enterContext(mock.patch.object(geo, 'verdicts', cold_map))
+        self.enterContext(mock.patch.object(self.model.messages, 'create', answer))
+        with mock.patch.object(time, 'monotonic', lambda: now[0]):
+            time_budget.start(135, now=1000)
+            lane = self.lane_with(lambda lane, wait: lane._put(self.jobs + self.jobs[:1]))
+            self.assertTrue(lane.done.wait(timeout=10))
+            lane.deliver(self.db, self.shown.extend)
+            self.assertEqual((len(self.shown), len(self.rows())), (0, 53))
+            now[0] = read_budget.pass_at()
+            lane.woken.set()
+            self.assertTrue(lane.passed.wait(timeout=10), 'the pass finishes while scoring holds the cache owner')
+            self.hand_over(lane)
+            self.assertEqual((len(self.shown), len(self.rows())), (53, 0))
+            self.assertEqual(set(finished), {'places', 'titles'})
+            self.assertLess(now[0] + max(finished.values()), read_budget.run_end(), 'both full rounds end before the last AI moment')
+            now[0] = 1140
+            lane._queue(self.jobs)
+            self.hand_over(lane)
+            self.assertEqual(len(self.shown), 53)
+
+    def test_d03_refreshed_paces_finish_the_26_second_title_round_before_the_deadline(self):
+        # Why (#4416, valid d03 control 20261114T230103): frozen 99 s start, title round ends 125 s, 40 of 81 jobs unanswered.
+        jobs = [dict(self.jobs[0], title=f'Known role {n % 80}', location='Late town',
+                     url=f'https://board.example.test/d03/{n}') for n in range(81)]
+        now, paces, finished = [1000.0], {'place_rounds': 10.0, 'title_rounds': 1.38, 'place_vague': 4.06}, {}
+        original = self.model.messages.create
+        self.model.thinks_first = lambda: True
+        def answer(**kwargs):
+            kind = 'titles' if 'The titles:' in kwargs['messages'][0]['content'] else 'places'
+            # The observed whole title round includes its queue wait; places finished four seconds after the pass began.
+            finished[kind] = now[0] + (26 if kind == 'titles' else 4)
+            if finished[kind] >= read_budget.run_end():
+                raise TimeoutError('fictional d03 title round misses the search deadline')
+            return original(**kwargs)
+        with mock.patch.object(time, 'monotonic', lambda: now[0]), \
+                mock.patch.object(time_budget, '_paces', return_value=paces), mock.patch('threading.Thread.start'):
+            time_budget.start(135, now=1000)
+            lane = boards_first.Beside({})
+        with mock.patch.object(time, 'monotonic', lambda: now[0]), mock.patch.object(time_budget, '_paces', return_value=paces), \
+                mock.patch.object(self.model.messages, 'create', answer):
+            self.assertAlmostEqual(read_budget.pass_at(), 1098.69)  # an estimate, never publication by construction or a gate
+            lane._put(jobs)
+            lane.done.set()
+            now[0] = 1096  # the run's vague-place measurement became available at 96 s
+            paces.update(place_vague=9.79, title_rounds=3.85)
+            def wait(left):
+                now[0] += left
+            with mock.patch.object(lane.woken, 'wait', wait):
+                lane._pass()
+            lane.last_pass(self.db, self.shown.extend)
+            self.assertEqual((len(self.shown), len(self.rows())), (81, 0))
+            self.assertEqual(finished['titles'], 1122)
+            self.assertLess(finished['titles'], read_budget.run_end())
+            self.assertTrue(any('no answer by the deadline 0' in line for line in self.lines))
+
+    def test_a_board_read_after_the_pass_waits_and_the_queue_lists_its_jobs(self):
+        from datetime import datetime, timezone
+        release = threading.Event()
+        self.addCleanup(release.set)
+        def read(lane, wait):
+            release.wait(timeout=10)
+            lane._put(self.jobs[1:])
+        lane = self.lane_with(read)
+        self.at(150)
+        lane.woken.set()
+        self.assertTrue(lane.passed.wait(timeout=10))
+        release.set()
+        self.assertTrue(lane.done.wait(timeout=10))
+        self.hand_over(lane)
+        self.assertEqual((len(self.shown), len(self.rows())), (0, 2))
+        time_budget.start(0)
+        run_counts.reset()
+        _, items = waiting_jobs.judge(self.db, {}, datetime(2026, 11, 14, tzinfo=timezone.utc), out=lambda line: None)
+        self.assertEqual({item['url'] for item in items}, {job['url'] for job in self.jobs[1:]})
+
+    def test_a_pass_failing_before_its_plan_reports_the_error_not_never_started(self):
+        lane = self.lane
+        lane.now.set()
+        with mock.patch.object(board_pass, 'judge', side_effect=RuntimeError('fictional pre-plan failure')):
+            lane._pass()
+        lane.last_pass(self.db, self.shown.extend)
+        self.assertTrue(any('board pass failed: RuntimeError' in line for line in self.lines))
+        self.assertFalse(any('had not begun' in line for line in self.lines))
+
+    def test_a_delayed_worker_includes_every_page_received_before_publication(self):
+        ready, page, worker = threading.Event(), threading.Event(), threading.Event()
+        late = dict(self.jobs[1], title='Late role 2', url='https://board.example.test/late')
+        def read(lane, wait):
+            lane._put(self.jobs)
+            ready.set()
+            page.wait(timeout=10)
+            lane._put([late])
+        original = boards_first.Beside._pass
+        def delayed(lane):
+            worker.wait(timeout=10)
+            original(lane)
+        with mock.patch.object(boards_first.Beside, '_pass', delayed):
+            lane = self.lane_with(read)
+        try:
+            self.assertTrue(ready.wait(timeout=10))
+            self.at(151)
+            page.set()
+            self.assertTrue(lane.done.wait(timeout=10))
+            worker.set()
+            self.assertTrue(lane.passed.wait(timeout=10))
+            self.hand_over(lane)
+            self.assertEqual({job['url'] for job in self.shown}, {job['url'] for job in self.jobs} | {late['url']})
+            self.assertEqual(self.rows(), set())
+        finally:
+            page.set()
+            worker.set()
+
+    def test_an_unanswered_automatic_pass_leaves_its_rows_waiting_at_the_search_end(self):
+        begun, release = threading.Event(), threading.Event()
+        def hung(read, track):
+            track.plan = (read, read[1:], 150)
+            begun.set()
+            release.wait(timeout=10)
+        with mock.patch.object(board_pass, 'judge', hung):
+            lane = self.lane_with(lambda lane, wait: lane._put(self.jobs))
+            self.assertTrue(lane.done.wait(timeout=10))
+            self.at(150)
+            lane.woken.set()
+            try:
+                self.assertTrue(begun.wait(timeout=10))
+                self.at(180)
+                self.hand_over(lane)
+                self.assertEqual((len(self.shown), len(self.rows())), (0, 3))
+            finally:
+                release.set()
+                self.assertTrue(lane.passed.wait(timeout=10))
+
+    def test_a_pass_failing_before_track_creation_does_not_report_never_started(self):
+        with mock.patch.object(read_budget, 'pass_at', side_effect=ValueError('fictional pass clock failure')):
+            self.lane._pass()
+        self.lane.last_pass(self.db, self.shown.extend)
+        self.assertTrue(any('board pass failed: ValueError' in line for line in self.lines))
+        self.assertFalse(any('had not begun' in line for line in self.lines))
+
+    def test_only_the_worker_publishes_after_construction_using_the_latest_paces(self):
+        now, paces = [1000.0], {'place_rounds': 8, 'place_vague': 4, 'title_rounds': 1}
+        time_budget.start(180, now=1000)
+        with mock.patch.object(time_budget, 'now', lambda: now[0]), \
+                mock.patch.object(time_budget, '_paces', return_value=paces), \
+                mock.patch('threading.Thread.start'), mock.patch.object(read_budget, 'pass_at', wraps=read_budget.pass_at) as cutoff:
+            lane = boards_first.Beside({})
+            cutoff.assert_not_called()
+            paces['place_rounds'] = 20
+            now[0] = 1130
+            with slots.in_lane(1165):
+                self.assertFalse(read_budget.past_cut(), 'before publication the gate admits every page')
+            lane._put(self.jobs)
+            self.assertEqual(lane.read, self.jobs)
+            def judged(read, track):
+                self.assertEqual(read, self.jobs)
+                self.assertEqual(read_budget.pass_at(), 1125, 'the worker used the slower pace measured after construction')
+                paces['place_rounds'] = 12.5
+                with slots.in_lane(1165):
+                    self.assertTrue(read_budget.past_cut(), 'the gate keeps the worker cutoff after new pace measurements')
+                return board_pass.Done([], 125, 0, 0, 'fictional completed pass')
+            with mock.patch.object(board_pass, 'judge', judged):
+                lane._pass()
+            self.assertEqual(read_budget.pass_at(), 1125)
+
+    def test_a_late_role_word_match_starts_no_ai_and_is_only_kept_waiting(self):
+        self.lane.now.set()
+        self.lane._pass()
+        self.shown.clear()
+        late = dict(self.jobs[0], url='https://board.example.test/late-word-match')
+        feeds._triaged().clear()
+        feeds._triaged()[feeds.ASKED] = False
+        with mock.patch.object(feeds, 'TITLES', feeds.keyword_regex(['known role'])), \
+                mock.patch.object(feeds, 'EXCLUDED_TITLES', feeds.keyword_regex(['never-match'])), \
+                mock.patch.object(feeds, 'triage') as triage, \
+                mock.patch.object(self.model.messages, 'create', wraps=self.model.messages.create) as ai, \
+                mock.patch.object(aggregators, 'kept', wraps=aggregators.kept) as kept, \
+                mock.patch.object(time_budget, 'now', return_value=read_budget.pass_at() + 1):
+            self.assertTrue(feeds.wanted_title(late['title']), 'role words would otherwise list this unanswered job')
+            self.lane._put([late])
+            self.lane.deliver(self.db, self.shown.extend)
+            triage.assert_not_called()
+            ai.assert_not_called()
+            kept.assert_not_called()
+        self.lane.last_pass(self.db, self.shown.extend)
+        self.assertNotIn(late['url'], {job['url'] for job in self.shown})
+        self.assertIn(late['url'], self.rows())
+        self.assertNotIn(late, self.lane.read)
+
+    def test_crossing_the_cut_between_clock_reads_still_publishes_it_before_judging(self):
+        paces, now = {'place_rounds': 20, 'place_vague': 4, 'title_rounds': 1}, iter((1124.9, 1125))
+        time_budget.start(180, now=1000)
+        def answered(*args):
+            paces['place_rounds'] = 12.5
+            return board_pass.Done([], 125, 0, 0, 'fictional completed pass')
+        with mock.patch.object(time_budget, '_paces', return_value=paces), \
+                mock.patch.object(time_budget, 'now', lambda: next(now, 1125)), mock.patch.object(board_pass, 'judge', answered):
+            self.lane._pass()
+            with slots.in_lane(1165):
+                self.assertTrue(read_budget.past_cut(now=1130), 'judging must publish its cut before changing paces')
+            time_budget.start(180, now=1000)
+            self.assertEqual(read_budget.pass_at(), 1135, 'a fresh clock may use the faster pace')

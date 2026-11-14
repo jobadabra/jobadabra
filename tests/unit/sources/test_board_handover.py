@@ -23,7 +23,8 @@ class HandOver(unittest.TestCase):
         self.enterContext(mock.patch('src.run_details.failed'))
         self.enterContext(mock.patch.object(feeds, 'triage'))
         time_budget.start(180, now=time.monotonic() - 100)
-        with mock.patch.object(boards_first.Beside, '_known', lambda lane, wait: lane._put(self.jobs)):
+        with mock.patch.object(boards_first.Beside, '_known', lambda lane, wait: lane._put(self.jobs)), \
+                mock.patch('src.sources.read_budget.run_end', return_value=None):
             self.lane = boards_first.Beside({})
             self.assertTrue(self.lane.done.wait(timeout=10))
         self.shown = []
@@ -37,7 +38,7 @@ class HandOver(unittest.TestCase):
         feeds.placed()['late town'] = 'in'
         feeds._triaged().update({feeds.title_key(job['title']): True for job in self.jobs})
 
-    def test_startup_does_not_start_a_pass_and_direct_handover_settles_once(self):
+    def test_direct_handover_settles_once(self):
         self.assertIsNone(self.lane.track)
         self.lane.now.set()
         self.lane._pass()
@@ -134,7 +135,8 @@ class HandOver(unittest.TestCase):
                     begun.set()
                     held.wait(timeout=30)
                 time_budget.start(seconds)
-                with mock.patch.object(boards_first.Beside, '_known', read):
+                with mock.patch.object(boards_first.Beside, '_known', read), \
+                        mock.patch('src.sources.read_budget.run_end', return_value=None):
                     lane = boards_first.Beside({})
                 self.assertTrue(begun.wait(timeout=10))
                 hand = threading.Thread(target=lane.last_pass, args=(self.db, self.shown.extend), daemon=True)

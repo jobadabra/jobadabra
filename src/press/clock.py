@@ -81,6 +81,7 @@ class Clock:
         self.SCORING = budget.value('time_budget.SCORING')   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof
         #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
         self.SCORE_FIRST = False
+        self.board_pass = [None]   # Why (#4408): the run owns its published board cutoff; no module cache.
         self._end_pass = threading.local()   # this thread runs the search's last judging pass (to_the_end, at_the_end)
         self._said = set()   # the stages that said their time-up line in this search (later)
         self.FLOOR = budget.value('time_budget.FLOOR')     # the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: "Yes, always 3"): a new user sees fits in press 1
@@ -120,6 +121,7 @@ class Clock:
             budget_tape.new_search(name)
         self.score_first(False)
         self._end_pass = threading.local()
+        self.board_pass = [None]
         self._said.clear()
         resume.begin()
         self._scored[0] = 0   # a new search: its first FLOOR scores start again whatever the clock

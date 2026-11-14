@@ -1,4 +1,4 @@
-"""Dormant queue-settlement and pass-time helpers leave the current search and read cuts unchanged."""
+"""Queue settlement and pass timing preserve open-read deadlines while the active lane stops starting reads at pass_at."""
 import contextlib
 import io
 import os
@@ -20,38 +20,51 @@ class PassTime(unittest.TestCase):
         self.paces = patch.start()
         self.addCleanup(patch.stop)
 
-    def test_one_place_and_title_round_before_the_existing_run_end(self):
+    def test_cold_place_pipeline_and_full_batch_floor_reserve_the_existing_end(self):
         before = (time_budget.BEGAN, time_budget.DEADLINE, time_budget.STAGE_END)
         self.assertEqual(read_budget.run_end(), 1165)
-        self.assertEqual(read_budget.pass_at(), 1150)
+        self.assertEqual(read_budget.pass_at(), 1142)
         self.assertEqual((time_budget.BEGAN, time_budget.DEADLINE, time_budget.STAGE_END), before)
 
     def test_measured_rounds_are_clamped_by_the_budget_rows(self):
         for pace, allowance in ((0.1, read_budget.PASS_MIN), (100, read_budget.PASS_MAX)):
             with self.subTest(pace=pace):
+                time_budget.start(180, now=1000)
                 self.paces.return_value = {'place_rounds': pace, 'title_rounds': pace}
                 self.assertEqual(read_budget.run_end() - read_budget.pass_at(), time_budget.part(allowance))
+        time_budget.start(180, now=1000)
         self.paces.return_value = {}
-        fallback = time_budget.PACE['place_rounds'] + time_budget.PACE['title_rounds']
-        self.assertEqual(read_budget.run_end() - read_budget.pass_at(), min(max(fallback, read_budget.PASS_MIN), read_budget.PASS_MAX))
+        self.assertEqual(read_budget.run_end() - read_budget.pass_at(), 27)
 
     def test_shorter_runs_scale_the_bounds_and_stage_end_is_respected(self):
         time_budget.start(90, now=1000)
-        self.assertEqual(read_budget.pass_at(), 1067.5)
+        self.assertEqual(read_budget.pass_at(), 1062.5)
         time_budget.start(180, now=1000, stage=60)
-        self.assertEqual(read_budget.pass_at(), 1030)
+        self.assertEqual(read_budget.pass_at(), 1022)
         time_budget.start(0)
         self.assertIsNone(read_budget.pass_at())
 
-    def test_default_lane_and_employer_cuts_do_not_switch_to_the_pass_time(self):
+    def test_only_new_lane_reads_switch_to_the_pass_time(self):
         pass_at, lane_end = read_budget.pass_at(), read_budget.run_end()
+        read_budget.pass_at(started=pass_at)
         self.assertTrue(read_budget.past_cut(now=pass_at + 1))
         self.assertEqual(read_budget.cut_at(), 1090)
         with slots.in_lane(lane_end):
-            self.assertFalse(read_budget.past_cut(now=pass_at + 1))
+            self.assertTrue(read_budget.past_cut(now=pass_at + 1))
             self.assertEqual(read_budget.cut_at(), lane_end)
             self.assertTrue(read_budget.past_cut(now=lane_end))
         self.assertEqual(read_budget.cut_at(), 1090)
+
+
+    def test_the_read_gate_and_worker_share_the_first_published_cut(self):
+        self.paces.return_value = {'place_rounds': 20, 'place_vague': 4, 'title_rounds': 1}
+        self.assertEqual(read_budget.pass_at(started=1125), 1125)
+        self.paces.return_value['place_rounds'] = 12.5
+        self.assertEqual(read_budget.pass_at(), 1125, 'pace changes after the worker begins must not move the read gate')
+        with slots.in_lane(1165):
+            self.assertTrue(read_budget.past_cut(now=1130))
+        time_budget.start(180, now=1000)
+        self.assertEqual(read_budget.pass_at(), 1135, 'the next run publishes its own cut')
 
 
 class SettledQueue(unittest.TestCase):

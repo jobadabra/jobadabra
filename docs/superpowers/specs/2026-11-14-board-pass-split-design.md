@@ -17,19 +17,19 @@ Why (#4336, 14 Nov 2026): items 5 and 6 were restored after the four numbered ju
 - **Follow-up 6 — lanes + 20 s stalled-board bound:** restore the separately scoped lane work last; time remains owned by the search clock.
 
 Why (14 Nov 2026, owner): parts 1–3, including the separate 3a/3b/3c preparations, may merge on a valid non-regressing pair ("Not worse = merge"); part 4 must show the gain.
-Parts 1 and 2 are merged; the 3a/3b/3c preparations follow them, and activation follows all three preparations. Part 4 starts the production pass; parts 1–3 do not enable it.
+Parts 1–3c are merged; part 4 starts the pass worker and connects its final hand-over, preserving one clock and one cache owner.
 No new place/title judgment, read order, clock, ledger meaning or live-data write is introduced by part 1.
 
 ## Progress
 
-Measurement is pending until part 4: its automatic **Search before/after** pair and one **Mac same-inputs pair on d03**, where main is thin, will measure board jobs listed in the search and right-board jobs, main → PR. Keep both counts and run links in **part 4's PR pair comment**, alongside the [Search before/after workflow](https://github.com/jobadabra/jobadabra/actions/workflows/search-pair.yml). This preparation claims no gain and starts no measurement manually. Part 4 also removes the named standalone `board_pass.py` title-filter exemption before activation.
+Part 4's automatic **Search before/after** pair measures **b01 (Sofia driver)** and **d03 (Chisinau software)**. It must show a gain for a named person or the activation PR closes; parts 1–3 were preparation only. The symptom number is board jobs listed inside the search, main → PR; keep it and right-job counts on the Trello cards **Sofia (b01)** and **Chisinau (d03)** and in the activation PR's pair comment. The current c434e62d pair is [run 43650630156](https://github.com/jobadabra/jobadabra/actions/runs/43650630156); its numbers describe that head, and the fix head's automatic pair must write before any gain is claimed. Keep the run links beside the [Search before/after workflow](https://github.com/jobadabra/jobadabra/actions/workflows/search-pair.yml). Earlier Mac comparisons from the broken tool are **VOID**; post-tool-fix same-inputs controls diagnose timing, while the activation's gain is decided by its automatic pair. The standalone title-filter exemption is removed: owed titles use AI verdicts, without a role-word shortcut.
 
 - [x] 1/4 Accounting and count/vague-place tests (#4339) (proof: tests/unit/sources/test_board_pass.py @317b0c66)
 - [x] 2/4 Clock and answer hooks (#4338) (proof: tests/unit/press/test_clock_to_the_end.py @9a482709)
 - [x] 3a/4 Standalone judging and normalized counts (#4352) (proof: tests/unit/sources/test_board_pass_waits.py @88251166)
 - [x] 3b/4 Waiting rows and pass boundary (#4347) (proof: tests/unit/sources/test_pass_queue_timing.py @799a6612)
-- [ ] 3c/4 Explicit hand-over, recovery and settlement (this PR)
-- [ ] 4/4 Activate judging in the search and prove the gain
+- [x] 3c/4 Explicit hand-over, recovery and settlement (#4371) (proof: tests/unit/sources/test_board_handover.py @a0991cc0)
+- [ ] 4/4 Activate judging in the search and prove the gain (this PR; pair pending)
 ### Separate follow-up plan
 - [ ] 5 Boards start at second 0
 - [ ] 6 Lanes + 20 s stalled-board bound
