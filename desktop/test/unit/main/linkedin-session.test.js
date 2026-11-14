@@ -197,6 +197,8 @@ test('a kept sign-in is stamped, and when LinkedIn ends it one line says how man
   const at = iso => ({now: () => Date.parse(iso)});
   saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T08:00:00Z')});
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z');
+  saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T20:00:00Z')});   // the consent page or the window run again on the same sign-in (Gitar on #4247)
+  assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z', 'the same sign-in saved again keeps its clock');
   refreshSession(settings, good(), {keychain: kc, ...at('2026-11-11T08:00:00Z')});
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z', 'the same sign-in copied again is no new sign-in');
   noteRun(settings, {state: 'done', jobs: 3, at: '2026-11-11T09:00:00.000Z'}, {log});
