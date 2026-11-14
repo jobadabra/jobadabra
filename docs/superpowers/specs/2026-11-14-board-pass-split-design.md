@@ -21,8 +21,8 @@ Parts 1 and 2 are merged; the 3a/3b preparations follow them, and activation fol
 No new place/title judgment, read order, clock, ledger meaning or live-data write is introduced by part 1.
 
 ## Progress
-- [x] 1/4 Accounting and count/vague-place tests (#4339)
-- [x] 2/4 Clock and answer hooks (#4338)
+- [x] 1/4 Accounting and count/vague-place tests (#4339) (proof: tests/unit/sources/test_board_pass.py @317b0c66)
+- [x] 2/4 Clock and answer hooks (#4338) (proof: tests/unit/press/test_clock_to_the_end.py @9a482709)
 - [ ] 3a/4 Standalone judging and normalized counts (this PR)
 - [ ] 3b/4 Waiting rows, pass boundary and hand-over preparation
 - [ ] 4/4 Activate judging in the search and prove the gain
