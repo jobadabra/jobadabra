@@ -21,7 +21,7 @@ on:
         type: string
         required: true
       people:
-        description: 'Up to 3: night people 1-18 and profile ids, a JSON list such as [3] or [3, "b02"]'
+        description: 'Up to 3: night people 1-18 and profile ids, a JSON list such as [3] or [3, "b02"]. Name ALL of them in one dispatch (the person the change could hurt too): a second dispatch for the PR replaces the first'
         type: string
         required: true
       tiers:
@@ -43,11 +43,14 @@ on:
         type: boolean
         default: false
 
-# Why (Gitar on #3957): per PR and its people, since GitHub keeps one pending run per group: another PR, or other people of the same PR, never replace a waiting pair;
-# the same people again (a side not counted, "start the pair again") replace only their own pending run.
+# Design (14 Nov 2026, owner via sa: "If doing a new push, while the previous search pair didn't finish. Should we cancel it?"; plan docs/superpowers/plans/2026-11-14-pr-checks-rows-and-pair.md 2/3):
+#   ONE pair per PR at a time. A pair dispatched for a PR replaces the one still queued or running for it: its numbers would be for code that no longer exists and it holds broker
+#   claims others wait for. The cancel is this group's, never a session's `gh run cancel`; `release` and `status` below run on a cancel (if: always()): the claims go back, the row reads
+#   "superseded" (grey). The attempt is in the group because the pair's own second run is dispatched by the first run's `comment` job: one shared cancelling group would cancel its dispatcher.
+# Why (Gitar on #3957, replaced 14 Nov 2026): the group was per PR AND its people so that other people never replaced a waiting pair; a by-hand pair now names ALL its people in one dispatch.
 concurrency:
-  group: search-pair-${{ inputs.pr }}-${{ inputs.people }}
-  cancel-in-progress: false
+  group: search-pair-${{ inputs.pr }}-${{ inputs.attempt }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -354,7 +357,13 @@ jobs:
           # The row's end (pair_row.next_row, the table at the top of pair_row.py): success with the numbers, failure (a loss beyond the band), neutral (a newer head), or still open ("a second run is asked", "run it again").
           # Order (Gitar on #4044/#4077): the row moves to "rerunning" BEFORE the second run is dispatched (its start claims that row), a dispatch that fails moves it to "run it again", and all of it happens
           #   before the hold, label and comment work, so a failure there can not turn a counted pair red.
-          newer=0; if [ "$STATE" != MERGED ] && [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then newer=1; fi
+          # Why (14 Nov 2026, owner: "see the outcome results as a PR comment"; #4175's comment was lost to a moved head): a head that moved only by files the search does not read leaves these numbers true,
+          #   so they are written for it (newer=0) and the comment says so; a head that moved by search files is replaced by a newer pair (the group above) that writes its own. Cut at 300 files: counted as moved.
+          now="$(jq -r .headRefOid view.json)"; newer=0; moved=0
+          if [ "$STATE" != MERGED ] && [ "$now" != "$HEAD" ]; then
+            moved=1; newer=1
+            if gh api "repos/$GITHUB_REPOSITORY/compare/$HEAD...$now" --jq 'if (.files | length) >= 300 then "TRUNCATED" else .files[].filename end' > delta.txt && [ "$(python3 tools/persona-search/pair.py reach delta.txt)" = 0 ]; then newer=0; fi
+          fi
           run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; comment_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR"
           ids="$(echo "$PEOPLE" | jq -c '[.[].id]')"
           gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
@@ -368,9 +377,10 @@ jobs:
           fi
           if [ "$STATE" = MERGED ]; then   # Why (13 Nov 2026, Gitar on #4033): a merged PR has no hold to lift and no pending Moves lines; the comment says what was compared
             { echo; echo "This PR is merged: its head is compared with the commit it was forked from (the before side). Nothing is written into its description or labels; the \"Search before/after\" row is on its merge commit."; } >> table.md
-          elif [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then
-            { echo; echo "The PR has a newer head than this pair measured: its numbers are not written into the body."; } >> table.md
+          elif [ "$newer" = 1 ]; then
+            { echo; echo "The PR has a newer head (\`${now:0:8}\`) than this pair measured (\`${HEAD:0:8}\`), changed in files the search reads: its numbers are not written into the body; the pair for the newer head writes its own."; } >> table.md
           else
+            if [ "$moved" = 1 ]; then { echo; echo "Measured \`${HEAD:0:8}\`; the PR head is now \`${now:0:8}\` and no file the search reads changed since, so these numbers stand for it."; } >> table.md; fi
             python3 tools/persona-search/pair.py settle dl view.json "$ATTEMPT" "$PEOPLE" "$rerun" > verdict.txt
             jq -n --slurpfile s settle.json '{title: $s[0].title, body: $s[0].body}' > edit.json
             gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body > now.json   # Why (Gitar on #3967): an edit made while settle ran is never overwritten
