@@ -126,3 +126,31 @@ class StoreJobsTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ApplyRouteListTests(unittest.TestCase):
+    """Owner, 14 Nov 2026 (asked via AskUserQuestion: "LinkedIn Easy Apply"): a job LinkedIn's page marked Easy Apply carries apply_route 'linkedin' in the Jobs list,
+    from this Mac's store, from Notion, and from the cache before its sync; that draws the "LinkedIn Easy Apply" chip (desktop/renderer/account-chip.js)."""
+
+    def test_both_stores_carry_the_column_and_the_list_turns_it_into_its_key(self):
+        import tempfile
+        from pathlib import Path
+        from src import store
+        stores = memory.open_store()
+        stores.matches.upsert({'url': 'https://jobs.test/ea', 'title': 'SRE', 'company': 'Acme', 'fit': 80, 'status': 'Open', 'apply_route': 'LinkedIn Easy Apply'})
+        self.assertEqual(store_jobs(stores)[0]['apply_route'], 'LinkedIn Easy Apply')
+        tracker, page = object.__new__(client.Tracker), notion_page('https://jobs.test/ea', 'match')
+        page['properties']['Apply route'] = {'select': {'name': 'LinkedIn Easy Apply'}}
+        with mock.patch.object(client, 'MATCHES_DATABASE_ID', 'matches-db'), \
+                mock.patch.object(client.Tracker, '_query', lambda self, *args: [page] if args and args[1] == 'matches-db' else [], create=True):
+            item = tracker.notion_jobs()[0]
+        self.assertEqual(item['apply_route'], 'LinkedIn Easy Apply')
+        with tempfile.TemporaryDirectory() as directory:
+            db = store.connect(Path(directory) / 'cache.sqlite')
+            self.addCleanup(db.close)
+            self.assertEqual(desktop.jobs(db, notion_jobs=[item])['jobs'][0]['apply_route'], 'linkedin')
+            # Found by a search, not synced yet: the cache's own value.
+            job_id, _ = store.upsert_job(db, {'title': 'SRE', 'company': 'Acme', 'url': 'https://www.linkedin.com/jobs/view/1/', 'location': 'Zurich'}, 'Acme', source_kind='linkedin')
+            db.execute("UPDATE jobs SET apply_route='linkedin' WHERE id=?", (job_id,))
+            db.commit()
+            self.assertEqual([row['apply_route'] for row in desktop.jobs(db)['jobs']], ['linkedin'])

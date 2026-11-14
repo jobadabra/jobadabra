@@ -32,10 +32,13 @@ export function modeOfRead(read) {
 
 /**
  * What account a job's application asks for, from the same read (owner, 13 Nov 2026: "mark the jobs that requires an account"), drawn as "Account needed" (renderer/account-chip.js).
- * Only an explicit `true` counts: an unknown flag (null, not checked yet) shows nothing, since not judged = not read on a guess (the mode table above reads unknown as unsafe; a chip must not). Pure.
- * @returns {{kind: 'site', why: 'sign-in'|'create'} | null}
+ * Only an explicit `true` counts: an unknown flag (null, not checked yet) shows nothing, since not judged = not read on a guess (the mode table above reads unknown as unsafe; a chip must not).
+ * `route`: the job's apply route (src/desktop_jobs.py row `apply_route`). Why (14 Nov 2026, owner, asked via AskUserQuestion: "LinkedIn Easy Apply"): 'linkedin', LinkedIn's own job page
+ * saying Easy Apply (#4173), is the LinkedIn account it needs: that one chip, before any read, since the read of a LinkedIn page is LinkedIn's and the account is the same. Pure.
+ * @returns {{kind: 'site', why: 'sign-in'|'create'} | {kind: 'linkedin', why: 'easy-apply'} | null}
  */
-export function accountNeed(read) {
+export function accountNeed(read, route = '') {
+  if (route === 'linkedin') return {kind: 'linkedin', why: 'easy-apply'};   // words-ok: the store's own route key (src/stores/matches_sync.py ROUTES), not a page word
   if (!read || read.unreadable === true) return null;
   if (read.login === true) return {kind: 'site', why: 'sign-in'}; // words-ok: the read's own flag, not a page word list
   if (read.accountCreation === true) return {kind: 'site', why: 'create'};

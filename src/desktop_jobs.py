@@ -11,6 +11,7 @@ from .ai import enrich, kit, provenance, score
 from .desktop_job_copies import merge_copies
 from .notion.client import job_code
 from .stores.base import url_key
+from .stores.matches_sync import route_key
 from .sources.posting_text import label
 
 NOT_ELIGIBLE = kit.NOT_ELIGIBLE
@@ -109,6 +110,8 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                 'title': label(job.get('title')), 'company': job.get('company') or '', 'location': job.get('location') or '',
                 'work_mode': job.get('work_mode') or '', 'url': job.get('url') or '',
                 'posted_at': job.get('posted_at') or '', 'first_seen_at': job.get('first_seen_at') or '',
+                # Why (14 Nov 2026, owner, asked via AskUserQuestion: "LinkedIn Easy Apply"): 'linkedin' draws the "LinkedIn Easy Apply" chip (desktop/renderer/account-chip.js).
+                'apply_route': job.get('apply_route') or '',
                 'status': status, 'fit': fit, 'reason': reason or '', 'skills': skills_of(extra.pop('technologies', '') or (facts.get(job.get('id')) or {}).get('technologies')), 'rank': digest.rank_score(job) if job.get('id') else 0,
                 'notion_url': page or '',  # the job's Applications page: kit, verdict, notes
                 'stage': stage or '',  # the Applications Stage (Applied, Interviewing, Rejected…): the app's application counters
@@ -132,6 +135,8 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
             # Only Notion's fields: a field the list needs is a Notion column (config/notion_schema.json), never cache-only.
             job = {'url': url, 'title': item.get('title'), 'company': item.get('company'), 'location': item.get('location'),
                    'work_mode': item.get('work_mode'), 'first_seen_at': item.get('first_seen', ''),
+                   # Why (14 Nov 2026, owner, asked via AskUserQuestion: "Yes, add the column (Recommended)"): the Notion and Mac stores hold the route as its column words; the row carries the key the chip reads.
+                   'apply_route': route_key(item.get('apply_route')),
                    # Why (7 Nov 2026, Apply readiness R1 review): a stored form check is valid while this posting date holds (desktop/lib/apply-readiness.js isFresh), so the row carries the store's Posted column (a Match or Application field, never cache-only) or the check never goes stale.
                    'posted_at': item.get('posted') or ''}
             # A kit's inputs vs today's: current, earlier (drafted before the CV, Profile or answers changed), unknown.

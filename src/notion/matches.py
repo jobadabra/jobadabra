@@ -91,6 +91,9 @@ def properties(job, status):
     from ..stores.matches_sync import stored_posted
     if stored_posted(job):
         props['Posted'] = {'date': {'start': stored_posted(job)}}
+    from ..stores.matches_sync import stored_route
+    if stored_route(job):   # the job's apply route (matches_sync.ROUTES): written for any job whose LinkedIn page was read, never cleared
+        props['Apply route'] = {'select': {'name': stored_route(job)}}
     return props
 
 

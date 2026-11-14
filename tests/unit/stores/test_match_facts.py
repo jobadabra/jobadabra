@@ -8,7 +8,7 @@ from src.stores import notion_rows as rows
 from tests.store_contract import AI, scored
 
 FACTS = ('tier', 'confidence', 'code', 'scored', 'scoring_method', 'seniority', 'languages', 'salary', 'recruiter', 'technologies',
-         'role_family', 'workload', 'on_call', 'visa', 'remote_scope', 'contract', 'deadline', 'posted', 'responsibilities', 'places')
+         'role_family', 'workload', 'on_call', 'visa', 'remote_scope', 'contract', 'deadline', 'posted', 'responsibilities', 'places', 'apply_route')
 
 
 class MatchFactsTests(unittest.TestCase):
@@ -21,6 +21,21 @@ class MatchFactsTests(unittest.TestCase):
             self.assertEqual(rows.read(written[column], dict((c[1], c[2]) for c in columns)[column]),
                              rows.read(notion.get(column), dict((c[1], c[2]) for c in columns)[column]), column)
         self.assertEqual({c[0] for c in notion_matches.COLUMNS if c[0] in FACTS}, set(FACTS), 'every fact has its column')
+
+    def test_an_easy_apply_job_has_its_apply_route_column_on_both_stores(self):
+        """Owner, 14 Nov 2026 (asked via AskUserQuestion: "LinkedIn Easy Apply", "Yes, add the column"): LinkedIn's own job page said Easy Apply (#4173), so the
+        Job Matches "Apply route" column says it, from this Mac's store and from Notion alike; an unknown route writes nothing, so a known one is never cleared."""
+        for route, words in (('linkedin', 'LinkedIn Easy Apply'), ('employer', 'Employer site')):
+            job = {**scored(f'https://jobs.example/{route}', 70), 'apply_route': route}
+            self.assertEqual(matches_sync.facts(job)['apply_route'], words)
+            self.assertEqual(job_matches.properties(job, 'Open')['Apply route'], {'select': {'name': words}})
+            self.assertSameColumns({**job, 'ai': AI})
+            self.assertEqual(matches_sync.route_key(words), route, 'the list reads the key back')
+        for unknown in ('', None, 'somewhere'):
+            job = {**scored('https://jobs.example/u', 70), 'apply_route': unknown}
+            self.assertNotIn('apply_route', matches_sync.facts(job))
+            self.assertNotIn('Apply route', job_matches.properties(job, 'Open'))
+        self.assertEqual(matches_sync.route_key(''), '')
 
     def test_a_job_read_by_ai_has_every_fact_as_its_column(self):
         self.assertSameColumns({**scored('https://jobs.example/a', 80), 'ai': AI})

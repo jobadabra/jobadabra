@@ -155,7 +155,7 @@ export function renderJobs() {
     // Always: no reason keeps its line, so every row is the same height; Why (2 Nov 2026, owner: "for the content we're missing, we should add N/A"): an empty line read as a hole.
     role.append(Object.assign(el('div', 'reason', job.reason || NA), job.reason ? {title: job.reason} : {className: 'reason is-na'}));
     const chips = el('div', 'tags');
-    const account = parts.triage && accountChip(readOf(job.url));   // first on the line, so a long skill list never hides it (style.css .job-row .tags cuts the end)
+    const account = parts.triage && accountChip(readOf(job.url), job.apply_route);   // first on the line, so a long skill list never hides it (style.css .job-row .tags cuts the end)
     if (account) chips.append(account);
     // Three skill tags, the rest behind "+N".
     const skills = tags(job, 8);

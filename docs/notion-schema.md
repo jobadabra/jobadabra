@@ -130,6 +130,7 @@ delete and let it repopulate.
 | Contract | Select | `Permanent`, `Fixed term`, `Freelance`, `Internship` |
 | Deadline | Date | Application deadline, when the posting states one |
 | Posted | Date | When the posting was published |
+| Apply route | Select | `LinkedIn Easy Apply`, `Employer site`: where LinkedIn's own job page sends you; empty until a LinkedIn job page was read |
 | Responsibilities | Text | What the role involves: up to 4 short lines, one per line |
 | Last update | Last edited time |  |
 | First seen | Date |  |

@@ -54,6 +54,7 @@ MATCH_FIELDS = ('id',   # the store's own: Notion's 🎯 Job Matches page id, a 
                 'tier', 'confidence', 'code', 'scored', 'scoring_method', 'seniority', 'languages', 'salary', 'recruiter',
                 'technologies', 'role_family',
                 'workload', 'on_call', 'visa', 'remote_scope', 'contract', 'deadline', 'posted', 'responsibilities',   # the posting's own facts (matches_sync.posting_facts)
+                'apply_route',   # where LinkedIn's job page applies: matches_sync.ROUTES words, '' not known (src/sources/linkedin_guest.py apply_route)
                 'places',   # a fingerprint of the places the score used (src/ai/locations.py): '' for a score made before they were recorded
                 'last_update')   # read-only: when the row last changed (Notion's Last update; the other stores stamp each write)
 INTERVIEW_FIELDS = ('id', 'app_id', 'title', 'at', 'input', 'round', 'overall', 'questions', 'weak_answers', 'topics',

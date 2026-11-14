@@ -40,7 +40,7 @@ export function drawerHeader(job, page, {at, back, expanded, on, read = null}) {
   if (stage) chips.append(pill(stageText(stage), 'info'));
   if (job.work_mode) chips.append(pill(job.work_mode, 'neutral'));
   if (notSeen(page)) chips.append(pill(t('helpers.notSeen'), 'warn', {title: t('helpers.notSeenHint')}));
-  const account = accountChip(read || page?.check);   // this window's latest check, else the stored one (lib/job-page-handlers.js jobCore)
+  const account = accountChip(read || page?.check, job.apply_route);   // this window's latest check, else the stored one (lib/job-page-handlers.js jobCore)
   if (account) chips.append(account);
   const applied = appliedLine(job, page?.app);
   if (applied) chips.append(el('span', 'muted small', applied));

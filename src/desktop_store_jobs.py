@@ -24,7 +24,8 @@ def store_jobs(stores):
                                    'location': match.get('location') or '', 'work_mode': match.get('work_mode') or '',
                                    'fit': _score(match.get('fit')), 'reason': match.get('reason') or '', 'technologies': match.get('technologies') or '',
                                    'fit_detail': match.get('fit_detail') or {'strengths': '', 'gaps': '', 'parts': {}},
-                                   'match_status': match.get('status'), 'first_seen': match.get('first_seen') or '', 'posted': match.get('posted') or ''}
+                                   'match_status': match.get('status'), 'first_seen': match.get('first_seen') or '', 'posted': match.get('posted') or '',
+                                   'apply_route': match.get('apply_route') or ''}
     for app in stores.applications.list():
         url = (app.get('url') or '').strip()
         if not url:

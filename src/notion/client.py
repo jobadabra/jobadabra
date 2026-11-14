@@ -223,7 +223,8 @@ class Tracker:
                                                      ('compensation', 'Compensation fit'), ('growth', 'Growth'), ('risk', 'Risk'))}},
                                   'match_status': select(props.get('Status')),
                                   'first_seen': ((props.get('First seen') or {}).get('date') or {}).get('start') or page.get('created_time', ''),
-                                  'posted': ((props.get('Posted') or {}).get('date') or {}).get('start') or ''}
+                                  'posted': ((props.get('Posted') or {}).get('date') or {}).get('start') or '',
+                                  'apply_route': select(props.get('Apply route')) or ''}
         for page in applications:
             props = page['properties']
             url = ((props.get('Job URL') or {}).get('url') or '').strip()

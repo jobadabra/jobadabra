@@ -139,6 +139,8 @@ export const messages = {
   "accountNeeded": "Necesită cont",
   "accountNeededSignIn": "Pagina de aplicare îți cere să te conectezi la un cont pe acel site.",
   "accountNeededCreate": "Pagina de aplicare îți cere să creezi un cont pe acel site.",
+  "linkedinEasyApply": "LinkedIn Easy Apply",
+  "linkedinEasyApplyTip": "Aplicarea se face pe LinkedIn cu Easy Apply: are nevoie de conectarea ta la LinkedIn.",
   "triageUnsaved": "răspunsuri nesalvate",
   "simpleForm": "Formular simplu",
   "couldntRead": "Nu s-a putut citi",

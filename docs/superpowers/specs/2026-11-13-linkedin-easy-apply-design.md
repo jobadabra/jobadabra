@@ -66,7 +66,7 @@ Plan: [`docs/superpowers/plans/2026-11-13-linkedin-easy-apply.md`](../plans/2026
 
 ## Progress
 - [x] 1/3 "Account needed" chip, checks kept on restart (#3997) (proof: desktop/integration/app/screen-jobs-stored-check.test.js @fdf71c58)
-- [ ] 2/3 "LinkedIn account" chip on lg's marker
+- [x] 2/3 "LinkedIn Easy Apply" chip on lg's marker (#4173), through the Job Matches "Apply route" column (proof: desktop/integration/app/screen-jobs-stored-check.test.js)
 - [x] Owner's answers to D1–D6 (13 Nov 2026) (proof: none: the owner's answers, asked via AskUserQuestion by the coordinator, quoted word for word in the table above)
 - [x] The shared pause's owner: `lib/linkedin-session.js` notePause / pausedUntil (#3998, merged) (proof: desktop/lib/linkedin-session.js @d2c36a8)
 - [ ] 3/3 this spec (this PR), then the sending PRs

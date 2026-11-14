@@ -19,6 +19,9 @@ SENIORITY = {'junior': 'Junior', 'mid': 'Mid', 'senior': 'Senior', 'staff_princi
              'lead_manager': 'Lead/Manager'}   # as src/notion/matches.py writes Seniority
 ON_CALL = {'yes': 'Yes', 'no': 'No'}
 VISA = {'offered': 'Offered', 'not_offered': 'Not offered'}
+# Why (14 Nov 2026, owner, asked via AskUserQuestion: "LinkedIn Easy Apply", "Yes, add the column (Recommended)"): the job's apply route (src/store.py jobs.apply_route,
+# set when LinkedIn's guest read opens the job page, #4173) as the Job Matches "Apply route" column holds it; the Jobs list turns it back into its key (route_key).
+ROUTES = {'linkedin': 'LinkedIn Easy Apply', 'employer': 'Employer site'}
 CONTRACT = {'permanent': 'Permanent', 'fixed_term': 'Fixed term', 'freelance': 'Freelance', 'internship': 'Internship'}
 PARTS = ('role_fit', 'location', 'compensation', 'growth', 'risk')
 
@@ -57,6 +60,16 @@ def stored_posted(job):
     return _day(job.get('posted_at'))
 
 
+def stored_route(job):
+    """The job's apply route as its column holds it ('' when not known): the one reading both write paths use (facts() here, src/notion/matches.py properties())."""
+    return ROUTES.get(job.get('apply_route') or '', '')
+
+
+def route_key(column):
+    """The route key ('linkedin', 'employer') for an "Apply route" column value; '' for an empty or unknown one."""
+    return next((key for key, words in ROUTES.items() if words == column), '')
+
+
 def facts(job):
     """The scoring facts of one scored job, each as its Job Matches column holds it (src/notion/matches.py properties)."""
     fit, ai = job['fit'], job.get('ai') or {}
@@ -76,6 +89,8 @@ def facts(job):
     # written only inside the `if ai:` block, so a job the extractor never read kept an empty Posted column while the store knew the date.
     if stored_posted(job):
         found['posted'] = stored_posted(job)
+    if stored_route(job):   # never cleared here: a page that named neither route leaves the known one (src/sources/describe.py)
+        found['apply_route'] = stored_route(job)
     return found
 
 
