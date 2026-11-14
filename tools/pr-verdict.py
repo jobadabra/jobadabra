@@ -219,7 +219,7 @@ def quota_line(run=None):
 
 
 PR_META = """query($owner: String!, $name: String!, $oid: GitObjectID!) { repository(owner: $owner, name: $name) { object(oid: $oid) { ... on Commit {
-  associatedPullRequests(first: 5) { nodes { number state mergedAt headRefOid isCrossRepository files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
+  associatedPullRequests(first: 5) { nodes { number state mergedAt headRefOid isCrossRepository body files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
 
 
 def pr_meta(repo, sha, run=None):
@@ -229,7 +229,7 @@ def pr_meta(repo, sha, run=None):
     owner, name = repo.split('/')
     answer = json.loads((run or gh)('api', 'graphql', '-f', f'query={PR_META}', '-f', f'owner={owner}', '-f', f'name={name}', '-f', f'oid={sha}'))
     nodes = (((answer.get('data') or {}).get('repository') or {}).get('object') or {}).get('associatedPullRequests', {}).get('nodes', [])
-    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt'], 'head_sha': n.get('headRefOid'), 'cross_repo': bool(n.get('isCrossRepository'))} for n in nodes]
+    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt'], 'head_sha': n.get('headRefOid'), 'cross_repo': bool(n.get('isCrossRepository')), 'body': n.get('body') or ''} for n in nodes]
     number, _ = open_pr(pulls)
     mine = next((n for n in nodes if str(n['number']) == number), None)
     if not mine:
@@ -422,6 +422,14 @@ def publish_rows(a, pulls, live, state, server, ref):
         print(f'check rows companion not loaded ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
 
 
+def publish_pair(a, pulls, files, ref):
+    """A search PR's before/after pair starts here (tools/pr_verdict_pair.py), after the status and the rows; never able to change the status."""
+    try:
+        main_state_module(a.repo, ref, 'pr_verdict_pair').publish(a.repo, a.sha, pulls, files, gh, datetime.now(timezone.utc), a.dry_run)
+    except Exception as error:
+        print(f'search pair not started here ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -482,6 +490,7 @@ def main():
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')
     publish_rows(a, pulls, live, state, server, ref)
+    publish_pair(a, pulls, files, ref)
     return 0
 
 
