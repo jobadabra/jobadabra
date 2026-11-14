@@ -113,10 +113,9 @@ async function matchChecked(jobs, match, rows) {
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null, startedAt: Date.now()});
   paint();
-  const found = await match(asked).catch(() => null);   // a failed match leaves every form as it was read, never a guess
-  const took = Date.now() - state.startedAt;
-  const share = Math.round(took / Math.max(1, asked.length));
-  for (const {url} of asked) if (found?.[url]) addStep(url, 'matching', share);   // Why (14 Nov 2026, Gitar on #4342 + #4353): only a form the match answered gets a "Matching" step, with its share of the one call
+  const found = await match(asked).catch(error => { window.pilot?.uiLog?.('triage: the question match failed, the forms stay "answers not checked"', {forms: asked.length, error: String(error?.message || error).slice(0, 200)}); return null; });   // a failed match leaves every form as it was read, never a guess; the log says why (Gitar on #4373)
+  // Why (14 Nov 2026, Gitar on #4342, #4353, #4373): a "Matching" step is a measured time only when the one call served ONE form; a batch's call has no per-form seconds, so a batch adds no such step, never an invented share.
+  if (asked.length === 1 && found?.[asked[0].url]) addStep(asked[0].url, 'matching', Date.now() - state.startedAt);
   for (const {url} of asked) {
     if (!found?.[url]) continue;
     setRead(url, {...readOf(url), match: found[url]});
@@ -186,7 +185,7 @@ export async function checkJob(job) {
   wired.rerender();
   say(wired.toast, result.read, result.failed, 1);
   // Why (14 Nov 2026, #4325, owner: "then I should see the end result, the outcome. The job drawer should open with [Apply readiness]"): one job's check ends in its drawer, where its outcome and steps stay.
-  if (result.read || result.failed) dialog?.close();
+  dialog?.close();   // the check ended, whatever it found (a read, a failure, a Stop): the dialog never stays on a finished view, and the pop-up says how it ended (Gitar on #4373)
   return result;
 }
 

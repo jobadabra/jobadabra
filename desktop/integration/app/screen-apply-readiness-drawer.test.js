@@ -14,7 +14,7 @@ const live = {skip: needsElectron.skip};
 const plain = {botCheck: false, loginWall: false, accountCreation: false};
 const job = (n, company) => ({id: n, code: `r${n}`, title: `Readiness Engineer ${n}`, company, stage: null, location: 'Zurich', work_mode: 'Hybrid', url: `https://jobs.readiness.example/roles/${n}`,
   posted_at: '2099-01-01', first_seen_at: '2099-01-01', status: 'unreviewed', fit: 90 - n, reason: 'A fictional match.', rank: 100 - n, skills: []});
-const JOBS = [job(1, 'Migros'), job(2, 'Nobody Ltd')];   // Migros: the demo's saved sign-in lists it (lib/apply-handlers.js); Nobody: nothing saved
+const JOBS = [job(1, 'Migros'), job(2, 'Nobody Ltd'), job(3, 'Silent Co')];   // Migros: the demo's saved sign-in lists it (lib/apply-handlers.js); Nobody: nothing saved
 const READS = {[JOBS[0].url]: readFromJudge({...plain, loginWall: true}), [JOBS[1].url]: readFromJudge(plain, {allFactsSaved: true})};
 let screen;
 
@@ -58,7 +58,13 @@ before(() => {
       const text = document.querySelector('#job-drawer-layer .jd-card')?.textContent.replace(/\s+/g, ' ') || '';
       return text.includes('Saved sign-in') || text.includes('No saved sign-in') ? text : '';
     }, 'the Account / Credentials part');
-    return {checked, toast, before: before.filter(label => /readiness|missing/.test(label)), otherAfter, after: after.filter(label => /readiness|missing|Check again/.test(label)), readiness, account};
+    // A check that reads nothing (no read named for the job) still ends: the dialog closes and the pop-up says how it ended (Gitar on #4373).
+    document.getElementById('toasts').replaceChildren();
+    document.getElementById('job-drawer-layer').hidden || document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
+    await items('https://jobs.readiness.example/roles/3');
+    press('Check apply readiness');
+    const silent = await kit.until(() => (!document.getElementById('triage-dialog').open && document.querySelector('#toasts .toast') ? {dialogOpen: false, toast: document.querySelector('#toasts .toast').textContent.replace(/\s+/g, ' ').trim()} : ''), 'the dialog closed after a check that read nothing');
+    return {silent, checked, toast, before: before.filter(label => /readiness|missing/.test(label)), otherAfter, after: after.filter(label => /readiness|missing|Check again/.test(label)), readiness, account};
   }});
 });
 
@@ -67,6 +73,11 @@ test('the ⋯ item follows the stored check: Check apply readiness checks only t
   assert.deepEqual(screen.result.after, ["Fix what's missing"]);
   assert.deepEqual(screen.result.otherAfter, ['Check apply readiness'], 'the other job was not checked');
   assert.match(screen.result.toast, /Checked/, 'the one-job check says how it ended, like the batch check (Gitar on #4018)');
+});
+
+test('a one-job check that reads nothing still ends: the dialog closes and a pop-up says so', live, () => {
+  assert.equal(screen.result.silent.dialogOpen, false);
+  assert.ok(screen.result.silent.toast.length > 0);
 });
 
 test('a one-job check ends in its drawer on Apply readiness: the outcome, then each step with its seconds', live, () => {
