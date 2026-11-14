@@ -4,12 +4,14 @@ trailing slash or the host's case) and keep the one with the most information; t
 import re
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ..job_identity import UNLINKED
+
 TRACKING = ('utm_', 'gh_src', 'gh_jid_src', 'ref', 'source', 'src', 'lever-source', 'trk', 'fbclid', 'gclid')
 # Which row wins: the one that records a decision (Applied, Dismissed), then an open job, then the most recently scored.
 STATUS_RANK = {'Applied': 5, 'Dismissed': 4, 'Open': 3, 'Not seen': 2, 'Closed': 1}
 
 
-IDENTIFYING_FRAGMENT = re.compile(r'/|^jp-|[0-9a-f]{12,}', re.I)
+IDENTIFYING_FRAGMENT = re.compile(rf'/|^jp-|^{UNLINKED}|[0-9a-f]{{12,}}', re.I)   # ^job: a job a page names with no link (src/job_identity.py)
 
 
 def normalize_url(url):

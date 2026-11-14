@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ats, careers_parse, host_pace, page_bytes
 from . import board_round_log
+from ..job_identity import unlinked_job_url
 from ..press import stage
 
 MAX_BYTES = 2_000_000
@@ -216,7 +217,10 @@ def listed(items, url, markup, fetch_page):
             with stage.guard('employer sites: listed job'):   # a job page that fails: the listing's own title and place
                 found = jsonld_jobs(fetch_page(link), link, job_page=True)[:1] or [job_from_page(fetch_page(link), link)]
         job = (found or [None])[0] or {}
-        return ats._job(link or f'{url}#{title}', title, job.get('location') or listing.get('location', ''), link or url,
+        # a card with no link keeps its own address (src/job_identity.py); a recipe's card is a title only, its place the page's, so one title
+        # twice on one page is one ad here (store.same_job agrees); a card's own place needs a place in the learned recipe (parked, Gitar on #4197)
+        address = link or unlinked_job_url(url, title)
+        return ats._job(address, title, job.get('location') or listing.get('location', ''), address,
                         job.get('date_posted', ''), job.get('description', ''), bool(job.get('remote')))
     with ThreadPoolExecutor(max_workers=6) as pool:
         return list(pool.map(slots.carry(one), items[:40]))

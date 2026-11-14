@@ -38,9 +38,9 @@ class Layout:
         if links:   # Why (#3982, Gitar): the layout found the cards; a job page that fails to give a job is that page's failure, never the layout's
             self._note(self.recipe)
             return careers.read_page_from(markup, url, fetch, part, linked=links)
-        if items:   # jobs written as sections, with no link: each its own address (the listing's, #title), or the board read's one-per-address keeps one
+        if items:   # jobs written as sections, with no link: careers.listed gives each its own address (src/job_identity.py unlinked_job_url)
             self._note(self.recipe)
-            return [{**job, 'url': job['id']} for job in careers.listed(items, url, markup, fetch)]
+            return careers.listed(items, url, markup, fetch)
         usual = careers.read_page_from(markup, url, fetch, part)
         if usual:   # Why (#3982, Gitar): an empty results page keeps the layout; jobs the usual read finds where it found none mean it is stale
             print(f"Job board {self.host}: its served layout read nothing on {url} where the usual read found jobs; read the usual way for the rest of this read")
