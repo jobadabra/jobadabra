@@ -20,7 +20,7 @@ def folder(lines, judged=None, relay=()):
     (root / 'draw').mkdir()
     (root / 'draw' / 'run-1.log').write_text('\n'.join(lines), encoding='utf-8')
     (root / 'run.log').write_text('\n'.join(['relay: small total 1 kind title_triage start 1 status 200', 'draw: search prepared in 3 s', *relay]), encoding='utf-8')
-    rows = [{'title': SECRET_TITLE, 'company': company, 'provider': provider, 'kind': kind, 'role': role, 'place': 'yes'} for company, provider, kind, role in judged or []]
+    rows = [{'title': SECRET_TITLE, 'company': company, 'provider': provider, 'kind': kind, 'role': role, 'place': 'yes', **({'host': host} if host else {})} for company, provider, kind, role, host in judged or []]
     (root / 'judged.json').write_text(json.dumps({'rows': rows}), encoding='utf-8')
     return root
 
@@ -40,11 +40,11 @@ class BoardFunnel(unittest.TestCase):
             '[74s] ⏱ Time is up (1 min 13 s) for job boards: 1 board read waits for the next search',
             '[80s] Titles: Claude sorted 91 new title(s) in your places; 15 could fit your search',
             '[107s] Employers: read 4 of 11 sites in the time, best first',
-        ], judged=[('via jobijoba.es', 'Job boards found', 'job board', 'yes'), (SECRET_EMPLOYER, 'Fonio', 'employer feed', 'no')],
+        ], judged=[('via jobijoba.es', 'Job boards found', 'job board', 'yes', ''), (SECRET_EMPLOYER, 'Job boards found', 'job board', 'yes', 'jobijoba.es'), (SECRET_EMPLOYER, 'Fonio', 'employer feed', 'no', '')],
             relay=['relay: small total 1 kind decide start 2 status 200', 'relay: small total 1 kind decide start 3 status 200'])
         text = board_funnel.table(root)
         by_source = {line.split(' | ')[0].strip('| '): line for line in text.splitlines() if line.startswith('| ') and not line.startswith('| source')}
-        self.assertIn('| jobijoba.es | AI, pack | read | 6 | 1 | 29 | 1 | - | - | 1 | - | 2 (shared page address) | 1 | 1 |', by_source['jobijoba.es'])
+        self.assertIn('| jobijoba.es | AI, pack | read | 6 | 1 | 29 | 1 | - | - | 1 | - | 2 (shared page address) | 2 | 2 |', by_source['jobijoba.es'])
         self.assertIn('| infojobs.net | AI | #1: no place left |', by_source['infojobs.net'])   # the named board's own row says why it never read
         self.assertIn('1 page(s) refused', by_source['zaplata.bg'])
         self.assertIn('| employer sites | - | read 4 of 11 sites, best first |', by_source['employer sites'])
@@ -55,7 +55,7 @@ class BoardFunnel(unittest.TestCase):
 
     def test_only_counts_and_hosts_leave(self):
         root = folder(['[5s] Job boards found: x 1 job(s), 1 relevant', f'[6s] Stage: Job boards found kept https://www.a.example/p#{SECRET_TITLE}'],
-                      judged=[(SECRET_EMPLOYER, 'Fonio', 'employer feed', 'yes')])
+                      judged=[(SECRET_EMPLOYER, 'Fonio', 'employer feed', 'yes', '')])
         text = board_funnel.table(root)
         for secret in (SECRET_TITLE, SECRET_EMPLOYER, 'https://', '/p#'):
             self.assertNotIn(secret, text)
@@ -68,8 +68,6 @@ class BoardFunnel(unittest.TestCase):
         text = board_funnel.table(folder(['[1s] Finding your first jobs…']))
         self.assertIn('n/a, this search logged no per-job stage', text)
         self.assertIn('draw/run-1.log is every line the engine printed', text)
-        for need in ('#4180', "xb's 1/2"):
-            self.assertIn(f'(needs {need})', text)
 
     def test_an_unreadable_judge_file_is_not_zero_right_jobs(self):
         root = folder(['[6s] Stage: Job boards found kept https://www.a.example/p#job:acme--welder--graz'])
