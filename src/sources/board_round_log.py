@@ -8,6 +8,7 @@ fan-out counts as the wall time its caller waited.
 Tests: tests/unit/sources/test_board_round_log.py."""
 import contextlib
 import time
+import urllib.error
 
 
 class Parts:
@@ -30,6 +31,25 @@ class Parts:
         """' (page 2 s · 19 job pages 31 s)' for the parts of 1 s and more; '' with none."""
         long = [f'{name} {seconds:.0f} s' for name, seconds in self.seconds.items() if seconds >= 1]
         return f" ({' · '.join(long)})" if long else ''
+
+
+class Stalled(TimeoutError, urllib.error.URLError):
+    """A page not read because the wait ran out, with the phase that stalled in its word (`why`): 'connecting', 'waiting for the answer' (the site
+    took the connection and never answered), 'reading the page' (it answered, then stopped sending), or the search's own read cut (no page asked).
+    Both bases, so a caller that catches TimeoutError, URLError or OSError keeps working.
+    Why (14 Nov 2026, sa, StepStone read from CI): every one of these printed the bare "TimeoutError", so a site that stalled 20 s could not be told
+    from the search's own cut (0 s) nor from the phase that stalled."""
+
+    def __init__(self, phase, seconds=None):
+        urllib.error.URLError.__init__(self, phase)
+        self.phase, self.seconds = phase, seconds
+
+
+def why(error):
+    """The short reason a round's page was not read: the phase of a `Stalled` wait, else the error's class name (NameNotResolved and an HTTP code are told by the caller)."""
+    if not isinstance(error, Stalled):
+        return type(error).__name__
+    return f'timed out {error.phase} ({error.seconds:g} s)' if error.seconds is not None else f'not asked, {error.phase}'
 
 
 UNCOUNTED = object()   # Why (Gitar on #4052): the search form way hands back only a relevant read, so a "0 job(s)" for it would be made up

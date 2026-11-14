@@ -12,11 +12,12 @@ import os
 import re
 import time
 import socket
+import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-from . import ats, careers_parse, host_pace, page_bytes
+from . import ats, board_round_log, careers_parse, host_pace, page_bytes
 from ..press import stage
 
 MAX_BYTES = 2_000_000
@@ -62,8 +63,17 @@ def get_text(url):
     if fixtures:
         return page_bytes.text(ats._fixture(fixtures, url))
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Accept': 'text/html,application/xhtml+xml'})
-    with host_pace.open(request, ats.TIMEOUT) as response:
-        return page_bytes.reply(response, MAX_BYTES)
+    phase = 'waiting for the answer'   # what the wait ran out in: a refused connection or an HTTP code is not a stall and passes through unchanged
+    try:
+        with host_pace.open(request, ats.TIMEOUT) as response:
+            phase = 'reading the page'
+            return page_bytes.reply(response, MAX_BYTES)
+    except urllib.error.URLError as error:   # urllib wraps a timeout while connecting in a URLError; one while waiting for the answer is a bare TimeoutError
+        if isinstance(error, board_round_log.Stalled) or not isinstance(error.reason, TimeoutError):
+            raise
+        raise board_round_log.Stalled('connecting', ats.TIMEOUT) from error
+    except TimeoutError as error:
+        raise board_round_log.Stalled(phase, ats.TIMEOUT) from error
 
 
 # ---------- reading a page ----------
