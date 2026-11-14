@@ -11,7 +11,8 @@
 import {freePort} from './own-port.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
-export const PORT_TRIES = 2;   // one replacement: two starts fit the step's 90 s cap (one restart ~13 s); a port taken twice in a row is not a race and the red then says so
+export const PORT_TRIES = 2;   // PROVISIONAL (hang-caps.json sizes the step's 90 s from one restart): one replacement; a port taken twice in a row is not a race and the red then says so
+export const RESTART_NEEDED_MS = 20000;   // PROVISIONAL: ~1.5x the measured restart (p95 13.4 s, hang-caps.json); less step clock left than this and a replacement start is not begun
 
 /**
  * -> what the app says about its extension socket on `port`: {state: 'listening' | 'busy' | 'other' | 'waiting', code, note}.
@@ -32,23 +33,59 @@ export async function askPair(port, extensionId) {
   } catch (error) { return {answered: false, note: `no answer (${error.cause?.code || error.message})`}; }   // shown in the hang message: the last state seen
 }
 
+/** -> {ok, value} or {ok: false, note}: a read of the app's window that may fail while it is starting; the note names the read and the error's first line, for the red. */
+async function tryRead(what, read) {
+  try { return {ok: true, value: await read()}; } catch (error) { return {ok: false, note: `${what}: ${String(error.message).split('\n')[0]}`}; }
+}
+
+/** Waits (the step's clock) for the restarted app's window to report it is set up again; throws a red naming the last window error. */
+async function waitSetUp(ctx, where, wait) {
+  let windowNote = '';
+  const {value: setUp} = await pollUntil(async () => {
+    const seen = await tryRead('the window\'s state', () => ctx.page.evaluate(async () => (await window.pilot.state()).settings.setupDone === true));
+    windowNote = seen.ok ? '' : seen.note;
+    return seen.ok && seen.value;
+  }, value => value, {log: () => {}, what: 'the app set up again', ...wait()});
+  if (!setUp) throw new Error(`after the restart (${where}) the app is not set up again${windowNote ? ` (last read ${windowNote})` : ''}`);
+}
+
+/** Waits for the app's own word on its extension socket at `port`; -> {state, code, note, problem}. A window that does not answer, or a read that outlived the clock, is "waiting" with a `problem`, never undefined. */
+async function waitVerdict(port, {readLinkOff, ask, wait}) {
+  const {value, hung} = await pollUntil(async () => {
+    const link = await tryRead('the app\'s link state', readLinkOff);
+    const answer = await ask(port);
+    if (!link.ok) return {state: 'waiting', code: '', note: answer.note, problem: link.note};   // without the app's own word a 200 proves nothing (the squatter case): keep waiting
+    return {...socketVerdict({linkOffCode: link.value, ...answer}), problem: ''};
+  }, seen => seen.state !== 'waiting', {log: () => {}, what: `the app's extension socket on port ${port}`, ...wait()});
+  // A read that outlived the step's clock leaves no verdict: say so instead of "undefined" (Gitar on #4236).
+  return hung || !value?.state ? {state: 'waiting', code: '', note: '', problem: 'no reading before the step\'s clock ran out'} : value;
+}
+
+/** -> true when a busy port may be replaced (tries left and the step has RESTART_NEEDED_MS of clock left); otherwise adds the reason to the verdict's `problem`. */
+function mayReplace(verdict, attempt, tries, timeLeft) {
+  if (verdict.state !== 'busy' || attempt >= tries) return false;
+  const left = timeLeft();
+  if (left === undefined || left >= RESTART_NEEDED_MS) return true;
+  verdict.problem = `${verdict.problem ? `${verdict.problem}; ` : ''}only ${Math.round(left / 1000)} s of the step left, a new start needs ${RESTART_NEEDED_MS / 1000} s`;
+  return false;
+}
+
 /**
  * Quits (`how`) and starts the app again on a free port of its own, once the app says its extension socket is open there; -> the port. When the app says the port is taken, it is
- * started again on another, up to `tries` times. Each wait is bounded by the running step's remaining clock (POLL_CAP_MS outside a runner step).
- * Options: `extensionId` (for the pair ask), `pickPort`/`readLinkOff`/`ask`/`capMs` (tests inject them).
+ * started again on another, up to `tries` times, and only while the step has `RESTART_NEEDED_MS` of its clock left. Each wait is bounded by the running step's remaining clock
+ * (POLL_CAP_MS outside a runner step); a window that does not answer yet counts as "waiting" and its error is named in the red, never dropped.
+ * Options: `extensionId` (for the pair ask), `pickPort`/`readLinkOff`/`ask`/`capMs`/`timeLeft` (tests inject them).
  */
-export async function relaunchOnOwnPort(ctx, {how = 'quit', extensionId, tries = PORT_TRIES, pickPort = freePort, capMs,
+export async function relaunchOnOwnPort(ctx, {how = 'quit', extensionId, tries = PORT_TRIES, pickPort = freePort, capMs, timeLeft = stepTimeLeft,
   readLinkOff = () => ctx.page.evaluate(async () => (await window.pilot.formsOpen())?.linkOff?.code || ''), ask = port => askPair(port, extensionId), say = console.log} = {}) {
-  const wait = () => ({capMs: capMs ?? stepTimeLeft()});   // the running step's remaining clock; undefined outside a runner step = pollUntil's own default
+  const wait = () => ({capMs: capMs ?? timeLeft()});   // the running step's remaining clock; undefined outside a runner step = pollUntil's own default
   for (let attempt = 1; ; attempt++) {
     const port = await pickPort();
     await ctx.relaunch({JOBADABRA_PORT: String(port)}, undefined, {how});
-    const {value: setUp} = await pollUntil(() => ctx.page.evaluate(async () => (await window.pilot.state()).settings.setupDone === true), value => value, {log: () => {}, what: 'the app set up again', ...wait()});
-    if (!setUp) throw new Error('after the restart the app is not set up again');
-    const {value: verdict} = await pollUntil(async () => socketVerdict({linkOffCode: await readLinkOff(), ...(await ask(port))}), seen => seen.state !== 'waiting',
-      {log: () => {}, what: `the app's extension socket on port ${port}`, ...wait()});
+    await waitSetUp(ctx, `port ${port}, start ${attempt}/${tries}`, wait);
+    const verdict = await waitVerdict(port, {readLinkOff, ask, wait});
     if (verdict.state === 'listening') return port;
-    if (verdict.state === 'busy' && attempt < tries) { say(`  port ${port} was taken before the app bound it (${verdict.note || 'no answer'}); starting the app on another port (${attempt}/${tries})`); continue; }
-    throw new Error(`the app's extension socket on port ${port} is ${verdict.state}${verdict.code ? ` (${verdict.code})` : ''}${verdict.note ? `, the port answers ${verdict.note}` : ''} after ${attempt} start(s)`);
+    if (mayReplace(verdict, attempt, tries, timeLeft)) { say(`  port ${port} was taken before the app bound it (${verdict.note || 'no answer'}); starting the app on another port (${attempt}/${tries})`); continue; }
+    throw new Error(`the app's extension socket on port ${port} is ${verdict.state}${verdict.code ? ` (${verdict.code})` : ''}${verdict.note ? `, the port answers ${verdict.note}` : ''}${verdict.problem ? `; ${verdict.problem}` : ''} after ${attempt} start(s)`);
   }
 }

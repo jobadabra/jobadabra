@@ -68,6 +68,36 @@ test('a socket that never opens and is never called taken ends red with the last
   await assert.rejects(() => relaunchOnOwnPort(app, {...options(app, [49999]), capMs: 600}), /port 49999 is waiting, the port answers no answer/);
 });
 
+test('a read that outlives the clock ends red with a named reason, never "undefined"', async () => {
+  const app = fakeApp([]);
+  app.relaunch = async env => { app.starts.push(Number(env.JOBADABRA_PORT)); };
+  await assert.rejects(() => relaunchOnOwnPort(app, {...options(app, [49998]), capMs: 300, readLinkOff: () => new Promise(() => {}), ask: () => new Promise(() => {})}),
+    /port 49998 is waiting.*no reading before the step's clock ran out after 1 start/);
+});
+
+test('little step clock left skips the replacement and says why', async () => {
+  const squatter = await serve(400);
+  const app = fakeApp([squatter.port]);
+  try {
+    await assert.rejects(() => relaunchOnOwnPort(app, {...options(app, [squatter.port, squatter.port]), timeLeft: () => 5000}), /is busy \(EADDRINUSE\).*only 5 s of the step left, a new start needs \d+ s after 1 start/);
+    assert.equal(app.starts.length, 1);
+  } finally { await settle(app); await close(squatter.server); }
+});
+
+test('a window that throws while it starts is read again; a window that never answers is named in the red', async () => {
+  const good = await serve(200);
+  const app = fakeApp([]);
+  app.relaunch = async env => { app.starts.push(Number(env.JOBADABRA_PORT)); };
+  let reads = 0;
+  try {
+    const port = await relaunchOnOwnPort(app, {...options(app, [good.port]), readLinkOff: async () => { if (++reads < 3) throw new Error('Execution context was destroyed\n  at x'); return ''; }});
+    assert.equal(port, good.port);
+    assert.ok(reads >= 3);
+    app.page.evaluate = async () => { throw new Error('Target closed'); };
+    await assert.rejects(() => relaunchOnOwnPort(app, {...options(app, [good.port]), capMs: 400}), /not set up again \(last read the window's state: Target closed\)/);
+  } finally { await close(good.server); }
+});
+
 test('socketVerdict: the app\'s own word on a taken port outranks whatever answers there', () => {
   assert.equal(socketVerdict({linkOffCode: 'EADDRINUSE', answered: true}).state, 'busy');
   assert.equal(socketVerdict({answered: true}).state, 'listening');
