@@ -57,17 +57,30 @@ def _role(base):
             with open(base + '.lock', encoding='utf-8') as file:
                 owner = file.read().strip()
             if owner:
-                return 'own' if owner == SIDE else 'other'
+                return 'own' if owner.split(':')[0] == SIDE else 'other'
             time.sleep(0.01)
         return 'other'
-    os.write(fd, SIDE.encode())
+    os.write(fd, f'{SIDE}:{os.getpid()}'.encode())
     os.close(fd)
     return 'first'
 
 
+def _owner_alive(base):
+    """False when the process that holds the lock is gone (killed or cut by its clock) before it wrote its record: waiting for it is pointless."""
+    try:
+        with open(base + '.lock', encoding='utf-8') as file:
+            pid = int(file.read().split(':')[1])
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except (OSError, ValueError, IndexError):
+        return True   # cannot tell (no pid, no permission): keep waiting up to the limit
+
+
 def _await(base, asked, limit):
-    """The other search's record at `base`, after the seconds its live ask took (counted from `asked`), or None when it never came."""
-    while not os.path.exists(base + '.json') and time.monotonic() < asked + limit:
+    """The other search's record at `base`, after the seconds its live ask took (counted from `asked`), or None when it never came or its process is gone."""
+    while not os.path.exists(base + '.json') and time.monotonic() < asked + limit and _owner_alive(base):
         time.sleep(0.05)
     if not os.path.exists(base + '.json'):
         return None

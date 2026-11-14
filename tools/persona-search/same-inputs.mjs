@@ -38,17 +38,15 @@ const git = (...a) => execFileSync('git', a, {cwd: ROOT, encoding: 'utf8'}).trim
 const HOOK = "\nimport os as _os_si  # noqa: E402\nif _os_si.getenv('JOBADABRA_TAPE_SHARED'):\n    from . import same_inputs as _same_inputs  # noqa: E402\n    _same_inputs.install()\n";
 
 /** The folder whose code searches: a folder as it is (it must hold src/same_inputs.py), else a throwaway worktree of the ref, made once, with the module added when the ref predates it. */
-function tree(ref) {
+function tree(ref, side) {
   if (fs.existsSync(path.join(ref, 'tools', 'persona-search', 'run.mjs'))) {
     if (!fs.existsSync(path.join(ref, 'src', 'same_inputs.py'))) { console.error(`${ref} has no src/same_inputs.py: pass a ref (the tool makes its own tree) or a checkout made after it landed`); process.exit(2); }
     return path.resolve(ref);
   }
-  const sha = git('rev-parse', '--verify', `${ref}^{commit}`), dir = path.join(base, 'trees', sha.slice(0, 12));
+  const sha = git('rev-parse', '--verify', `${ref}^{commit}`), dir = path.join(base, 'trees', `${sha.slice(0, 12)}-${side}`);   // one tree a side: the same ref on both sides (the A/A, the noise) is two folders
   if (!fs.existsSync(path.join(dir, '.git'))) { fs.mkdirSync(path.dirname(dir), {recursive: true}); git('worktree', 'add', '--detach', dir, sha); }
-  if (!fs.readFileSync(path.join(dir, 'src', '__init__.py'), 'utf8').includes('same_inputs')) {   // the module and its hook go in together, once
-    fs.copyFileSync(path.join(ROOT, 'src', 'same_inputs.py'), path.join(dir, 'src', 'same_inputs.py'));
-    fs.appendFileSync(path.join(dir, 'src', '__init__.py'), HOOK);
-  }
+  fs.copyFileSync(path.join(ROOT, 'src', 'same_inputs.py'), path.join(dir, 'src', 'same_inputs.py'));   // the module's current text every run: a tree made by an older run never keeps an old copy
+  if (!fs.readFileSync(path.join(dir, 'src', '__init__.py'), 'utf8').includes('same_inputs')) fs.appendFileSync(path.join(dir, 'src', '__init__.py'), HOOK);
   if (!fs.existsSync(path.join(dir, 'desktop', 'shared', 'app-core', 'ai.js'))) execFileSync('node', ['scripts/stage.mjs', '--files-only'], {cwd: path.join(dir, 'desktop'), stdio: 'ignore'});
   return dir;
 }
@@ -64,7 +62,7 @@ const prepare = out => {
   for (const file of ['cv.pdf', 'cv.md', 'draw.json']) fs.copyFileSync(path.join(work, 'cv/draw', file), path.join(out, 'draw', file));
 };
 
-const dirs = {a: tree(refA), b: tree(refB)};
+const dirs = {a: tree(refA, 'a'), b: tree(refB, 'b')};
 if (dirs.a === dirs.b) { console.error('A and B are the same folder: the sides could not tell their own asks from the other\'s; pass two checkouts'); process.exit(2); }
 fs.mkdirSync(work, {recursive: true});
 if (!keep) process.on('exit', () => fs.rmSync(path.join(work, 'shared'), {recursive: true, force: true}));

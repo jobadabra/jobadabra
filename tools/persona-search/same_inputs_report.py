@@ -73,9 +73,3 @@ for s in SIDES:
         if 'run-1.log' in files:
             text = open(os.path.join(d, 'run-1.log'), errors='replace').read()
             print(f'{pid}: side {s.upper()}: "sent nothing for" {text.count("sent nothing for")} · "Board pass: owed" {text.count("Board pass: owed")}')
-shared = os.path.join(work, 'shared')
-if os.path.isdir(shared):
-    for name in sorted(f for f in os.listdir(shared) if f.startswith('log-')):
-        lines = [json.loads(x) for x in open(os.path.join(shared, name), encoding='utf-8') if x.strip()]
-        done = [x for x in lines if x['kind'] == 'exit']
-        print(f'{pid}: shared log {name}: {done[-1]["url"] if done else "no exit line (the run was cut)"}')
