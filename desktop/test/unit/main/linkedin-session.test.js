@@ -220,6 +220,9 @@ test('Chrome signed out: the copy and the mark go together; an explicit "not sig
   saveSession(settings, good(), {keychain: kc, for: 'jobs'});
   assert.deepEqual(refreshSession(settings, [], {keychain: kc}), {ok: true, signedOut: true});
   assert.equal(signedIn(settings), false, 'LinkedIn jobs still on, but nothing is kept: a turn-on asks for a sign-in');
+  // Gitar on #4283: On with nothing kept is not a quiet On: the one sign-in state says Needs you (signed out), so the card, notice and ⌘K offer Sign in again
+  assert.deepEqual(signinView(settings), {state: 'needs-you', why: 'signed-out', empties: 0});
+  assert.equal(settings.settings().linkedinJobs.copiedAt, undefined, 'no 12 h refresh of a sign-in that is gone');
 });
 test('a refresh copy is taken while any switch keeps the sign-in (Easy Apply alone too)', () => {
   const settings = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true}}), kc = keychain();
@@ -228,17 +231,19 @@ test('a refresh copy is taken while any switch keeps the sign-in (Easy Apply alo
   assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresher');
   assert.equal(refreshSession(store(), good(), {keychain: kc}).ok, false, 'nothing kept: a copy never arrives');
 });
-test('"who asked" expires after 15 minutes and is cleared only once a copy was kept; nobody asked = nothing turns on', async () => {
-  const {peekWanted, clearWanted, copyIsOld, COPY_AGE_MS} = await import('../../../lib/linkedin-session.js');
+test('"who asked" expires with the window\'s own watch, and is cleared only once a copy was kept; nobody asked = nothing turns on', async () => {
+  const {peekWanted, clearWanted, copyIsOld, COPY_AGE_MS, WANTED_MS} = await import('../../../lib/linkedin-session.js');
+  const {SIGNIN_WAIT_MS} = await import('../../../renderer/apply-settings-model.js');
+  assert.equal(WANTED_MS, SIGNIN_WAIT_MS, 'Gitar on #4283: the same horizon as the window\'s watch, so a copy after "stayed off" turns nothing on');
   const t0 = Date.parse('2026-11-14T10:00:00Z');
   const settings = store();
   noteWanted(settings, 'easy-apply', {now: () => t0});
-  assert.equal(peekWanted(settings, {now: () => t0 + 14 * 60000}), 'easy-apply');
-  assert.equal(peekWanted(settings, {now: () => t0 + 14 * 60000}), 'easy-apply', 'a peek does not use it up: a refused copy can be sent again');
+  assert.equal(peekWanted(settings, {now: () => t0 + WANTED_MS - 1000}), 'easy-apply');
+  assert.equal(peekWanted(settings, {now: () => t0 + WANTED_MS - 1000}), 'easy-apply', 'a peek does not use it up: a refused copy can be sent again');
   clearWanted(settings);
   assert.equal(peekWanted(settings, {now: () => t0}), null);
   noteWanted(settings, 'jobs', {now: () => t0});
-  assert.equal(peekWanted(settings, {now: () => t0 + 16 * 60000}), null, 'stale: as if nobody asked');
+  assert.equal(peekWanted(settings, {now: () => t0 + WANTED_MS + 1000}), null, 'stale: as if nobody asked');
   // Gitar on #4276: a sign-in kept for Easy Apply alone is refreshed with no Find jobs press: the extension's minute look copies it once it is 12 h old
   const kept = store({linkedinJobs: {on: false, signedIn: true}}), kc = keychain();
   saveSession(kept, good(), {keychain: kc, for: 'easy-apply', now: () => t0});

@@ -8,6 +8,7 @@ import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {CONSENT, askOnPress, notOpened, renewCommandOf, signInEnded} from '../linkedin-words.js';
 import {NO_PLACE} from '../targets.js';
+import {SIGNIN_WAIT_MS} from '../apply-settings-model.js';
 
 export const view = {loaded: false, on: false, signedIn: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: false, easyApply: false, signin: {state: 'ok', why: '', empties: 0}};
 // Why (31 Oct 2026, push gate no-circular): startup.js imports the pages that import this module, so it hands its toast in (bindToast) instead of being imported here.
@@ -22,7 +23,7 @@ export async function refreshLinkedin() {
   if (before !== `${view.on}:${view.signedIn}:${view.signin?.state}`) window.dispatchEvent(new Event('linkedin-changed'));
   return view;
 }
-const WATCH_MS = 2000, WATCH_FOR_MS = 150000;
+const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;
 let watching = false;
 // The person finishes in Chrome: look every few seconds, for a couple of minutes, until the app has the session. -> true when it came (LinkedIn jobs on, or for Easy Apply the sign-in kept).
 const arrived = wanted => (wanted === 'jobs' ? view.on : view.signedIn);
