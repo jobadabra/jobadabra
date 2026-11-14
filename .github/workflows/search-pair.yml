@@ -277,7 +277,9 @@ jobs:
               cp "$(node -p 'require("os").tmpdir()')/jp-persona-draw-pair-$side/data/found_boards.json" "$out/found-boards.json" 2>/dev/null || true   # Why (14 Nov 2026, owner via sa, asked via AskUserQuestion: "CI report carries it (Recommended)"): the side's board memory (templates with {role} and {place}, as search-personas.yml copies it): report_boards.py reads the address a board was read at from it. Never red.
             done
           done
-      - name: The blind judge, the same for both sides (right role, right place; 3 answers, the majority counts)
+      # Why (14 Nov 2026, sa for the owner, asked via AskUserQuestion: "Should the pair judge each job once and use that verdict on both sides?" "Yes, judge each job once (Recommended)"): one judge call over both sides' jobs (gate_judge.judge_pooled),
+      #   so a job shown on both sides has one verdict; judged side by side, 4 jobs of b08 read "no" on main and "yes" on the PR (pair 43604153744, #4199), same model, and a real +2 read as +6. The prompt, the AI and the majority of 3 are unchanged.
+      - name: The blind judge, once for both sides (right role, right place; 3 answers, the majority counts)
         env:
           KIND: ${{ matrix.person.kind }}
           N: ${{ matrix.person.n }}
@@ -286,9 +288,12 @@ jobs:
         run: |
           set -uo pipefail
           echo "judge_start=$(date +%s)" >> times.env
+          files=(); for out in out/*--*; do files+=("$out/jobs.json" "$out/judged.json"); done
+          if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py --pooled "$N" "${files[@]}" > out/judge.log 2>&1
+          else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge-pooled "$ID" "${files[@]}" > out/judge.log 2>&1; fi
+          judge_rc=$?   # one log for both sides, out/judge.log (no copy per side folder: nothing of the pair reads a side's judge.log, and a copy would show each side the other side's calls)
+          if [ "$judge_rc" -ne 0 ]; then { echo "The pooled judge failed for ${{ matrix.person.id }} (exit $judge_rc): no side has verdicts, so no side counts. out/judge.log says why."; echo '```'; tail -n 5 out/judge.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
           for out in out/*--*; do
-            if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "$N" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1
-            else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge "$ID" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1; fi
             python3 tools/persona-search/pair.py side "$out" "$(basename "$out" | sed -E 's/.*--(main|pr)-[0-9]+$/\1/')"
             # Why (14 Nov 2026, owner via sa: "let's fix also this"): a low number said nothing about where the jobs went; one table per search (tools/persona-search/board_funnel.py), a report only: a failure never reds the run and leaves funnel.err.
             python3 tools/persona-search/board_funnel.py "$out" > "$out/funnel.md" 2> "$out/funnel.err" || echo "Funnel table failed for $(basename "$out"): see funnel.err in the artifact" >> "$GITHUB_STEP_SUMMARY"
