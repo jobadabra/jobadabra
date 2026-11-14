@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Decides whether Claude reviews a PR head on CI (gate) and posts its ONE GitHub review of that head (post); the workflows are .github/workflows/claude-review-shared.yml (reusable) and claude-review.yml (jobadabra's caller).
 // Why (owner, 13 Nov 2026, asked via AskUserQuestion: "Trial Claude on jobadabra (Recommended)", after "Let's explore alternatives to Gitar" / "Maybe Claude"): Gitar's automatic reviews are used up until 1 Dec and
-//   by-hand asks are refused past ~2 in 10 min, so PRs wait 20-40 min for a review. A Claude review of a green head, as a real GitHub review, is the trial; Gitar stays on as backup. It is a reviewer, not a required check.
-// Design: states of a head: not-green | skipped (draft, "DONT MERGE", a fork, closed, already reviewed, cap) | reviewed (ONE review: APPROVE when no high/medium finding, else REQUEST_CHANGES). The decision is
+//   by-hand asks are refused past ~2 in 10 min, so PRs wait 20-40 min for a review. A Claude review of every pushed head (owner, 14 Nov 2026, asked via AskUserQuestion: "On every push, in parallel with CI"), as a real GitHub review, is the trial; Gitar stays on as backup. It is a reviewer, not a required check.
+// Design: states of a head: skipped (draft, "DONT MERGE", a fork, closed, already reviewed, cap) | reviewed (ONE review: APPROVE when no high/medium finding, else REQUEST_CHANGES). The decision is
 //   decide() below, a pure function; the model only returns findings (structured output), this script alone turns them into the review, so one head never gets two and the verdict is never a model's mood.
 //   Counted from GitHub, not from a counter: our reviews carry `<!-- claude-review sha=<head> -->`; the per-day cap counts them over the 100 most recently updated PRs.
 //   The rules are the repository's own `.gitar/review/*.md`, read from the checked-out BASE branch at run time (never copied into a workflow, never from the PR): what Gitar reviews by, Claude reviews by (owner, 13 Nov 2026: "A+B+D").
@@ -14,7 +14,6 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const CHECK = 'All checks passed';
 export const CAP_DEFAULT = 60;
 export const MAX_FINDINGS = 5;
 const BOT = 'github-actions';   // the login GraphQL reports for a review posted with GITHUB_TOKEN
@@ -43,7 +42,7 @@ export function reviewsToday(prs, now = Date.now()) {
 }
 
 /** The decision for one PR head: {go, reason}. `manual`: the owner's "@claude review" comment (it runs on drafts and held PRs and re-reviews a reviewed head, but never on a fork, a closed PR or over the cap).
- * `pr`: {state, isDraft, title, head, headRepo, status} (status: the head's "All checks passed" state); `repo`; `wantedSha`: the head the dispatcher saw; `reviews`: ourReviews(); `today`, `cap`. */
+ * `pr`: {state, isDraft, title, head, headRepo}; `repo`; `wantedSha`: the head the dispatcher saw; `reviews`: ourReviews(); `today`, `cap`. */
 export function decide({pr, repo, manual = false, wantedSha = '', reviews = [], today = 0, cap = CAP_DEFAULT}) {
   if (pr.state !== 'OPEN') return {go: false, reason: 'the PR is not open'};
   if (pr.headRepo !== repo) return {go: false, reason: 'the PR comes from a fork: its code never meets the plan token'};
@@ -51,11 +50,10 @@ export function decide({pr, repo, manual = false, wantedSha = '', reviews = [], 
     if (pr.isDraft) return {go: false, reason: 'a draft'};
     if (isHold(pr.title)) return {go: false, reason: 'its title says DONT MERGE'};
     if (wantedSha && wantedSha !== pr.head) return {go: false, reason: 'the head moved since this was started'};
-    if (pr.status !== 'SUCCESS') return {go: false, reason: `"${CHECK}" is ${String(pr.status || 'missing').toLowerCase()} on this head`};
     if (reviews.some(r => r.sha === pr.head)) return {go: false, reason: 'this head is already reviewed'};
   }
   if (today >= cap) return {go: false, reason: 'cap', cap};
-  return {go: true, reason: manual ? 'asked by "@claude review"' : 'green head'};
+  return {go: true, reason: manual ? 'asked by "@claude review"' : 'a pushed head'};
 }
 
 /** The diff base for a re-review: the last reviewed head when it is an ancestor of the new head (`compareStatus` of last...head is "ahead"), else '' (the whole PR against its base). */
@@ -115,23 +113,9 @@ export function usageLine(messages) {
   return `Claude review run: ${result.num_turns ?? '?'} turns, ${Math.round((result.duration_ms || 0) / 1000)} s, ${u.input_tokens ?? '?'} input + ${u.cache_read_input_tokens ?? 0} cached + ${u.output_tokens ?? '?'} output tokens`;
 }
 
-/** The state of "All checks passed" on a commit: the commit STATUS of that name when there is one (`status`; jobadabra: tools/pr-verdict.py writes it), else the newest finished CHECK RUN of that name (`runs`, REST check-runs filtered by check_name:
- * [{conclusion, completed_at}]; jobadabra-web and -lab: it is a job there). -> SUCCESS | FAILURE | PENDING | '' (missing). A run still going (a re-run beside an older green one) is PENDING.
- * Why (14 Nov 2026, cr 3b; Gitar's finding: a window of the last 100 contexts can lose the run): the gate read only the status, so a repo whose "All checks passed" is a job always read "missing"; the runs are asked BY NAME, so no window can hide it. */
-export function checkState(status, runs) {
-  if (status) return status;
-  const list = (runs || []).filter(Boolean);
-  if (!list.length) return '';
-  if (list.some(r => !r.conclusion)) return 'PENDING';
-  const at = r => Date.parse(r.completed_at) || 0;
-  const newest = [...list].sort((x, y) => at(y) - at(x))[0];
-  return newest.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
-}
-
 // ---- the gate and the post: gh and files; the decisions above are pure ----
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
   number state isDraft title headRefOid baseRefName baseRefOid headRepository { nameWithOwner }
-  commits(last: 1) { nodes { commit { status { context(name: "${CHECK}") { state } } } } }
   reviews(last: 100) { nodes { author { login } submittedAt body } }
   comments(last: 30) { nodes { body } }
   labels(first: 50) { nodes { name } }
@@ -139,17 +123,12 @@ const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository
 const CAP_QUERY = `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { pullRequests(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { reviews(last: 10) { nodes { author { login } submittedAt body } } } } } }`;
 const graphql = (query, vars, run = gh) => JSON.parse(run('api', 'graphql', '-f', `query=${query}`, ...Object.entries(vars).flatMap(([k, v]) => ['-F', `${k}=${v}`]))).data.repository;
 
-/** The check runs named "All checks passed" on `sha` (REST, filtered by name); [] when the read fails: a failed read is "missing" (no review), never a wrong green. */
-function checkRuns(repo, sha, run) {
-  try { return JSON.parse(run('api', '-X', 'GET', `repos/${repo}/commits/${sha}/check-runs`, '-f', `check_name=${CHECK}`, '-f', 'per_page=100')).check_runs || []; } catch { return []; }
-}
-
-/** Reads the PR for decide() and the label: -> {pr: {…, labels}, reviews, comments}. `withChecks: false` (the label does not need "All checks passed") skips the check-run read. */
-export function readPr(repo, number, run = gh, {withChecks = true} = {}) {
+/** Reads the PR for decide() and the label: -> {pr: {…, labels}, reviews, comments}. */
+export function readPr(repo, number, run = gh) {
   const [owner, name] = repo.split('/');
   const p = graphql(PR_QUERY, {owner, name, pr: number}, run).pullRequest;
   return {pr: {number: p.number, state: p.state, isDraft: p.isDraft, title: p.title, head: p.headRefOid, base: p.baseRefName, headRepo: p.headRepository?.nameWithOwner || '',
-    status: checkState(p.commits.nodes[0]?.commit?.status?.context?.state, p.commits.nodes[0]?.commit?.status?.context?.state || !withChecks ? [] : checkRuns(repo, p.headRefOid, run)), labels: p.labels.nodes.map(l => l.name)}, reviews: ourReviews(p.reviews.nodes), comments: p.comments.nodes.filter(Boolean).map(c => c.body)};
+    labels: p.labels.nodes.map(l => l.name)}, reviews: ourReviews(p.reviews.nodes), comments: p.comments.nodes.filter(Boolean).map(c => c.body)};
 }
 
 /** The reviews of ours submitted today across the 100 most recently updated PRs. */
@@ -225,7 +204,7 @@ export function failed(env = process.env, run = gh) {
   summary(`Claude review of #${env.PR} skipped: the Claude plan limit is reached (it resets by itself); no review of this head, nothing is blocked.`);
   const mark = `<!-- claude-review-skipped sha=${env.HEAD} -->`;
   if (!env.HEAD || !env.GITHUB_REPOSITORY) return;
-  if (readPr(env.GITHUB_REPOSITORY, env.PR, run, {withChecks: false}).comments.some(c => (c || '').includes(mark))) return;
+  if (readPr(env.GITHUB_REPOSITORY, env.PR, run).comments.some(c => (c || '').includes(mark))) return;
   run('pr', 'comment', String(env.PR), '-R', env.GITHUB_REPOSITORY, '--body', `Claude review skipped on \`${env.HEAD.slice(0, 7)}\`: the Claude plan limit is reached; it resets by itself. Comment "@claude review" later to review this head.\n\n${mark}`);
 }
 

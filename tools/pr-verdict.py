@@ -43,7 +43,7 @@ CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suite
 # the other journeys run after each merge, main-steps.yml). A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/tooling/ci/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
-PR_WORKFLOWS = {'beta-approve.yml', 'clock-moved.yml', 'coverage-report.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'feedback-ai-closed.yml', 'pr-labels.yml', 'harness.yml',
+PR_WORKFLOWS = {'beta-approve.yml', 'claude-review-shared.yml', 'claude-review.yml', 'clock-moved.yml', 'coverage-report.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'feedback-ai-closed.yml', 'pr-labels.yml', 'harness.yml',
                 'integration.yml', 'key-org-proof.yml', 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-e2e-steps.yml', 'pr-gate.yml', 'prompt-cases-night.yml', 
                 'smoke.yml', 'tests-desktop-windows.yml', 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
@@ -402,16 +402,6 @@ def flaky_note(repo, ref, live, why):
         return why
 
 
-def hand_over_green(state, number, sha):
-    """Tells pr-verdict.yml's next step which PR head just went green (step outputs green_pr and green_sha); nothing for any other state or outside a workflow.
-    Why (13 Nov 2026, cr; owner: "replace Gitar with Claude Code review"): a status written with the Actions token starts no workflow, so the green head is handed to the next step, which dispatches claude-review.yml.
-    It reviews a head once (already-reviewed heads are skipped by its gate), so a repeated green write costs one short job. TODO(AI): hand over only a change of state, not every green write (13 Nov 2026)."""
-    if state != 'success' or not number or not os.environ.get('GITHUB_OUTPUT'):
-        return
-    with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
-        f.write(f'green_pr={number}\ngreen_sha={sha}\n')
-
-
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -471,7 +461,6 @@ def main():
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')
-        hand_over_green(state, number, a.sha)
     return 0
 
 
