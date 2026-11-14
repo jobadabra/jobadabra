@@ -184,6 +184,8 @@ export async function checkJob(job) {
   const result = await runTriage([job], wired.read, wired.match);
   wired.rerender();
   say(wired.toast, result.read, result.failed, 1);
+  // Why (14 Nov 2026, #4325, owner: "then I should see the end result, the outcome. The job drawer should open with [Apply readiness]"): one job's check ends in its drawer, where its outcome and steps stay.
+  dialog?.close();   // the check ended, whatever it found (a read, a failure, a Stop): the dialog never stays on a finished view, and the pop-up says how it ended (Gitar on #4373)
   return result;
 }
 
