@@ -1,6 +1,9 @@
 {
-  "about": "The fixed case set of lib/question-reuse.js INSTRUCTIONS (tools/prompt-cases.json set question-reuse): each form label and the verdict it must get. A question about this one employer is one job's even when it does not name it (owner, 28 Oct 2026: the 21-item queue held How did you hear and Previously worked here); a stance or fact the applicant gives every employer stays reusable. Fictional employers. sensitive (PR D1a, owner 28 Oct 2026): EEO, disability, criminal record are true and reach no AI reader (lib/about-you.js); a background-check consent or a driving licence is false; Pronouns is not scored.",
+  "about": "The fixed case set of lib/question-reuse.js INSTRUCTIONS (tools/prompt-cases.json set question-reuse): each form label and the verdict it must get. A question about this one employer is one job's even when it does not name it (owner, 28 Oct 2026: the 21-item queue held How did you hear and Previously worked here); a stance or fact the applicant gives every employer stays reusable. Fictional employers. sensitive (PR D1a, owner 28 Oct 2026): EEO, disability, criminal record are true and reach no AI reader (lib/about-you.js); a background-check consent or a driving licence is false; Pronouns is not scored. person_only (14 Nov 2026, owner): an own-words consent (no AI used) is true, a plain privacy agreement or a drafted essay is false.",
   "cases": [
+    {"label": "I confirm I did not use AI to write this application", "verdict": "consent", "sensitive": false, "person_only": true},
+    {"label": "I agree to the privacy notice", "verdict": "consent", "sensitive": false, "person_only": false},
+    {"label": "Why do you want to work here?", "verdict": "one_job", "sensitive": false, "person_only": false},
     {"label": "How did you hear about us?", "verdict": "one_job", "sensitive": false},
     {"label": "How did you hear about this position?", "verdict": "one_job", "sensitive": false},
     {"label": "Wie haben Sie von uns erfahren?", "verdict": "one_job", "sensitive": false},

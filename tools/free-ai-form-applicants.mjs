@@ -8,3 +8,5 @@ export const APPLICANTS = {
     page: 'Product Delivery Lead. Hybrid, full time. You coordinate delivery across several product and engineering teams, keep planning and tracking lightweight, and work with product managers on priorities.',
   },
 };
+// nationalitySaved (14 Nov 2026, Canonical's Greenhouse form held "Nationality" though the Profile had it): the same applicant with a Nationality row saved.
+APPLICANTS.nationalitySaved = {...APPLICANTS.sreNoBacklog, profile: APPLICANTS.sreNoBacklog.profile.replace('| Work permit / visa | EU citizen |', '| Nationality | Spanish |\n| Work permit / visa | EU citizen |')};

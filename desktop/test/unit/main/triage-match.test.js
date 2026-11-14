@@ -76,3 +76,21 @@ test('a required box the page gave no question text (only a field id) is counted
   assert.deepEqual(missingOf(['text-3219', 'field_123'], {}, FACTS), {missing: [], unjudged: 0, unnamed: 2});
   assert.deepEqual(missingOf(['text-3219', 'Anything new'], {}, FACTS), {missing: [], unjudged: 1, unnamed: 1});
 });
+
+// Why (14 Nov 2026, owner; Canonical's Greenhouse form): "I confirm I did not use AI..." is a consent only the person can give; readiness said "can be filled" while the form still needed them.
+test('a required question only the person can answer (an own-words consent, an in-person one) is a to-do, whatever its verdict; a plain privacy consent and a drafted essay are not', async () => {
+  const verdicts = judged({
+    'I confirm I did not use AI to write this application': {reuse: 'consent', sensitive: false, person_only: true},
+    'Can you attend an interview in our office on 3 Dec?': {reuse: 'one_job', sensitive: false, person_only: true},
+    'I accept the privacy terms': {reuse: 'consent', sensitive: false, person_only: false},
+    'Why this company?': {reuse: 'one_job', sensitive: false},
+  });
+  const asked = ['I confirm I did not use AI to write this application', 'Can you attend an interview in our office on 3 Dec?', 'I accept the privacy terms', 'Why this company?'];
+  assert.deepEqual(missingOf(asked, verdicts, FACTS).missing, [{kind: 'answer', label: asked[0]}, {kind: 'answer', label: asked[1]}]);
+  // the real path: the AI's person_only flag survives classify and the kept verdict
+  const client = {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({verdicts: [
+    {label: asked[0], verdict: 'consent', covered_by: '', value: '', topic: 'no ai', fact: '', asks: '', country: '', sensitive: false, person_only: true},
+    {label: asked[2], verdict: 'consent', covered_by: '', value: '', topic: 'privacy', fact: '', asks: '', country: '', sensitive: false, person_only: false}]})}], usage: {}})}};
+  const found = await matchReads(storage(), [{url: 'https://a.example/1', questions: [asked[0], asked[2]]}], {ai: {client}, facts: FACTS, answered: []});
+  assert.deepEqual(found['https://a.example/1'].missing, [{kind: 'answer', label: asked[0]}]);
+});
