@@ -139,16 +139,16 @@ def _digests(front, page, term):
 
 def kind(board, fetch, term='', ask=None):
     """(kind, page): kind 'gone', 'job board', 'one employer', 'other'; None when unknown (no AI, a refusal, a passing error, a list page
-    built by scripts or a short one, careers._shell: it says nothing of what the site lists). The AI is shown the home page and the list page filled with `term` (shown);
-    page: the home page, else the list page."""
+    built by scripts or a short one, careers._shell: it says nothing of what the site lists; no home page: a list page alone is too little). The AI is
+    shown the home page and the list page filled with `term` (shown); page: the home page, else the list page."""
     if careers.READER is None:   # the AI page reader is off (tests, a user who keeps pages from the AI): no check at all
         return None, ''
     page = _list_page(board, fetch, term)
+    front, lost = _front(board, fetch)
+    if not front.strip():   # Why (#4205, Gitar): a dead site is still 'gone'; a list page alone (home refused) is too weak to keep a verdict 30 days
+        return ('gone' if lost == 'gone' and (not page.strip() or careers._shell(page)) else None), page
     if page.strip() and careers._shell(page):   # Why (#4198, Gitar): the read decides what needs a browser; here a frame is no verdict, never a visit
         return None, page
-    front, lost = _front(board, fetch)
-    if not front.strip() and not page.strip():
-        return lost, front
     if ask is None:
         from ..ai import decide
         ask = decide.one
@@ -190,8 +190,8 @@ FIELD_INSTRUCTIONS = ("Say what this website is for the person looking for work 
 
 def field_kind(board, fetch, roles, ask=None):
     """'field board', 'job board', 'one employer' or 'other' for this board, for someone looking for work as `roles`, from its home page and the
-    page it was found as (a search template: the page it gives for the first role; shown); None when unknown (the page reader off, no page, a list
-    built by scripts, no AI answer): the board then stands as found, its read and check come later."""
+    page it was found as (a search template: the page it gives for the first role; shown); None when unknown (the page reader off, no home page, a
+    list built by scripts, no AI answer): the board then stands as found, its read and check come later."""
     if careers.READER is None:
         return None
     term = roles[0] if roles else ''
@@ -199,7 +199,7 @@ def field_kind(board, fetch, roles, ask=None):
     if page.strip() and careers._shell(page):   # a list built by scripts says nothing of what it lists: its read tells
         return None
     front = _quiet(fetch, home(board))
-    if not front.strip() and not page.strip():
+    if not front.strip():   # Why (#4205, Gitar): no home page, no verdict from the list page alone; the board stands, its read tells
         return None
     if ask is None:
         from ..ai import decide
