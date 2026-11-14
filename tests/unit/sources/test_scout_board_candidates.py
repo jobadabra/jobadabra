@@ -109,7 +109,7 @@ class Fetch(unittest.TestCase):
                   {'host': 'plain.example', 'countries': ['es'], 'installs': 0, 'ci': True, 'ci_urls': {'es': 'https://www.plain.example/s?q={role}'}}, {'host': 'home.example', 'countries': ['es'], 'installs': 1}]
         with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k'}):
             candidates.fetch(out.append, urlopen=lambda request, timeout=None: self.answer(boards))
-        self.assertEqual(out[-1], 'Board pass: reported boards: 3 of 3 read; 1 with an address on another host than the reported one', 'www. is no other host; a board with no address is none')
+        self.assertEqual(out[-1], 'Board pass: reported boards: 3 of 3 read; 1 with an address on another host than the reported one: jobeka.com', 'www. is no other host; a board with no address is none; the line names the hosts (sa, 14 Nov 2026)')
 
     def test_a_site_that_does_not_answer_gives_none_and_the_pass_goes_on(self):
         out = []

@@ -53,9 +53,11 @@ def _rules(db):
 
 
 def stale(db, today):
-    """{country: [board]} of facts due to be read again and not yet dropped, the boards in the shape the pass reads, oldest read first (countries in that order). Due: older than REFRESH_DAYS, or kept before
+    """{country: [board]} of facts due to be read again and not yet dropped, the boards in the shape the pass reads, the one serving the most right jobs first, then the oldest read (countries in that order). Due: older than REFRESH_DAYS, or kept before
     13 Nov 2026 (no count per family), or measured under an older rule than scout_board_counts.LISTED_RULE (a fact with no rule included), at once.
     A fact read again within REREAD_DAYS that did not pass waits: one board under the floor now must not take every run until it is dropped.
+    Design (14 Nov 2026, sa for the owner: "the due re-reads go highest served right count first"): a fact at an older rule misleads the order in proportion to the count the site still serves for it, so the largest served
+    count (its best family) is read again first, the oldest read breaks a tie; the pass's country (pick) is the one holding the largest such count, so the worst stale count anywhere goes first and a small old one waits only while a bigger one is due (each read waits REREAD_DAYS, so the bigger ones leave the queue); a pass re-reads only half its places, so the oldest-first order left airlinejobs.com's es 53 behind 167 facts of every size.
     Why (14 Nov 2026, sa for the owner): a fact does not say under which rule it was measured, so airlinejobs.com's es 53 (read from a list before the listed rule) lived on as a searched count until its 20-day refresh."""
     from . import scout_boards
     old, gone = (today - timedelta(days=REFRESH_DAYS)).isoformat(), (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()
@@ -63,11 +65,11 @@ def stale(db, today):
     tried = tried if isinstance(tried, dict) else {}
     facts = _facts(db)
     rules = _rules(db)
-    due = sorted((read_at, country, host, url) for host, country, url, _, read_at, counts in facts
+    due = sorted((-max((counts or {}).values(), default=0), read_at, country, host, url) for host, country, url, _, read_at, counts in facts
                  if gone <= read_at and (read_at < old or counts is None or (rules.get((host, country)) or 0) < scout_board_counts.LISTED_RULE)
                  and str(tried.get(f'{host}|{country}') or '') < recent)
     out = {}
-    for _, country, host, url in due:
+    for _, _, country, host, url in due:
         out.setdefault(country, []).append({'name': host, 'host': host, 'search_url': url, 'countries': [pool_tags.COUNTRIES.get(country, country)],
                                             'kinds': ['any'], 'source_kind': 'sector'})   # sector: a measured listing page may have no {role}
     return out
@@ -75,7 +77,7 @@ def stale(db, today):
 
 def share(again, candidates, places=None):
     """(re-reads, reported candidates) the pass reads: `places` (default scout_boards.MAX_BOARDS) split in half, a half that is not used given to the other, each list in the order it came
-    (the oldest read first; the best-ranked candidate first). The AI's and Google's boards fill what both leave.
+    (the most right jobs served first, then the oldest read; the best-ranked candidate first). The AI's and Google's boards fill what both leave.
     Design (14 Nov 2026, sa for the owner): the places have two owners with two kinds of claim: a fact of an older rule or past its refresh (read again) and a board installs reported (never measured).
     Every old-rule fact is due at once after a rule bump (hundreds), so re-reads alone would fill every pass; and the reported boards (Jobeka, Trabajo.org) alone would leave them to the 20-day refresh.
     Half and half, the unused half to the other, so neither starves the other; it judges nothing about a page. With the default reserve (4 candidates) a pass re-reads 8."""
