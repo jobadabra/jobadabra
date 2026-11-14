@@ -9,6 +9,7 @@ import {isTwin, realFolder, twinRefusal, twinSecret} from '../../../lib/twin.js'
 import {createStorage} from '../../../lib/storage.js';
 import {pipelineEnv} from '../../../lib/pipeline-env.js';
 import {learningOff, reportingOff} from '../../../lib/telemetry.js';
+import {TWIN_NO_WRITE, call, pushConfig, pushSchedule, testStart} from '../../../lib/hosted-search.js';
 
 const real = '/Users/someone/Library/Application Support/Job Pilotto';
 const twin = {JOBADABRA_TWIN: '1', JOBADABRA_USER_DATA: '/tmp/jp-twin/data', JOBADABRA_TWIN_NOTION_TOKEN: 'ntn_mirror'};
@@ -108,4 +109,32 @@ test('a page\'s own dialog or a stray rejection never takes the twin down (9 Oct
   const source = fs.readFileSync(new URL('../../../e2e/twin.mjs', import.meta.url), 'utf8');
   assert.match(source, /browser\.context\.on\('dialog'/);
   assert.match(source, /process\.on\('unhandledRejection'/);
+});
+
+test('the twin never writes the owner\'s Always on on our servers, but may read it and press Test', async () => {
+  // Guard: data — the twin holds the owner's install key; on 14 Nov 2026 its start pushed the owner's profile and schedule to our servers.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-twin-hosted-'));
+  fs.writeFileSync(path.join(dir, 'profile.md'), 'profile');
+  const settings = {hostedSearch: {on: true}, cadence: {search: 4}};
+  const storage = {settings: () => settings, saveSettings: patch => Object.assign(settings, patch), secret: name => (name === 'ANTHROPIC_API_KEY' ? 'JPF1.install-0001.tok' : ''), path: name => path.join(dir, name)};
+  const sent = [];
+  const fetcher = async (url, init = {}) => { sent.push(`${init.method || 'GET'} ${new URL(url).pathname}`); return Response.json({ok: true}); };
+  const before = process.env.JOBADABRA_TWIN;
+  process.env.JOBADABRA_TWIN = '1';
+  try {
+    assert.deepEqual(await pushConfig(storage, {fetcher}), {ok: false, error: TWIN_NO_WRITE});
+    assert.deepEqual(await pushSchedule(storage, {fetcher}), {ok: false, error: TWIN_NO_WRITE});
+    assert.deepEqual(await call(storage, '/api/hosted/data', {method: 'DELETE', fetcher}), {ok: false, error: TWIN_NO_WRITE});
+    assert.deepEqual(sent, [], 'no write reached the site');
+    assert.equal(settings.hostedSearch.copiedAt, undefined);
+    await call(storage, '/api/hosted/schedule', {fetcher});
+    await testStart(storage, {fetcher});
+    await call(storage, '/api/ready/batch', {method: 'POST', body: {}, fetcher});   // Ready to send as the owner (17 Oct 2026, docs/live-test.md): unchanged
+    assert.deepEqual(sent, ['GET /api/hosted/schedule', 'POST /api/hosted/test', 'POST /api/ready/batch']);
+  } finally {
+    if (before === undefined) delete process.env.JOBADABRA_TWIN; else process.env.JOBADABRA_TWIN = before;
+  }
+  sent.length = 0;
+  await pushConfig(storage, {fetcher});   // the owner's own app writes as before
+  assert.deepEqual(sent, ['PUT /api/hosted/config']);
 });
