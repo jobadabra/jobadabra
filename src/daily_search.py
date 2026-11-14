@@ -201,8 +201,9 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
                                        lane=first, lane_jobs=so_far.listener('job boards'))
                 except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
                     print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
-                if first is not None:   # Why (sa, 14 Nov 2026, #4180 pair 2): the lane's boards go on past their first jobs only now (board_pages.held)
-                    first.step_ended.set()
+                finally:   # Why (sa, 14 Nov 2026, #4180 pair 2; Gitar, #4215: however the step ends): the lane's boards read on only now (Beside.go_on)
+                    if first is not None:
+                        first.step_ended.set()
             from .ai import batch_scope
             from .sources import boards_ahead, boards_beside   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
             # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the

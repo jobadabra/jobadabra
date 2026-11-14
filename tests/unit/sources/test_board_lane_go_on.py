@@ -171,6 +171,11 @@ class TheLaneReadsOnAfterTheFirstJobsStep(unittest.TestCase):
             self.assertTrue(lane.done.wait(5))
         self.assertEqual(sorted(set(self.asked)), sorted(PAGES), 'after the step: every word and its next pages')
         self.assertEqual(lane.urls, {f'https://stellen.example/job/{word}-{n}' for word in WORDS for n in (1, 2, 3)}, 'every job handed to the lane once')
+        lane.order = ['https://stellen.example/job/kraftfahrer-1']   # a group's list order, as a known board's group gives it
+        came = [{'url': url} for url in ('https://stellen.example/job/busfahrer-2', 'https://stellen.example/job/fahrer-3', 'https://stellen.example/job/kraftfahrer-1')]
+        self.assertEqual([job['url'] for job in lane._in_list_order(came)],
+                         ['https://stellen.example/job/kraftfahrer-1', 'https://stellen.example/job/busfahrer-2', 'https://stellen.example/job/fahrer-3'],
+                         "a group's jobs in its list order first; read-on jobs (in no group) after them, in the order they came (Gitar, #4215)")
 
     def test_the_steps_last_title_batch_is_not_behind_a_read_on_call(self):
         one, served, release = slots.Slots(1), [], threading.Event()
@@ -275,6 +280,7 @@ class TheSearchEndsTheStepForTheLane(unittest.TestCase):
         step, failed, ended = body.index('first_jobs.run('), body.index("Warning: first jobs skipped"), body.index('first.step_ended.set()')
         self.assertLess(failed, ended, 'after the step and after its failure')
         self.assertLess(step, ended)
+        self.assertIn('finally:', body[failed:ended], 'in the step\'s finally: however it ends, a BaseException too (Gitar, #4215)')
 
 
 class TheAiReaderOncePerPage(unittest.TestCase):
