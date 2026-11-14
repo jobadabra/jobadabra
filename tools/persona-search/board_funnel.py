@@ -58,11 +58,14 @@ def board_round(rows, host_of_name, hit, sec):
 def job_stage(rows, stage):
     """One per-job Stage line: a board's job goes to its host's row ('jobs with no link' when the line's link is `-`), any other reader's to the reader's.
     A job is told by its link, plus the title after `#` of a link-less one; a never_asked line adds ` | <place>` (job_stage.say_one), cut off so one job is one key
-    (a title holding ` | ` with no place on its line loses its tail: rare, and then it counts twice). Every `-` line is one job, so a link-less job counts once per pass that logs it."""
+    (a title holding ` | ` with no place on its line loses its tail: rare, and then it counts twice). A link-less job is logged as `read` and again with its verdict
+    (src/sources/job_stage.py say_read, say_one): only the verdict line counts, so each `-` verdict line is one job."""
     link, rest = stage['url'], stage['rest']
     key = (host_of(link) or 'jobs with no link') if stage['reader'] == 'Job boards found' else stage['reader']
     job = link
-    if link == '-':   # a job with no link has no identity: each line is one job (in one pass)
+    if link == '-':   # a job with no link has no identity: it is logged `read` and then with its verdict; count the verdict line only (Gitar, #4211)
+        if stage['stage'] == 'read':
+            return
         job = f"-{len(rows[key]['urls'])}"
     elif '#' in link:
         job = link + (rest.rsplit(' | ', 1)[0] if stage['stage'] == 'never_asked' else rest)
@@ -154,13 +157,13 @@ def calls(folder):
 
 
 def linkless(jobs):
-    """Jobs read without a link of their own, from the stage lines' addresses (xc, #4183): `page#<title>` before the fix, where the save may merge copies sharing the
+    """Jobs read without a link of their own, from the stage lines' addresses (xc's own-address change): `page#<title>` before the fix, where the save may merge copies sharing the
     page (how many it merged is not in the log: xc's replay counted 54 read, 8 saved on Madrid's board); `page#job:<employer>--<title>--<place>` after it, which merges none."""
     tokens = [key.split(' ')[0] for key in jobs if '#' in key.split(' ')[0]]
     if not tokens:
         return '-'
     if all(token.split('#', 1)[1].startswith('job:') for token in tokens):
-        return f'{len(tokens)} (own address, since #4183)'
+        return f'{len(tokens)} (own address)'
     return f'{len(tokens)} (shared page address)'
 
 

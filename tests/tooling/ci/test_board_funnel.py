@@ -62,18 +62,20 @@ class BoardFunnel(unittest.TestCase):
 
     def test_a_job_with_its_own_address_merges_nothing(self):
         text = board_funnel.table(folder(['[6s] Stage: Job boards found kept https://www.a.example/p#job:acme--welder--graz']))
-        self.assertIn('| 1 (own address, since #4183) |', text)
+        self.assertIn('| 1 (own address) |', text)
 
     def test_one_job_is_one_key_and_a_job_with_no_link_has_its_own_row(self):
         text = board_funnel.table(folder([
             '[6s] Stage: Job boards found read https://www.a.example/p#Welder',
             '[7s] Stage: Job boards found never_asked https://www.a.example/p#Welder | Berlin, DE',
+            '[6s] Stage: Job boards found read -',
+            '[6s] Stage: Job boards found read -',
             '[7s] Stage: Job boards found no_link -',
             '[7s] Stage: Job boards found no_link -']))
         rows = {line.split(' | ')[0].strip('| '): line for line in text.splitlines()}
         self.assertIn('| a.example | - | no reason logged | - | - | - | - | - | 1 |', rows['a.example'])   # read + never_asked, one job: counted once as never judged
         self.assertIn('| jobs with no link |', rows['jobs with no link'])
-        self.assertIn(' | 2 | ', rows['jobs with no link'])   # two link-less jobs are two, not one key
+        self.assertIn(' | 2 | ', rows['jobs with no link'])   # two link-less jobs are two, each counted by its verdict line, not by its read line as well
 
     def test_unmerged_columns_are_named_not_guessed(self):
         text = board_funnel.table(folder(['[1s] Finding your first jobs…']))
