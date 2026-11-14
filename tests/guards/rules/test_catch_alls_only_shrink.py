@@ -71,7 +71,7 @@ KNOWN = {
     'src/ai/slots.py': 1,
     'src/ai/title_queue.py': 3,
     'src/ai/title_triage.py': 1,
-    'src/first_jobs.py': 8,
+    'src/first_jobs.py': 7,
     'src/daily_search.py': 16,
     'src/daily_search_reporting.py': 7,
     'src/daily_search_scoring.py': 6,

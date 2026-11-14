@@ -62,8 +62,16 @@ def board_jobs(say=print, search=None, on_board=None):
         if len(top) < SLICE_BOARDS:   # the places left go to the boards the AI names meanwhile (propose_early), in this same read
             later = lambda: _named_meanwhile(board_ideas, search)
     else:
-        _wait_early(search)
-        proposed = _proposed(board_ideas, search)
+        # Why (14 Nov 2026, benchmark run 43642654233, Krakow chef): the slice waited for the field answer too (53 s) though the country's
+        # answer (37 s) fills the read's places (board_ideas._in_turn, owner 13 Nov "Country fills, field waits"): Pracuj.pl landed at
+        # 120 s, after the search's time. The country's boards start once they are in; the field's join the same read as `later`.
+        _wait_early(search, part='country')
+        proposed = _proposed(board_ideas, search, field=False)
+        if proposed:
+            later = lambda: _named_meanwhile(board_ideas, search)
+        else:   # no country board: the field's are the read
+            _wait_early(search)
+            proposed = _proposed(board_ideas, search)
         top, spare = proposed[:SLICE_BOARDS], proposed[SLICE_BOARDS:2 * SLICE_BOARDS]
         if not top:
             return []
@@ -95,19 +103,35 @@ def propose_early(search=None):
     search = search or load_search_config()
     if len(board_ideas.proven(search, limit=SLICE_BOARDS)) >= SLICE_BOARDS:   # every place of the slice is taken: no board of the proposal would be read
         return None
-    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-proposal')
-    future = pool.submit(slots.carry(board_ideas.ideas, slots.FIRST), search)   # its boards are the slice's local boards
+    pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='board-proposal')
+    country = pool.submit(slots.carry(board_ideas.ideas, slots.FIRST), search, field=False)   # its boards are the slice's local boards
+    future = pool.submit(slots.carry(_whole, slots.FIRST), board_ideas, search, country)
     pool.shutdown(wait=False)
     _early.clear()
-    _early.update(search=search, future=future)
+    _early.update(search=search, future=future, country=country)
     return future
 
 
-def _wait_early(search):
+def _whole(board_ideas, search, country):
+    """The whole proposal (board_ideas.ideas) once the field's call, asked here beside the countries' one, and the countries' have answered:
+    both are cached then, so ideas asks the AI nothing again. A failed or late field call leaves the countries' boards."""
+    try:
+        board_ideas.field_ideas(search)
+    finally:
+        country.exception()
+    return board_ideas.ideas(search)
+
+
+def _wait_early(search, part='future'):
     """The early proposal of this same search ended (waited for until the read cut at most), so the slice's own ask finds its answers
-    cached instead of asking again; nothing for another search or none started. Taken once."""
-    future = _early.pop('future', None) if _early.get('search') == search else None
-    _early.clear()
+    cached instead of asking again; nothing for another search or none started. part: 'future' (the whole proposal, taken once) or
+    'country' (the countries' call only; the whole stays to be taken by the boards named later)."""
+    if _early.get('search') != search:
+        _early.clear()
+        return
+    future = _early.get(part)
+    if part == 'future':
+        _early.clear()
     if future is None:
         return
     from .sources import read_budget
@@ -130,10 +154,11 @@ def _refused(board_ideas):
     return {host for host, entry in (board_ideas.load().get('boards') or {}).items() if entry.get('state') == 'browser'}
 
 
-def _proposed(board_ideas, search):
-    """The boards proposed for this search's countries that never refused us, in the proposal's order."""
+def _proposed(board_ideas, search, field=True):
+    """The boards proposed for this search's countries (and its field unless field=False) that never refused us, in the proposal's order."""
     refused = _refused(board_ideas)
-    return [board for board in board_ideas.ideas(search) if board.get('host') not in refused]
+    boards = board_ideas.ideas(search) if field else board_ideas.ideas(search, field=False)
+    return [board for board in boards if board.get('host') not in refused]
 
 
 def scored_fits(db):

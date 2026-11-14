@@ -201,6 +201,12 @@ def ideas(search, client=None, field=True):
     return _merge(_in_turn(country, [board for board in of_field if board['host'] not in {b['host'] for b in country}]), shared)
 
 
+def field_ideas(search, client=None):
+    """Ask (or take from the cache) only the field's boards of this search (_field), so a caller can ask them beside the countries' call
+    and a later ideas(search) finds both answers cached. -> the field's boards, None without AI or when the call failed."""
+    return _field(asked_for(search), client)
+
+
 def _in_turn(country, of_field):
     """The countries' boards fill the first FIRST places, the field's take only the places they leave; after those, LEAD of each in turn,
     the field's first.
