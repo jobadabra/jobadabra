@@ -86,6 +86,25 @@ class ARoundSaysWhichPhaseStalled(unittest.TestCase):
             lines = self.round_line(careers.get_text)
         self.assertRegex(lines[0], r"page not read \(timed out connecting \(0\.\d s\)\)")
 
+    def stall_of(self, mode):
+        site = self.stalled_site(mode)
+        with self.assertRaises(board_round_log.Stalled) as raised:
+            careers.get_text(site['search_url'].format(port=0, role='x').replace(':0/', f":{site['search_url'].split(':')[-1].split('/')[0]}/"))
+        return raised.exception
+
+    def test_the_wait_is_measured_not_the_socket_limit(self):
+        """Gitar, #4177: reverting to the configured limit (ats.TIMEOUT) must fail: the seconds are what the clock read, a little past the limit."""
+        for mode in ('silent', 'half'):
+            seconds = self.stall_of(mode).seconds
+            self.assertNotEqual(seconds, ats.TIMEOUT, mode)
+            self.assertTrue(0.35 <= seconds < 2.0, (mode, seconds))
+
+    def test_the_sites_turn_taking_sleep_is_not_counted_as_its_silence(self):
+        """Gitar, #4177: host_pace sleeps for its turn before it asks; that sleep is ours, not the site's, so the wait starts at the real attempt."""
+        with mock.patch.object(careers.host_pace, 'turn', side_effect=lambda url: __import__('time').sleep(0.8)):
+            seconds = self.stall_of('silent').seconds
+        self.assertTrue(0.35 <= seconds < 0.75, f'{seconds}: the 0.8 s turn-taking sleep must not be in it')
+
     def test_the_searchs_read_cut_is_not_told_as_a_stalled_site(self):
         """positive control: the cut still ends the read at once, with no page asked; only its word changed."""
         asked = []
