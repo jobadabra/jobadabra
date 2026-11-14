@@ -284,8 +284,9 @@ def take_boards_first(first, feed_db, so_far, until=None):
 def keep_late_boards(lane, so_far, wait=False):
     """The boards lane's groups that landed after the gather, kept and shown now (imported into the list, src/jobs_so_far.py): the main thread
     owns the job cache, so it hands them over between the stages after the gather (lanes 4a). Not scored this run when it has no time left:
-    they wait in the list for the next run's scoring (4b). wait: the run's last hand-over, which takes the groups until the lane ends, at most
-    to the run's own end (read_budget.run_end); between the stages nothing is waited for.
+    they wait in the list for the next run's scoring (4b). wait: the run's last hand-over (boards_first.Beside.last_pass): it keeps what the
+    lane's own last judging pass answered (owner, 14 Nov 2026: "Judge in search + show both (Recommended)"), then the rest until the lane ends,
+    at most to the run's own end (read_budget.run_end); between the stages nothing is waited for.
     Why (11 Nov 2026, #3835, owner: "A: read boards to 180 s", asked via AskUserQuestion; run 43103313269): a first search with little to score
     ended at 68 s with 7 boards open in the lane; the lane's threads end with the process, so the rest of its time read no board."""
     if lane is None:
@@ -293,12 +294,9 @@ def keep_late_boards(lane, so_far, wait=False):
     try:
         with feeds.database(DATA / 'jobs.sqlite') as feed_db:   # the gather's connection is closed by now
             if wait:
-                from .sources import read_budget
-                end = read_budget.run_end()
-                if end is not None and not lane.done.is_set() and read_budget.seconds_left(end):
-                    print("Job boards: still being read; the search waits for them to its own end", flush=True)
-                    lane.take(feed_db, so_far.listener('job boards'), until=end)
-            lane.deliver(feed_db, so_far.listener('job boards'))
+                lane.last_pass(feed_db, so_far.listener('job boards'))
+            else:
+                lane.deliver(feed_db, so_far.listener('job boards'))
         so_far.flush()
     except Exception as error:  # noqa: BLE001 — late groups are a bonus; the run goes on
         print(f'Warning: late job boards not kept: {type(error).__name__}: {error}', flush=True)
