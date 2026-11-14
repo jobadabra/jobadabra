@@ -288,12 +288,15 @@ def read(repo, sha, sleep=time.sleep):
                     job.update(status='completed', conclusion='success', completed_at=job.get('completed_at') or r['updatedAt'])
     # Why (30 Oct 2026, quota review): pending alone needs fresh IDs; one live endpoint proves it, and an ended red costs no by-ID read.
     if not any(r.get('status') == 'completed' and r.get('conclusion') in RED for r in counted(runs)) and verdict(runs, jobs=jobs)[0] in ('pending', 'settling'):
-        main_state_module(repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_runs').refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
+        refresh = main_state_module(repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_runs').refresh
+        refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
         # Why (14 Nov 2026, #4177: every check green, "All checks passed" pending 10 min): the verdict a Guard end started read e2e's jobs ended and the run itself
         # completed 1 s later; no event followed for that head, so the next look was the 10-min sweep. A "settling" run is looked at again here, by id, until it ends.
         for _ in range(SETTLE[0]):
-            if verdict(runs, jobs=jobs)[0] != 'settling': break
-            sleep(SETTLE[1]); main_state_module(repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_runs').refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
+            if verdict(runs, jobs=jobs)[0] != 'settling':
+                break
+            sleep(SETTLE[1])
+            refresh(repo, sha, runs, jobs, gh, counted, RED, E2E_PR_TITLE)
     return runs, jobs
 
 

@@ -2,8 +2,9 @@
 Why (14 Nov 2026, owner, on #4177: "when I click on 'All checks passed' ... It doesn't show the e2e running. It shows just green"): a run started with
 workflow_dispatch (the PR's e2e, started by pr-e2e-steps.yml) is not listed under the PR's checks, and a green verdict linked only its own page.
 Design: states / one owner / verdicts.
-- Owner: pr-verdict.py alone writes (it already reads the head's counted runs); rows are a pure function of (counted runs, the verdict's state), so a push gives the new head
-  its rows from the runs started on it; nothing is carried by hand between heads.
+- Owner: pr-verdict.py alone writes (it already reads the head's counted runs); rows are a function of (counted runs, the verdict's state), so a push gives the new head
+  its rows from the runs started on it; nothing is carried by hand between heads. A run replaced by a newer one of the same title leaves `counted`: when a new row is made, every
+  open row of this head that is no longer counted is closed as superseded (Gitar on #4194). A row lags exactly as the status does (same read, same writer): both are repaired by the next verdict, an event or the 10-min sweep.
 - States of a row: the run's own (queued, in_progress, completed with its conclusion); a run the verdict reads as grey (red, yet the verdict is success) shows neutral.
 - Never required: the one required check stays "All checks passed". A row is written only on the PR's current open head, from the base repository (a fork PR gets nothing).
 """
@@ -76,10 +77,11 @@ def current_open_head(pulls, sha):
 
 def write(repo, sha, wanted, gh, dry_run=False):
     """Create or update each row on `sha`. One list per row, filtered by its exact name (`check_name`): a head with over 100 check runs must not hide a row (a page of 100
-    without the filter would, and every write would then add a copy). A write only for a row that is new or changed (the token's REST calls are shared by every workflow)."""
+    without the filter would, and every write would then add a copy). A write only for a row that is new or changed (the token's REST calls are shared by every workflow).
+    When a row is NEW, the head's older open rows that are no longer wanted are closed (`close_superseded`): a re-run or replaced run must not stay "running" beside its successor."""
     import json
     from urllib.parse import quote
-    done = []
+    done, created = [], False
     for row in wanted:
         listed = json.loads(gh('api', f"repos/{repo}/commits/{sha}/check-runs?per_page=100&check_name={quote(row['name'])}", '--jq',
                                '[.check_runs[] | {id, external_id, status, conclusion, title: .output.title}]') or '[]')
@@ -91,13 +93,27 @@ def write(repo, sha, wanted, gh, dry_run=False):
         if row['conclusion']:
             args += ['-f', f"conclusion={row['conclusion']}"]
         done.append(row['external_id'])
+        created = created or old is None
         if dry_run:
             continue
         if old:
             gh('api', '-X', 'PATCH', f"repos/{repo}/check-runs/{old['id']}", *args)
         else:
             gh('api', f'repos/{repo}/check-runs', '-f', f'head_sha={sha}', *args)
+    if created and not dry_run:
+        close_superseded(repo, sha, {row['external_id'] for row in wanted}, gh)
     return done
+
+
+def close_superseded(repo, sha, wanted_ids, gh):
+    """Close every open display row of `sha` whose run is no longer counted (a newer run of the same title replaced it): neutral, "superseded". Paged: a head can hold over 100 check runs."""
+    import json
+    lines = gh('api', '--paginate', f'repos/{repo}/commits/{sha}/check-runs?per_page=100', '--jq',
+               f'.check_runs[] | select((.external_id // "") | startswith("{PREFIX}")) | select(.status != "completed") | {{id, external_id}}') or ''
+    for found in (json.loads(line) for line in lines.splitlines() if line.strip()):   # one object per line, whatever the page
+        if found['external_id'] not in wanted_ids:
+            gh('api', '-X', 'PATCH', f"repos/{repo}/check-runs/{found['id']}", '-f', 'status=completed', '-f', 'conclusion=neutral',
+               '-f', 'output[title]=superseded by a newer run', '-f', 'output[summary]=A newer run of the same title replaced this one; its row is on this head.')
 
 
 def publish(repo, sha, pulls, live, state, gh, server, now, dry_run=False, summary_path=''):

@@ -19,11 +19,13 @@ def run(id, title='E2E for PR · jobs · topic', status='completed', conclusion=
 
 
 class Gh:
-    def __init__(self, listed=()):
-        self.listed, self.calls = list(listed), []
+    def __init__(self, listed=(), open_rows=()):
+        self.listed, self.open_rows, self.calls = list(listed), list(open_rows), []
 
     def __call__(self, *args, **kw):
         self.calls.append(args)
+        if '--paginate' in args:   # the head's open display rows, one json object per line
+            return '\n'.join(json.dumps(r) for r in self.open_rows)
         return json.dumps(self.listed) if '--jq' in args else ''
 
 
@@ -79,7 +81,7 @@ class StaysWithinTheTokensCalls(unittest.TestCase):
     def test_a_new_row_is_one_list_and_one_create_then_an_unchanged_row_costs_the_list_only(self):
         gh = Gh()
         rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', gh, SERVER, NOW)
-        self.assertEqual([c[1] for c in gh.calls], ['repos/o/r/commits/abc/check-runs?per_page=100&check_name=run%20%C2%B7%20E2E%20for%20PR%20%C2%B7%20jobs%20%C2%B7%20topic', 'repos/o/r/check-runs'])
+        self.assertEqual([c[1] for c in gh.calls], ['repos/o/r/commits/abc/check-runs?per_page=100&check_name=run%20%C2%B7%20E2E%20for%20PR%20%C2%B7%20jobs%20%C2%B7%20topic', 'repos/o/r/check-runs', '--paginate'])   # list by name, create, then the paged list that closes a superseded row (only because the row is new)
         want = rows.rows([run(5)], 'success', REPO, SERVER, NOW)[0]
         again = Gh([{'id': 9, 'external_id': want['external_id'], 'status': want['status'], 'conclusion': want['conclusion'], 'title': want['title']}])
         rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', again, SERVER, NOW)
@@ -91,6 +93,19 @@ class StaysWithinTheTokensCalls(unittest.TestCase):
         rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', gh, SERVER, NOW)
         self.assertEqual(gh.calls[1][:3], ('api', '-X', 'PATCH'))
         self.assertEqual(gh.calls[1][3], 'repos/o/r/check-runs/9')
+
+    def test_a_run_replaced_by_a_newer_one_of_the_same_title_has_its_open_row_closed_as_superseded(self):   # Gitar on #4194
+        gh = Gh(open_rows=[{'id': 11, 'external_id': 'pr-verdict-row:4'}, {'id': 12, 'external_id': 'pr-verdict-row:5'}])
+        rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'pending', gh, SERVER, NOW)   # run 5 is the counted one; run 4's row (id 11) is open and no longer wanted
+        patched = [c for c in gh.calls if c[:3] == ('api', '-X', 'PATCH')]
+        self.assertEqual([c[3] for c in patched], ['repos/o/r/check-runs/11'])
+        self.assertIn('conclusion=neutral', patched[0])
+
+    def test_no_list_by_prefix_when_no_row_is_new(self):   # the extra paged list only runs when a new row could have superseded one
+        want = rows.rows([run(5)], 'success', REPO, SERVER, NOW)[0]
+        gh = Gh([{'id': 9, 'external_id': want['external_id'], 'status': want['status'], 'conclusion': want['conclusion'], 'title': want['title']}])
+        rows.publish(REPO, 'abc', self.PULLS, [run(5)], 'success', gh, SERVER, NOW)
+        self.assertFalse([c for c in gh.calls if '--paginate' in c])
 
     def test_a_head_with_many_check_runs_cannot_hide_the_row_the_list_asks_for_it_by_name(self):
         gh = Gh()
