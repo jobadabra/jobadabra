@@ -8,9 +8,9 @@ const JOB = {url: 'https://jobs.example/a', code: 'ab12', title: 'SRE', kit: fal
 const SIMPLE = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true, simple: true, why: 'a simple form', questions: ['Notice period', 'Phone']};
 const NOW = new Date('2026-11-07T10:00:00Z');
 
-function make({record = {id: 'r1', apply_readiness: ''}, read = SIMPLE, clock = () => NOW, match = async asked => Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 0}]))} = {}) {
-  const calls = {kit: [], read: 0, store: [], logged: []};
-  const readiness = createReadiness({storage: {}, clock, log: (area, words) => calls.logged.push(words),
+function make({record = {id: 'r1', apply_readiness: ''}, read = SIMPLE, match = async asked => Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 0}]))} = {}) {
+  const calls = {kit: [], read: 0, store: []};
+  const readiness = createReadiness({storage: {}, clock: () => NOW,
     prepareKit: async (code, name) => { calls.kit.push([code, name]); return {ok: true}; },
     readForm: async () => { calls.read += 1; return read; }, match,
     call: async (_, entity, method, kwargs) => { calls.store.push([entity, method, kwargs]); if (method === 'get') return record; record = {...record, ...kwargs.fields}; return record; }});
@@ -144,7 +144,6 @@ test('the Jobs page shows why a kit could not be drafted, passes the Notion gate
   assert.equal(job.kit, true, 'the next check does not draft it again');
   assert.equal(await readThroughStep(via({kit: {ok: true}, check: null}), {...JOB, code: ''}), null);
 });
-
 test('a kit draft is its own step: the window hears "drafting" before the draft starts, and nothing when the job has a kit', async () => {
   // Why (14 Nov 2026, #4325, owner: "40s just to get ready?"): the 41 s kit draft read as "Getting ready"; it is now named, with its own seconds.
   const heard = [];
@@ -156,59 +155,3 @@ test('a kit draft is its own step: the window hears "drafting" before the draft 
   assert.deepEqual(heard, [{url: 'https://jobs.example.test/k', step: 'drafting', drafted: 0}]);
 });
 
-test('the check times its own steps and stores them in the same write as the check; a stored check keeps its stored timings (#4360)', async () => {
-  // Why (14 Nov 2026, #4360, owner chose "One write (Recommended)"): the steps are timed here, so the log can only ever sit beside the check it timed.
-  let at = NOW.getTime();
-  let readiness;
-  const made = make({clock: () => new Date(at), read: SIMPLE, match: async asked => { at += 4000; return Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 0}])); }});
-  readiness = made.readiness;
-  const run = made.readiness.applyReadiness({...JOB, kit: false});   // the kit draft is 'ok' at once in make(); the later steps are the reader's
-  await run;
-  assert.equal(made.record().apply_readiness, '', 'a simple form waits for its match: nothing is stored yet');
-  await made.readiness.settle([{url: JOB.url, questions: SIMPLE.questions}]);
-  const kept = unpack(made.record().apply_readiness);
-  assert.deepEqual(kept.read.steps.map(item => item.step), ['ready', 'drafting', 'matching'], 'steps stored with the check, the match as its own step');
-  assert.equal(kept.read.steps.at(-1).ms, 4000, 'the one match call served one form: that form gets the whole of it');
-  const before = JSON.stringify(made.record());
-  const again = await readiness.applyReadiness({...JOB, kit: true});
-  assert.equal(again.stored, true);
-  assert.equal(JSON.stringify(made.record()), before, 'a stored check keeps its stored steps, never rewritten (Gitar on #4349)');
-});
-
-test('the reader\'s steps are timed too, and a batch\'s match is shared between its forms', async () => {
-  let at = NOW.getTime();
-  const made = make({clock: () => new Date(at), match: async asked => { at += 6000; return Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 0}])); }});
-  made.readiness.heard({url: JOB.url, step: 'opening'});   // no check of this job is running: nothing to time, nothing thrown
-  const second = {...JOB, url: 'https://jobs.example/b'};
-  for (const job of [JOB, second]) {
-    const done = made.readiness.applyReadiness({...job, kit: true});
-    made.readiness.heard({url: job.url, step: 'opening'}); at += 3000; made.readiness.heard({url: job.url, step: 'judging'}); made.readiness.heard({url: job.url, step: 'planning'}); at += 2000;
-    await done;
-  }
-  await made.readiness.settle([{url: JOB.url, questions: SIMPLE.questions}, {url: second.url, questions: SIMPLE.questions}]);
-  const steps = unpack(made.record().apply_readiness).read.steps;   // make() keeps one record: the last form stored
-  assert.deepEqual(steps, [{step: 'ready', ms: 0}, {step: 'opening', ms: 3000}, {step: 'looking', ms: 2000}, {step: 'matching', ms: 3000}], 'judging and planning read as one line, "Reading the form"');
-  assert.equal(steps.at(-1).ms, 3000, 'two forms share the one 6 s match call: 3 s each, never 6 s twice (Gitar on #4353)');
-});
-
-test('a check that stores nothing leaves another posting\'s stored check and steps alone (Gitar on #4360)', async () => {
-  const old = pack({...SIMPLE, match: {missing: [{kind: 'detail', label: 'Phone'}], unjudged: 0}, steps: [{step: 'looking', ms: 9000}]}, {posted: '2026-10-01', now: NOW});
-  const made = make({record: {id: 'r1', apply_readiness: old}, match: async asked => Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 2}]))});
-  await made.readiness.applyReadiness({...JOB, kit: true});
-  await made.readiness.settle([{url: JOB.url, questions: SIMPLE.questions}]);
-  assert.equal(made.record().apply_readiness, old, 'the unmatched fresh read is not stored: the older check keeps its own steps');
-  assert.equal(made.calls.store.filter(([, method]) => method === 'update').length, 0);
-});
-
-test('a stored check that runs out of room drops its step log before its questions (Gitar on #4349)', () => {
-  const steps = Array.from({length: 8}, () => ({step: 'drafting', ms: 123456}));
-  const questions = [];
-  const base = {...SIMPLE, match: {missing: [], unjudged: 0}};
-  while (pack({...base, questions: [...questions, 'x'.repeat(40)]}, {posted: '2026-11-01', now: NOW}).length < MAX_CHARS - 60) questions.push(`Required question ${questions.length} ${'x'.repeat(20)}`);
-  const alone = pack({...base, questions}, {posted: '2026-11-01', now: NOW});
-  assert.ok(alone.length <= MAX_CHARS && alone.length + JSON.stringify(steps).length > MAX_CHARS, 'positive control: the questions fit alone, not with the steps');
-  const kept = unpack(pack({...base, questions, steps}, {posted: '2026-11-01', now: NOW}));
-  assert.deepEqual(kept.read.questions, questions, 'the questions are kept');
-  assert.equal(kept.read.steps, undefined, 'the steps were dropped');
-  assert.deepEqual(unpack(pack({...base, questions: ['Phone'], steps}, {posted: '2026-11-01', now: NOW})).read.steps, steps, 'with room, the steps are kept');
-});

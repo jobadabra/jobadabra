@@ -29,9 +29,9 @@ const checkButton = (ctx, redraw, label) => {
 
 const TODO_ICON = {'sign-in': 'key', account: 'user', check: 'shield', detail: 'edit'};   // what each kind of to-do asks of the person
 
-/** The check log, folded: each finished step with its seconds and a bar of its share of the slowest step (stepsOf: this window's last check of the job, else the steps stored with it). */
-function checkLog(url, stored) {
-  const steps = stepsOf(url, stored);
+/** The check log, folded: each finished step with its seconds and a bar of its share of the slowest step (stepsOf: this window's last check of the job). */
+function checkLog(url) {
+  const steps = stepsOf(url);
   if (!steps.length) return null;
   const total = steps.reduce((sum, step) => sum + step.seconds, 0), longest = Math.max(1, ...steps.map(step => step.seconds));
   const rows = steps.map(({words, seconds}) => {
@@ -52,7 +52,7 @@ function checkLog(url, stored) {
 export function readinessView(ctx, redraw) {
   const view = readinessOf(readOf(ctx.job.url));
   if (!view.checked) return [stateCard({icon: 'search', title: t('pagesReadinessTab.notCheckedTitle'), text: t('pagesReadinessTab.notCheckedText'), actions: [checkButton(ctx, redraw, view.button)]})];
-  const log = checkLog(ctx.job.url, readOf(ctx.job.url)?.steps);
+  const log = checkLog(ctx.job.url);
   const head = el('div', 'jd-readiness-head');
   head.append(pill(view.chip.label, TONE[view.chip.tone] || 'info', {dot: true}), el('b', '', view.todo.length ? t('pagesReadinessTab.toDoLine', {count: view.todo.length}) : t('pagesReadinessTab.readyLine')));
   const {questions, answered} = view.counts;
