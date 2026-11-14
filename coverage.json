@@ -1,14 +1,5 @@
 [
  {
-  "seed": 20261107,
-  "pairs": [
-   "start → Settings: Experience sources: Add another CV version",
-   "Settings: Experience sources: Add another CV version → Jobs: Jobs filter: Inbound",
-   "Jobs: Jobs filter: Inbound → Strategy: Job preferences",
-   "Strategy: Job preferences → Actions: Read this board"
-  ]
- },
- {
   "seed": 20261108,
   "pairs": [
    "start → Settings: Developer options: Save",
@@ -43,6 +34,10 @@
  },
  {
   "seed": 20261113,
+  "pairs": []
+ },
+ {
+  "seed": 20261114,
   "pairs": []
  }
 ]
