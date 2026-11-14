@@ -9,7 +9,7 @@ import {$} from './core.js';
 import {CONSENT, askOnPress, notOpened, renewCommandOf, signInEnded} from '../linkedin-words.js';
 import {NO_PLACE} from '../targets.js';
 
-export const view = {loaded: false, on: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}};
+export const view = {loaded: false, on: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: false, easyApply: false, signin: {state: 'ok', why: '', empties: 0}};
 // Why (31 Oct 2026, push gate no-circular): startup.js imports the pages that import this module, so it hands its toast in (bindToast) instead of being imported here.
 let toast = () => {};
 /** Startup gives this module its toast function once; before that a message is dropped, never thrown. */
@@ -71,8 +71,8 @@ async function turnOff() {
  * Resolves when the dialog closed and what it chose did its first step.
  */
 export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
-  const words = CONSENT[mode] || CONSENT['turn-on'];
-  const shown = showConsent(words, {chrome: !!(words.chrome && view.extension)});   // the shortcut only while the Chrome extension is connected
+  const words = mode === 'manage' && view.easyApply ? CONSENT['manage-easy-apply'] : CONSENT[mode] || CONSENT['turn-on'];   // Why (owner, 14 Nov 2026): turning LinkedIn jobs off also stops Easy Apply, and says so
+  const shown = showConsent(words, {chrome: !!(words.ways && view.extension)});   // the Chrome way can be picked only while the Chrome extension is connected
   if (!shown) return Promise.resolve(false);
   return shown.then(async answer => {
     const yes = answer === 'default', chrome = answer === 'chrome';
@@ -84,8 +84,8 @@ export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
 }
 
 /**
- * The one LinkedIn dialog, filled with `words` ({title, lead, line, yes, no, chrome?}) and shown; LinkedIn Easy Apply (pages/easy-apply-consent.js) opens it too.
- * -> a promise of how it closed ('default' = yes, 'chrome', '' or 'cancel'), or null when it is already open (one dialog at a time).
+ * The one LinkedIn dialog, filled with `words` ({title, lead, line, yes, no, ways?}) and shown; LinkedIn Easy Apply (pages/easy-apply-consent.js) opens it too.
+ * -> a promise of how it closed ('default' = yes (the window way when `ways` is shown), 'chrome' (yes with the Chrome way picked), '' or 'cancel'), or null when it is already open (one dialog at a time).
  */
 export function showConsent(words, {chrome = false} = {}) {
   const dialog = $('linkedin-dialog');
@@ -96,13 +96,25 @@ export function showConsent(words, {chrome = false} = {}) {
   $('linkedin-line-box').hidden = !words.line;
   $('linkedin-yes').textContent = words.yes;
   $('linkedin-no').textContent = words.no;
-  $('linkedin-chrome').textContent = words.chrome || '';
-  $('linkedin-chrome').hidden = !chrome;
+  const ways = !!words.ways;
+  $('linkedin-ways').hidden = !ways;
+  if (ways) showWays(words.ways, chrome);
   dialog.returnValue = '';
   return new Promise(resolve => {
-    dialog.addEventListener('close', () => resolve(dialog.returnValue), {once: true});
+    dialog.addEventListener('close', () => resolve(ways && dialog.returnValue === 'default' && $('linkedin-way-chrome').checked ? 'chrome' : dialog.returnValue), {once: true});
     dialog.showModal();
   });
+}
+// The two ways to sign in (renderer/linkedin-words.js WAYS). Chrome is picked first while the extension is connected; without it, that way is shown off with what it needs.
+function showWays(ways, chrome) {
+  $('linkedin-ways-title').textContent = ways.title;
+  $('linkedin-way-chrome-title').textContent = ways.chrome;
+  $('linkedin-way-chrome-note').textContent = chrome ? ways.chromeNote : ways.chromeMissing;
+  $('linkedin-way-window-title').textContent = ways.window;
+  $('linkedin-way-window-note').textContent = ways.windowNote;
+  $('linkedin-way-chrome').disabled = !chrome;
+  $('linkedin-way-chrome').checked = chrome;
+  $('linkedin-way-window').checked = !chrome;
 }
 /** A toast through the function startup bound (bindToast), for the Easy Apply flow that shares this dialog. */
 export const say = (...args) => toast(...args);
