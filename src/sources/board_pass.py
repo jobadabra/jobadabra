@@ -22,13 +22,15 @@ from urllib.parse import urlparse
 
 
 def owed(jobs):
-    """The jobs of `jobs` the AI still owes an answer for (job_stage 'never_asked'): not listed, and not refused by an answer."""
+    """The jobs of `jobs` the AI still owes an answer for (job_stage 'never_asked'): not listed, and not refused by an answer; each url once.
+    Why once (Gitar on #4302): a job two pages of a board gave was owed, counted and listed twice."""
     from . import feeds, job_stage
-    places, out = {}, []
+    places, out, seen = {}, [], set()
     for job in jobs:
-        if not job.get('url') or (feeds.wanted_title(job.get('title') or '') and feeds.wanted_location(job)):
+        if not job.get('url') or job['url'] in seen or (feeds.wanted_title(job.get('title') or '') and feeds.wanted_location(job)):
             continue
         if job_stage.of(job, places) == 'never_asked':
+            seen.add(job['url'])
             out.append(job)
     return out
 
