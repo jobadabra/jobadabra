@@ -326,6 +326,20 @@ class TheLastPass(unittest.TestCase):
         checked, items = self.queue()
         self.assertEqual(sorted(item['title'] for item in items), ['Late role 0', 'Late role 1'], 'the queue lists them')
 
+    def test_a_job_read_on_two_pages_or_listed_before_the_hand_over_is_listed_once(self):
+        """Gitar on #4302: the last hand-over kept every job the pass answered again, so a job two pages gave, or one a group listed before the
+        hand-over, was recorded and shown twice and counted twice in the pass's line."""
+        at(100)
+        twice = {**board()[1]}   # the board's second page repeats a job of its first
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board()), ('the board, page 2', [twice])]))
+        self.pass_time(lane)
+        lane._queue([{**board()[2]}])   # and a page landing after the pass gives one more again: its answers are there, the next deliver lists it
+        lane.last_pass(self.db, shown.extend)
+        self.assertEqual(sorted(job['title'] for job in shown), ['Known role 0', 'Late role 0', 'Late role 1'], 'each job listed once')
+        self.assertEqual(len({job['url'] for job in lane.matched}), len(lane.matched), 'and kept once')
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'listed: the queue owes them nothing')
+        self.assertIn('Board pass: owed 3 · listed 3 · refused 0 · waiting 0 (posting not read 0 · no answer by the deadline 0)', self.said)
+
     def test_a_job_the_pass_refuses_leaves_the_queues_list(self):
         at(100)
         self.model.out = {'late town'}

@@ -284,12 +284,17 @@ class Beside:
         done = self.done_pass if self.passed.is_set() else board_pass.cut(self.track) if self.track is not None else None
         listed = 0
         if done is not None and board_pass.listable(done):
+            # Why (Gitar on #4302): a job a group listed before this hand-over was kept again: recorded, shown and counted twice (board_pass.owed
+            # holds each url once, so the pass's own list repeats none); its waiting row leaves with the listed ones below
+            already = {item.get('url') for item in self.matched}
+            again = [job for job in board_pass.listable(done) if job.get('url') not in already]
             before = len(self.matched)
-            self._queue(board_pass.listable(done))
-            self.deliver(feed_db, on_jobs)
+            if again:
+                self._queue(again)
+                self.deliver(feed_db, on_jobs)
             listed = len(self.matched) - before
             # Why (Gitar on #4187): a job the pass refused (title no, place outside) kept its waiting row and the queue asked about it again
-            waiting_jobs.listed(feed_db, board_pass.settled(done, {item.get('url') for item in self.matched[before:]}))
+            waiting_jobs.listed(feed_db, board_pass.settled(done, {item.get('url') for item in self.matched}))
         if done is not None and not done.why:
             print(done.accounted({item.get('url') for item in self.matched}), flush=True)
         print(done.said(listed) if done is not None else 'Board pass: not run: ' + ('the search has no time budget' if at is None
