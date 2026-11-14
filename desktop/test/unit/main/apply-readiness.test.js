@@ -144,3 +144,14 @@ test('the Jobs page shows why a kit could not be drafted, passes the Notion gate
   assert.equal(job.kit, true, 'the next check does not draft it again');
   assert.equal(await readThroughStep(via({kit: {ok: true}, check: null}), {...JOB, code: ''}), null);
 });
+test('a kit draft is its own step: the window hears "drafting" before the draft starts, and nothing when the job has a kit', async () => {
+  // Why (14 Nov 2026, #4325, owner: "40s just to get ready?"): the 41 s kit draft read as "Getting ready"; it is now named, with its own seconds.
+  const heard = [];
+  let drafts = 0;
+  const readiness = createReadiness({storage: {}, call: async () => null, readForm: async () => null, onStep: step => heard.push({...step, drafted: drafts}),
+    prepareKit: async () => { drafts += 1; return {ok: true}; }});
+  await readiness.applyReadiness({url: 'https://jobs.example.test/k', code: 'k1'});
+  await readiness.applyReadiness({url: 'https://jobs.example.test/h', code: 'h1', kit: true});
+  assert.deepEqual(heard, [{url: 'https://jobs.example.test/k', step: 'drafting', drafted: 0}]);
+});
+
