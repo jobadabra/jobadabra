@@ -54,6 +54,14 @@ for s in SIDES:
     stages[s] = (inout.stages(logs[0]) if logs else None) or {}   # a run cut before its first stage line has none: READ 0, not a crash
     never[s] = sum(1 for st in stages[s].values() if all(x == 'read' for x in st))
 L = {s: set(listed[s]) for s in SIDES}
+failed = {}
+for s in SIDES:   # a failed AI call is a step that did not run: the pair then compares luck, not code
+    texts = [open(os.path.join(d, f), errors='replace').read() for d, _, files in os.walk(os.path.join(work, s)) for f in files if f == 'run-1.log']
+    failed[s] = [line for text in texts for line in text.splitlines() if re.search(r'Technical: .*(Cli|Ai)\w*(Error|Limit|Unavailable)\b', line)]
+print(f'{pid}: ' + ('NOT VALID: ' if any(failed.values()) else 'valid: ') + f'AI calls failed A {len(failed["a"])}, B {len(failed["b"])}')
+for s in SIDES:
+    for line in failed[s][:3]:
+        print(f'  failed {s.upper()}: {line[:200]}')
 print(f'{pid}: LISTED both / only A / only B: {cells(L["a"], L["b"])}')
 print(f'{pid}: READ   both / only A / only B: {cells(*({u for u in stages[s]} for s in SIDES))}   (read, never judged: A {never["a"]}, B {never["b"]})')
 if '--no-judge' not in sys.argv:
