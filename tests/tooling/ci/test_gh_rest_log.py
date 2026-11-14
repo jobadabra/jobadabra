@@ -39,9 +39,9 @@ class GhRestLogTest(unittest.TestCase):
         run on a loaded runner cannot kill it before the line exists (flaky before: a 1 s timeout was the clock; xc's #4183, run 43600211382)."""
         proc = subprocess.Popen(['gh', *args], env=self.env('x', 0, 5), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         self.addCleanup(lambda: (proc.poll() is None) and os.killpg(proc.pid, signal.SIGKILL))
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + 30  # clock: relative, a hang guard
         while not self.rows():
-            self.assertLess(time.monotonic(), deadline, 'the shim never wrote its provisional line')
+            self.assertLess(time.monotonic(), deadline, 'the shim never wrote its provisional line')  # clock: relative, a hang guard
             self.assertIsNone(proc.poll(), 'the shim ended before writing its provisional line')
             time.sleep(0.02)
         os.killpg(proc.pid, signal.SIGKILL)
@@ -78,7 +78,7 @@ class GhRestLogTest(unittest.TestCase):
 
     def age_log(self, seconds):
         """Writes every logged time `seconds` into the past: "a call that did not return in PENDING_S" is a state of the log, not a wait of the test (a 0 s limit compared against a call logged in the same second)."""
-        old = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        old = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime('%Y-%m-%dT%H:%M:%SZ')  # clock: relative, the log is aged against the report's own now, whatever it is
         self.log.write_text(''.join('\t'.join([old, *line.split('\t')[1:]]) + '\n' for line in self.log.read_text().splitlines()))
 
     def report(self, *args, pending_s=120):
