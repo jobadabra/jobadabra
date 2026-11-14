@@ -133,15 +133,24 @@ class FoundBoardsTests(unittest.TestCase):
                   for n in range(1, found_boards.BOARD_WORKERS + 1)]
         all_reading = threading.Barrier(found_boards.BOARD_WORKERS, timeout=60)   # one after the other: the first never gets past it; 60 s is a hang guard (a 5 s one broke on a loaded runner, 10 Nov 2026)
         first = set()
+        others_reported = threading.Event()
+        board_lines = []
+        def say(*args, **kwargs):
+            if args and str(args[0]).startswith('Job boards found:'):
+                board_lines.append(args[0])
+                if len(board_lines) == found_boards.BOARD_WORKERS - 1:
+                    others_reported.set()
         def pages(url):
             host = url.split('//')[1].split('/')[0]
             if host not in first:   # each board's first page waits until every board has asked for its own
                 first.add(host)
                 all_reading.wait()
             if url.startswith('https://b1.'):   # the first board ends last
-                threading.Event().wait(0.2)
+                # Why (xc, 14 Nov 2026, #4183 run 43600640609): a 0.2 s sleep lost to the other boards on a loaded runner ('4' != '1');
+                # the first board now ends after every other board was reported, and 30 s is only a hang guard (a reader that holds them back fails).
+                others_reported.wait(30)
             return self._page_for(url.split('//')[1].split('.')[0])
-        with mock.patch('builtins.print') as said:
+        with mock.patch('builtins.print', side_effect=say) as said:
             jobs = found_boards.read(SEARCH, boards, fetch=pages, is_relevant=lambda found: found)
         self.assertEqual(len(jobs), found_boards.BOARD_WORKERS)
         lines = [call.args[0] for call in said.call_args_list if str(call.args[0]).startswith('Job boards found:')]
