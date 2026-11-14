@@ -10,7 +10,7 @@ name: Guard
 on:
   pull_request:
     branches: [main]
-    # Why (13 Nov 2026, owner via sa: "anything not a draft is safe to merge"): a draft flip re-reads the description, so a "pending" Moves line is red the moment its PR leaves draft (pr-body-check.py pending_gap).
+    # Why (13 Nov 2026, owner via sa: "anything not a draft is safe to merge"): a draft flip re-reads the description. Since 14 Nov a "pending" Moves line no longer needs a draft: the pair's row holds "All checks passed" (tools/pr_verdict_pair_gate.py).
     types: [opened, synchronize, reopened, edited, ready_for_review, converted_to_draft]
 
 permissions:
@@ -55,7 +55,6 @@ jobs:
           BODY: ${{ github.event.pull_request.body }}
           # Why (4 Nov 2026, #3095): '' is falsy in a GitHub expression, so "&& '' ||" always gave the title and a bot's PR went red on the session tag. The PR's author, not the actor: a person may edit a bot's PR.
           PR_TITLE: ${{ github.event.pull_request.user.type != 'Bot' && github.event.pull_request.title || '' }}   # the "[xx] " session tag (a bot's PR has none)
-          PR_DRAFT: ${{ github.event.pull_request.draft }}   # 'true'/'false': a "pending" Moves number needs a draft titled DONT MERGE
         # Why (10 Nov 2026, owner, finish line G4): --base lets the check read which files the PR changes, for the Find jobs admission line ("Moves:").
         run: |
           git fetch -q origin main

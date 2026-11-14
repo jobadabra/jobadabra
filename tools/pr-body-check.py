@@ -47,11 +47,11 @@ def title_gap(title):
 SEARCH_FILES = re.compile(r'^(src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots|board_ideas)\.py$|(ai/)?(time_budget|job_rank)\.py$'
                           r'|places\.py$|fragment_words\.py$|notion/search_settings\.py$)|desktop/lib/strategy(-draft[^/]*)?\.js$)')
 # Why (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Accept your measure (Recommended)"): a move from saved runs (before) to the owner's
-# chosen after-run is also a measure: `(<N> saved runs before, <M> run(s) after)`, its after-number `pending` while that run runs (the PR is then a DONT MERGE draft).
+# chosen after-run is also a measure: `(<N> saved runs before, <M> run(s) after)`, its after-number `pending` while that run runs (the pair's row holds the PR's "All checks passed" until then, tools/pr_verdict_pair_gate.py).
 # Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after. not 3 (which are 6)"): a search PR's live proof is one search a side, started in the same minute, with the person's usual run-to-run difference beside it;
-#   more runs a side with their spread still pass, and since 13 Nov its after-number may read `pending` on a held draft, as the saved-runs form above.
+#   more runs a side with their spread still pass, and since 13 Nov its after-number may read `pending` until its pair writes it, as the saved-runs form above.
 # Why (13 Nov 2026, sa's search-pair design): a person is a night person (p3) or one of the 30 profiles (b02, search-profiles.json); a profile has no night levels, so its
-#   usual difference reads "not measured yet" (tools/persona-search/pair.py table); an after-number may be `pending` while its pair runs, only on a held draft (pending_gap).
+#   usual difference reads "not measured yet" (tools/persona-search/pair.py table); an after-number may be `pending` while its pair has not run: a ready PR may say so, because the pair's own row decides "All checks passed" (14 Nov 2026, the old pending_gap draft rule is gone).
 PERSON = r'(?:p\d{1,2}|[a-z]\d{2})'
 MOVES = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*(?:' + PERSON + r'\s+\S.*\d\S*\s*(?:→|->)\s*(?:\S*\d\S*|pending)\s*\([1-9]\d* runs? a side,[^)]*?\b(?:spread|usual difference)\s+(?:[^)\s]*\d|not measured yet)[^)]*\)'
                    r'|' + PERSON + r'\s+\S.*\d\S*\s*(?:→|->)\s*(?:\S*\d\S*|pending)\s*\([1-9]\d* saved runs? before, [1-9]\d* runs? after\b[^)]*\)'
@@ -68,21 +68,6 @@ def moves_gap(body, changed):
     if not hit or MOVES.search(body or ''):
         return None
     return f'this PR changes search files ({", ".join(hit[:3])}{", ..." if len(hit) > 3 else ""}) but the body has no "Moves:" line: {MOVES_FIX}'
-
-
-PENDING = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*' + PERSON + r'\s+\S.*\d\S*\s*(?:→|->)\s*pending\s*\(', re.M)   # the after-number of a MOVES line, never a word in its note
-
-
-def pending_gap(body, title, draft):
-    """A Moves line whose after-number is still `pending` holds the PR: it must be a draft titled "DONT MERGE" until the number is in.
-    Why (13 Nov 2026, owner via sa: "let's close these gaps"; "anything not a draft is safe to merge"): a green, ready search PR with a pending number was mergeable
-    before its pair ended. draft: the PR's draft flag ('true'/'false' from pr-gate.yml); None (a local run) skips it, as ship.sh sets the hold itself."""
-    if draft is None or not PENDING.search(body or ''):
-        return None
-    if draft == 'true' and ('DONT MERGE' in (title or '') or not title):   # an empty title is a bot's PR: pr-gate.yml hides it, so the draft alone holds it
-        return None
-    return ('the "Moves:" line says "pending": the PR must stay a draft titled "[xx] DONT MERGE …" until its pair writes the number '
-            '(gh pr ready <n> --undo; gh pr edit <n> --title "[xx] DONT MERGE <title>"), then put the number in and lift both')
 
 
 def changed_files(base):
@@ -128,7 +113,6 @@ if __name__ == '__main__':
         files = changed_files(base) if base else None
         # Why (Gitar on #3704, 11 Nov 2026): the caller asked for the admission check, so no answer from git is a refusal, never a silent pass (a shallow clone, a stale origin/main)
         admission = moves_gap(text, files) if files is not None else f'could not read the changed files against {base or "(no base given)"}, so the "Moves:" line was not checked: fetch the base and run again'
-        admission = admission or pending_gap(text, os.environ.get('PR_TITLE', '').strip(), os.environ.get('PR_DRAFT') or None)
         if admission:
             print('pr-description: ' + admission, file=sys.stderr)
             sys.exit(1)
