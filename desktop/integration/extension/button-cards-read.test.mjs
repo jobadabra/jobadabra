@@ -108,7 +108,7 @@ test('links on the page\'s own path with letters in their ids are postings; a li
     await page.goto(`${base}/letter-ids.html?jk=abc123`);
     const linked = await call(page, 'extractPage');
     assert.deepEqual(linked.cards.map(card => new URL(card.url).search).filter(search => search.startsWith('?jk=')), ['?jk=def456', '?jk=ghi789', '?jk=jkl012'],
-      'three postings; the link to the page\'s own address (jk=abc123) is the page');
+      'three postings; the page\'s own address, the same with a param added (Gitar on #4278) and its next page are the page');
   } finally { await page.close(); }
 });
 

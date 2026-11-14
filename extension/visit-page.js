@@ -10,15 +10,15 @@ export function extractPage() {
   const seen = new Set();
   const cards = [];
   const here = new URL(location.href);
-  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids are all ids the page's own address
+  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids (idsOf: letters or digits, #3877) are all ids the page's own address
   // already holds (the selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
-  // Why (#3877): only a link that names at least one id, all of them the page's own, or the page's own address itself: with no numeric id
-  // (/viewjob?jk=abc123) every same-path posting read as the page.
-  const ownIds = new Set([...here.searchParams.values()].filter(value => /^\d{5,}$/.test(value)));
+  // Why (#3877, Gitar on #4278): an id is any value of 5+ word characters with a digit (abc123, 3870321), not only a 5-digit number: with numbers
+  // only, a same-path posting with a letter id (/viewjob?jk=def456) named no id and read as the page; a page number or a tracking word is no id.
+  const idsOf = url => [...url.searchParams.values()].filter(value => /^(?=.*\d)[\w-]{5,}$/.test(value));
+  const ownIds = new Set(idsOf(here));
   const toPage = href => {
     const at = new URL(href);
-    const ids = [...at.searchParams.values()].filter(value => /^\d{5,}$/.test(value));
-    return at.host === here.host && at.pathname === here.pathname && (at.search === here.search || (ids.length > 0 && ids.every(value => ownIds.has(value))));
+    return at.host === here.host && at.pathname === here.pathname && idsOf(at).every(value => ownIds.has(value));
   };
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.href.split('#')[0];

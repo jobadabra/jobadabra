@@ -1,9 +1,11 @@
 <!doctype html><html><head><title>Developer jobs | Board</title></head><body>
-<!-- #3877: a results page at /viewjob?jk=abc123 whose postings are links on the page's own path with letter ids; the last link is the page's own address. -->
+<!-- #3877: a results page at /viewjob?jk=abc123 whose postings are links on the page's own path with letter ids; the last three are the page: its own address, the same with a param added and reordered (Gitar on #4278), the next page. -->
 <ul class="jobs">
 <li><a href="?jk=def456">Stand-in posting def456</a><div>Stand-in employer</div></li>
 <li><a href="?jk=ghi789">Stand-in posting ghi789</a><div>Stand-in employer</div></li>
 <li><a href="?jk=jkl012">Stand-in posting jkl012</a><div>Stand-in employer</div></li>
 <li><a href="?jk=abc123">Stand-in posting abc123</a><div>Stand-in employer</div></li>
+<li><a href="?from=serp&amp;jk=abc123">Stand-in header abc123</a></li>
+<li><a href="?jk=abc123&amp;start=10">Stand-in next page</a></li>
 </ul>
 </body></html>
