@@ -33,7 +33,7 @@ export const DRAWERS = {
   learned: {title: t('pagesCommon.learned'), lead: t('pagesAuditThird.a148'), skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: t('pagesExtraLabels.saveChange'),
     done: t('pagesExtraLabels.nothingCheck'), doneText: t('pagesAuditThird.a149')},
 };
-const state = {open: false, scope: null, onClose: null, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
+const state = {open: false, scope: null, readFailed: false, onClose: null, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
 const drafts = new Map();
 try { for (const [key, value] of Object.entries(JSON.parse(localStorage.getItem(DRAFTS) || '{}'))) drafts.set(key, String(value)); } catch {}
 const keepDrafts = () => { try { localStorage.setItem(DRAFTS, JSON.stringify(Object.fromEntries(drafts))); } catch {} };
@@ -204,9 +204,15 @@ async function answer(q, value) {
   state.saved = value ? t('pagesDynamicProfileReady.m307', {"value1": result.homeName || t('pagesCommon.learned')}) : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
-  if (state.scope && !state.queue.length) await loadQuestions({force: true});   // the finish card counts the other open questions: read them without this answer
+  // The finish card counts the other open questions: read them without this answer. Why (15 Nov 2026, #4424/#4425 Gitar): a failed read is logged and named on the card,
+  // which then offers only Back (it reads the job's check again), never Continue from a list that still holds the answered question.
+  if (state.scope && !state.queue.length) state.readFailed = !(await loadQuestions({force: true}).then(() => true, readFailed));
   draw();
-  loadQuestions({force: true});   // Jobs' card counts again
+  if (!state.readFailed) loadQuestions({force: true}).catch(readFailed);   // Jobs' card counts again
+}
+function readFailed(error) {
+  window.pilot?.uiLog?.('questions: the re-read after an answer failed', String(error?.message || error).slice(0, 200));
+  return false;
 }
 
 // A job's scope spans both drawers (Fix all: its details, then its questions): with the open one done, the other drawer's items of this job follow; false when none is left.
@@ -225,7 +231,7 @@ function otherDrawer() {
 // Why (14 Nov 2026, #4325, owner: "When it finishes, the user should have 2 options: return back to the job apply readiness, or continue with other (general) questions in the queue" · "if he chooses the 2nd, then we bring the global pool of questions"): Back closes (the opener's onClose reads the check again); Continue drops the scope, so the normal ranked queue shows every open question.
 function finishCard() {
   const actions = [button(t('pagesReadinessTab.backToJob'), () => closeQuestionReview(), 'primary')];
-  if ((questionsNow()[state.kind] || []).length) {
+  if (!state.readFailed && (questionsNow()[state.kind] || []).length) {
     actions.push(button(t('pagesReadinessTab.continueOthers'), () => {
       state.scope = null;
       Object.assign(state, listOf(questionsNow(), state.kind));
@@ -234,7 +240,7 @@ function finishCard() {
       draw();
     }, 'secondary'));
   }
-  return el('div', 'jd-body qr-body', stateCard({icon: 'check', tone: 'good', title: t('pagesReadinessTab.jobDone'), text: t('pagesReadinessTab.jobDoneText'), actions}));
+  return el('div', 'jd-body qr-body', stateCard({icon: 'check', tone: 'good', title: t('pagesReadinessTab.jobDone'), text: t(state.readFailed ? 'pagesReadinessTab.jobDoneUnread' : 'pagesReadinessTab.jobDoneText'), actions}));
 }
 
 export function draw() {
@@ -280,6 +286,7 @@ export async function openQuestionReview({force = false, start = '', queue = 'de
   state.open = true;
   state.onClose = onClose;
   state.scope = jobKeys?.length ? new Set(jobKeys) : null;
+  state.readFailed = false;
   $('review-drawer-layer').hidden = false;
   let now = questionsNow();
   // The questions saved last time (Jobs' card shows them from this computer) open the drawer at once; the store's answer replaces them when it arrives.
