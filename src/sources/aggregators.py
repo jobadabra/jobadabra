@@ -314,7 +314,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
         with stage.guard('free job APIs: read') as caught:   # Why (lanes 3/5, 11 Nov 2026): any error of one reader is that source failing, never the run (a RuntimeError ended it)
             try:
                 found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately)
-            except _Cut:   # still reading at the read cut: not marked read, the next search takes it
+            except (_Cut, host_pace.NotAsked):   # still reading at the read cut, or nothing asked: not marked read, the next search takes it
                 late.append(name)
                 continue
             except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
@@ -352,7 +352,10 @@ def keep_late(db, search, lane, on_jobs, until, now=None):
     now, jobs = now or time_budget.wall(), []
     for name in [name for name in lane.reads if name not in lane.taken]:
         with stage.guard('free job APIs: late read') as caught:
-            taken = lane.take(name, until)
+            try:
+                taken = lane.take(name, until)
+            except host_pace.NotAsked:   # no answer from its site: not marked read, the next search asks again
+                continue
             if taken is None:   # still reading: the run ends first, the next search asks again
                 continue
             found, views = taken

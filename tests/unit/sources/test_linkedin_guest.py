@@ -206,7 +206,8 @@ class GuestTest(unittest.TestCase):
         with self.assertRaises(linkedin_guest.Later):
             linkedin_guest.description(urls[6])
         linkedin_guest.reset()   # the next press: a new process, the same computer
-        self.assertEqual(linkedin_guest.read(SEARCH), [])
+        with self.assertRaises(host_pace.NotAsked):   # nothing asked: not counted as read, so LinkedIn does not rest 6 h (14 Nov 2026)
+            linkedin_guest.read(SEARCH)
         self.assertIn(linkedin_guest.WINDOW_FULL, self.said(), 'said, not a stop: no pause')
         self.assertNotIn(linkedin_guest.SLOW_DOWN, self.said())
         self.assertEqual(len(site.requests), linkedin_guest.WINDOW_MAX, 'nothing sent past the window')
@@ -230,8 +231,8 @@ class GuestTest(unittest.TestCase):
         def other_press_fills_the_window(seconds):   # during this press's gap, another process sends the rest of the window
             self.clock[0] += seconds
             linkedin_guest.FILE.write_text('{"sent": [%s]}' % ', '.join(str(self.clock[0] - n) for n in range(linkedin_guest.WINDOW_MAX)))
-        with mock.patch.object(linkedin_guest, '_sleep', side_effect=other_press_fills_the_window):
-            self.assertEqual(linkedin_guest.read(SEARCH), [])
+        with mock.patch.object(linkedin_guest, '_sleep', side_effect=other_press_fills_the_window), self.assertRaises(host_pace.NotAsked):
+            linkedin_guest.read(SEARCH)
         self.assertEqual(len(site.requests), asked, 'nothing sent: the window filled while this press waited')
         self.assertIn(linkedin_guest.WINDOW_FULL, self.said())
 
