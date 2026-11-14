@@ -8,7 +8,8 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from src.sources import aggregators, board_reader, board_web, boards_ahead, boards_first
+from src.ai import slots
+from src.sources import aggregators, board_reader, board_web, boards_ahead, boards_first, read_budget
 from tests.unit.sources import test_boards_first as fixture   # the module, not its OldState class: its own tests run in their own file
 from tests.unit.sources.test_boards_first import SEARCH, FakeClient, fetch, setUpModule, tearDownModule  # noqa: F401 (the page reader stays off)
 
@@ -62,8 +63,10 @@ class BoardReaderTest(unittest.TestCase):
             today = boards_first.Beside(SEARCH).take(self.db, lambda jobs: None)
             searching.exception(timeout=10)
         self.setUp()   # the same old state again: a fresh job cache, no board read early
-        self.assertEqual([job['url'] for job in listed_then_kept(self.db)], [job['url'] for job in today])
-        self.assertEqual(len(today), 14)
+        with slots.in_lane(read_budget.run_end()):   # read where the lane reads: in it, a board's slice goes on to its next pages (board_pages.held, ab 14 Nov 2026)
+            again = listed_then_kept(self.db)
+        self.assertEqual([job['url'] for job in again], [job['url'] for job in today])
+        self.assertEqual(len(today), 17, "the two boards' 14 first-page jobs and the 3 more cv-board gives once its read goes on")
 
     def test_the_full_read_is_one_group_of_the_found_boards(self):
         calls = []
