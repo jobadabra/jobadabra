@@ -12,8 +12,19 @@ from pathlib import Path
 from unittest import mock
 
 from src import hosted_run, time_budget
-from src.sources import aggregators, api_lane, host_pace, linkedin_guest, linkedin_turn, page_bytes, read_budget
+from src.sources import aggregators, api_lane, careers, host_pace, linkedin_guest, linkedin_turn, page_bytes, read_budget
 from tests.unit.sources.test_linkedin_guest import CARDS, Site
+
+_READER = careers.READER
+
+
+def setUpModule():   # the scan below reaches no real model's page reader (tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
+
 
 URL = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=sre&location=Geneva&start=0'
 CLOUD = {linkedin_turn.TURN: 'https://site.example', 'JOBADABRA_RUN_TOKEN': 'HR1.run.mac'}
