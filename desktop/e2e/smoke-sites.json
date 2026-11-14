@@ -635,6 +635,27 @@
     "https://www.sonova.com/careers"
    ],
    "signature": "other>posting>other>posting@www.sonova.com#posting"
+  },
+  {
+   "shape": "Discovery: join.pmicareers.com",
+   "urls": [
+    "https://join.pmicareers.com/gb/en/job/31908/Financial-Accounting-Planning-Sr-Specialist"
+   ],
+   "signature": "the>form>posting@join.pmicareers.com#form"
+  },
+  {
+   "shape": "Discovery: careers.chaos.com",
+   "urls": [
+    "https://careers.chaos.com/o/senior-accountant-mfd-4"
+   ],
+   "signature": "posting>form>posting>form@careers.chaos.com#form"
+  },
+  {
+   "shape": "Discovery: careers.gudel.com",
+   "urls": [
+    "https://careers.gudel.com/job/Langenthal-Senior-Accountant-%28mwd%29/1429998633/"
+   ],
+   "signature": "posting>account>posting>account>posting>account>posting>account@career5.successfactors.eu#form"
   }
  ]
 }
