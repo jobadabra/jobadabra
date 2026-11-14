@@ -107,18 +107,18 @@ def _titles(waiting):
     Each batch's answers reach the shared title store as it lands (title_triage's land), so a cut pass keeps them."""
     from .. import features
     from ..ai import engine, providers, title_triage
-    from ..ai.providers.contract import reason
+    from ..press import stage
     from . import feeds
     titles = [job['title'] for job in waiting if job.get('title')]
     if not titles or features.disabled('title_triage') or not engine.ready():
         return
     store = feeds._triaged()   # read in this thread: the batches land in title_triage's own
     store[feeds.ASKED] = True
-    try:
+    with stage.guard('board pass titles') as caught:   # not sorted in the search: the queue after it asks them, said and counted
         store.update(title_triage.decide(titles, feeds._SEARCH, local=[job['title'] for job in waiting if feeds.in_my_place(job)],
                                          land=lambda fit, batch: store.update({title: title in fit for title in batch})))
-    except Exception as error:  # noqa: BLE001 — not sorted in the search: the queue after it asks them, said
-        print(f'Warning: the board pass did not sort its titles with {providers.who()} ({reason(error)}): the queue after the search asks them', flush=True)
+    if caught:
+        print(f'Warning: the board pass did not sort its titles with {providers.who()} ({caught.reason}): the queue after the search asks them', flush=True)
 
 
 def _where(job):
