@@ -37,8 +37,17 @@ MAX_LOCAL = 999    # the site's cap on `local` (jobadabra-web api/ci-boards.js M
 
 
 def person_of(folder):
-    """The profile id a run folder belongs to (`search-profile-c04`, `c04--main-1`, `c04`), or None when its name says no person."""
+    """The profile id a run folder belongs to: its name (`search-profile-c04`, `c04--main-1`, `c04`), else the `id` of its own row.json (profiles.py row), else None.
+    Why (14 Nov 2026, rp, run 43600783345): download-artifact puts a run of ONE profile straight into `results/`, so the name says no person and the share told 0 boards of 3 read; the row names the person
+    whatever the downloader calls the folder."""
     found = FOLDER.match(Path(folder).name)
+    if found:
+        return found.group(1)
+    try:
+        who = json.loads((Path(folder) / 'row.json').read_text(encoding='utf-8')).get('id')
+    except (OSError, ValueError, AttributeError):
+        return None
+    found = FOLDER.match(who) if isinstance(who, str) else None
     return found.group(1) if found else None
 
 
