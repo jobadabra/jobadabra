@@ -50,6 +50,7 @@ class Beside:
         self.count, self.left = threading.Lock(), len(reads)
         self.urls = set()   # the links handed board by board: a list that returns copies of them hands none twice
         self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
+        self.read = []   # every job the lane put, in the order read: the last judging pass asks about the ones still owed an answer (last_pass)
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
         for thread in self.threads:
@@ -109,10 +110,17 @@ class Beside:
             self._put(rest)
 
     def _put(self, found):
+        from . import boards_ahead, feeds, job_stage
+        with self.count:
+            self.read += found
+        job_stage.say_read(boards_ahead.NAME, found)   # the stage log's line per job read, before any filter
+        feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)
+        self._queue(found)
+
+    def _queue(self, found):
+        """`found` to be kept and shown by the thread that owns the job cache (deliver), with a copy of the answers this thread sees."""
         import copy
         from ..ai import batch_scope
-        from . import feeds
-        feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)
         self.groups.put((found, copy.deepcopy(batch_scope.current())))
         self.arrived.set()
         self._notify()
@@ -168,6 +176,30 @@ class Beside:
                 break
         self.deliver(feed_db, on_jobs)
         return self._in_list_order(self.matched)
+
+    def last_pass(self, feed_db, on_jobs):
+        """The run's last hand-over (daily_search.keep_late_boards), in the thread that owns the job cache: the groups that land by the pass's time
+        (read_budget.pass_at) kept and shown; then every job the lane read that the AI still owes an answer placed and title-judged in this search
+        (src/sources/board_pass.py) and kept again, the ones both answers say yes to listed and taken off the queue's list; then the groups of the
+        reads still open, to the run's end, which wait for the queue after the search as before.
+        Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; L05: "Yes, stop new reads then (Recommended)")."""
+        from . import board_pass, read_budget, waiting_jobs
+        at, end = read_budget.pass_at(), read_budget.run_end()
+        if at is not None and not self.done.is_set() and read_budget.seconds_left(at):
+            self.take(feed_db, on_jobs, until=at)
+        self.deliver(feed_db, on_jobs)
+        with self.count:
+            read = list(self.read)
+        answered = board_pass.judge(read)
+        if answered:
+            before = {id(item) for item in self.matched}
+            self._queue(answered)
+            self.deliver(feed_db, on_jobs)
+            waiting_jobs.listed(feed_db, [item.get('url') for item in self.matched if id(item) not in before])
+        if end is not None and not self.done.is_set() and read_budget.seconds_left(end):
+            print("Job boards: still being read; the search waits for them to its own end", flush=True)
+            self.take(feed_db, on_jobs, until=end)
+        self.deliver(feed_db, on_jobs)
 
     def _in_list_order(self, matched):
         """`matched` in the order the boards' groups list their jobs, whichever board ended first; jobs of a group still being read, or of
