@@ -19,14 +19,14 @@ class GhRestLogTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         (self.tmp / 'real').mkdir()
         fake = self.tmp / 'real' / 'gh'
-        fake.write_text('#!/bin/sh\nprintf "%s" "$FAKE_OUT"\nexit "${FAKE_RC:-0}"\n')
+        fake.write_text('#!/bin/sh\nsleep "${FAKE_SLEEP:-0}"\nprintf "%s" "$FAKE_OUT"\nexit "${FAKE_RC:-0}"\n')
         fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
         self.log = self.tmp / 'rest.log'
 
-    def gh(self, *args, out='', rc=0):
+    def gh(self, *args, out='', rc=0, sleep=0, timeout=60):
         env = {**os.environ, 'PATH': f'{ROOT / "tools" / "bin"}{os.pathsep}{self.tmp / "real"}{os.pathsep}{os.environ["PATH"]}', 'GH_REST_LOG': str(self.log),
-               'GH_GRAPHQL_LOG': 'off', 'FAKE_OUT': out, 'FAKE_RC': str(rc), 'JOBADABRA_SESSION': 'sess-x'}
-        return subprocess.run(['gh', *args], env=env, capture_output=True, timeout=60)  # bytes: \r\n must survive
+               'GH_GRAPHQL_LOG': 'off', 'FAKE_OUT': out, 'FAKE_RC': str(rc), 'FAKE_SLEEP': str(sleep), 'JOBADABRA_SESSION': 'sess-x'}
+        return subprocess.run(['gh', *args], env=env, capture_output=True, timeout=timeout)  # bytes: \r\n must survive
 
     def rows(self):
         return [line.split('\t') for line in self.log.read_text().splitlines()] if self.log.exists() else []
@@ -35,14 +35,15 @@ class GhRestLogTest(unittest.TestCase):
         out = 'HTTP/2.0 304 Not Modified\r\nEtag: "x"\r\n\r\n'
         done = self.gh('api', '-i', '-H', 'If-None-Match: "x"', 'repos/jobadabra/jobadabra/commits/' + 'a' * 40 + '/status?per_page=1', out=out, rc=1)
         self.assertEqual((done.returncode, done.stdout), (1, out.encode()), 'before the shim held the output: same bytes, same exit code')
-        (row,) = self.rows()
+        row = self.rows()[-1]  # the provisional line comes first, the result last
         self.assertEqual((row[1], row[4], row[5]), ('sess-x', 'api repos/o/r/commits/S/status', '304'))
+        self.assertTrue(row[6], 'a held call carries its call id')
 
     def test_a_200_and_a_call_without_headers_are_spent_and_a_graphql_call_is_not_logged_here(self):
         self.gh('api', '-i', 'repos/o/r/pulls/7', out='HTTP/2.0 200 OK\r\n\r\n{}')
         self.gh('api', 'repos/o/r/pulls/7/comments', '--jq', '.[0]', out='[]')
         self.gh('api', 'graphql', '-f', 'query=x', out='{}')
-        self.assertEqual([(r[4], r[5]) for r in self.rows()], [('api repos/o/r/pulls/N', '200'), ('api repos/o/r/pulls/N/comments', '-')])
+        self.assertEqual([(r[4], r[5]) for r in self.rows()], [('api repos/o/r/pulls/N', '?'), ('api repos/o/r/pulls/N', '200'), ('api repos/o/r/pulls/N/comments', '-')])
 
     def test_off_logs_nothing_and_the_report_counts_a_304_as_free(self):
         self.gh('api', '-i', 'repos/o/r/pulls/7', out='HTTP/2.0 304 Not Modified\r\n\r\n', rc=1)
@@ -55,6 +56,30 @@ class GhRestLogTest(unittest.TestCase):
         env2 = {**os.environ, 'PATH': f'{ROOT / "tools" / "bin"}{os.pathsep}{self.tmp / "real"}{os.pathsep}{os.environ["PATH"]}', 'GH_REST_LOG': 'off', 'GH_GRAPHQL_LOG': 'off', 'FAKE_OUT': 'x'}
         subprocess.run(['gh', 'api', 'repos/o/r'], env=env2, capture_output=True, timeout=60)
         self.assertFalse(self.log.exists())
+
+    def report(self, *args):
+        return subprocess.run(['bash', str(ROOT / 'tools' / 'gh-rest-report.sh'), *args], env={**os.environ, 'GH_REST_LOG': str(self.log)}, capture_output=True, text=True, timeout=60)
+
+    def test_a_held_call_killed_before_gh_returns_is_still_counted_and_a_call_without_a_status_line_logs_a_dash(self):
+        """Gitar on #4151: the line was written only after gh returned, so a timed-out call (the slow ones) was missing; an empty status broke the format."""
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.gh('api', '-i', 'repos/o/r/pulls/7', out='HTTP/2.0 200 OK\r\n', sleep=5, timeout=1)
+        self.assertEqual([(r[4], r[5]) for r in self.rows()], [('api repos/o/r/pulls/N', '?')])
+        self.assertRegex(self.report('1').stdout, r'1 REST calls spent')
+        self.gh('api', '-i', 'repos/o/r/pulls/8', out='partial', rc=4)
+        self.assertEqual(self.rows()[-1][5], '-')
+
+    def test_a_returned_held_call_counts_once_not_twice(self):
+        self.gh('api', '-i', 'repos/o/r/pulls/7', out='HTTP/2.0 200 OK\r\n\r\n{}')
+        self.assertEqual(len(self.rows()), 2, 'a provisional line, then the result with the same call id')
+        self.assertRegex(self.report('1').stdout, r'1 REST calls spent')
+
+    def test_the_report_refuses_hours_that_are_not_a_whole_number(self):
+        self.gh('api', 'repos/o/r/pulls/7', out='{}')
+        for bad in ('abc', '0.5', '0'):
+            done = self.report(bad)
+            self.assertEqual(done.returncode, 2, bad)
+            self.assertIn('whole number', done.stderr)
 
 
 if __name__ == '__main__':
