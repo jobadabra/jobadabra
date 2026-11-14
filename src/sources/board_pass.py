@@ -1,5 +1,5 @@
 """Standalone board-job judging and accounting; the production search does not call this module yet.
-Part 3b prepares the hand-over consumer of judge/listable/settled/Done.report; part 4 starts and connects production work.
+Part 3c prepares the hand-over consumer of judge/listable/settled/Done.report; part 4 starts and connects production work.
 The direct judge API uses owed, _titles, _say and the merged clock/answer hooks; _where/_host serve counts.
 Why (14 Nov 2026, owner): part 3a isolates judging after part 2's hooks; hand-over and activation stay separate.
 """
