@@ -215,8 +215,14 @@ test('CI: a page another CI search read today is reused from its jobs (cards): n
   assert.equal(begun(), 0, 'the day share is not spent');
   assert.ok(!tabCalls.includes('Page.navigate'), 'no request to the board');
   assert.deepEqual(outcomes.map(page => [page.url, page.html, page.cards]), [[b.url, '', cards]]);
-  assert.equal(result.jobs, 1);
-  assert.match(lines.join('\n'), /another CI search read today, nothing sent/);
+  assert.deepEqual([result.jobs, result.reused, result.of], [1, 1, 0], 'counted as reused, not as a board opened');
+  assert.match(lines.join('\n'), /Board 1: 1 job\(s\) from the read another CI search made today, nothing sent/);
+});
+
+test('Gitar on #4307: a reuse that keeps no job says so and names whose read it was', async () => {
+  const b = board(1), cards = [{title: 'Nurse', url: 'https://board1.example.net/job/1'}];
+  const {lines} = await run([b], {}, {ask: async () => ({go: false, cards, from: 'pair#7'}), outcomeFor: () => ({ok: true, state: 'empty', jobs: 0})});
+  assert.match(lines.join('\n'), /Board 1: no job from the read another CI search made today \(pair#7\), nothing sent/);
 });
 
 test('Gitar on #4303: shared jobs the engine gave no answer for are said as such, never as a plain skip, and nothing is counted', async () => {

@@ -4,14 +4,12 @@
 // The app never loads this file: its own limits are src/sources/refused_reads.py. No answer from the broker is a skip: CI never reads a refusing page on a guess.
 import {BROKER_URL, runToken} from '../../desktop/e2e/lib/broker-client.mjs';
 
-/** How long a search waits for another CI search still reading the same page (a pair's other side), asking again every WAIT_STEP_MS. */
-export const WAIT_READING_MS = 45_000;
-export const WAIT_STEP_MS = 3_000;
 const SKIP = {
   stopped: 'turned CI\'s browser away before, so no CI search opens it again',
   waiting: 'asked CI to slow down today; not opened again until tomorrow (UTC)',
   'host-full': 'this site\'s daily reads are used: nothing more is sent to it today',
-  reading: 'another CI search is still reading this page; not opened twice',
+  // Why (owner, 14 Nov 2026, asked via AskUserQuestion after Gitar's 3rd round: "No wait, skip (Recommended)"): no wait for another search's read, so the press's 3 minutes hold
+  reading: 'another CI search is reading this page right now; not opened twice, not waited for',
 };
 
 /** A kept job ({title, url, company, place, date}) as a card the engine reads (src/sources/visits_read.py _from_cards: title, url, its named place, company and date). */
@@ -37,19 +35,15 @@ export async function brokerPost(env = process.env, fetchImpl = fetch) {
  * told(item, answer): the engine's answer after a read (refused_reads.outcome) -> the mark: read/empty = opened with its listing, stopped, waiting; else nothing (the page stays
  * reading for the day: nobody asks again).
  */
-export function markSeams(post, {ci = true, sleep = (ms, signal) => new Promise(resolve => { if (signal?.aborted) return resolve(); const t = setTimeout(resolve, ms); signal?.addEventListener('abort', () => { clearTimeout(t); resolve(); }, {once: true}); }), now = Date.now} = {}) {
+export function markSeams(post, {ci = true} = {}) {
   const ask = async (item, signal) => {
     if (!post) return ci ? {go: false, why: 'no shared CI mark in this run (no GitHub run token): not opened'} : {go: true};
-    const until = now() + WAIT_READING_MS;
-    for (;;) {
-      if (signal?.aborted) return {go: false, why: 'stopped before the shared CI mark was asked: not opened'};
-      const {status, json} = await post({op: 'reserve', page: item.url}).catch(() => ({status: 0, json: {}}));
-      if (status !== 200) return {go: false, why: `the shared CI mark did not answer (HTTP ${status}): not opened`};
-      if (json.go === true) return {go: true};
-      if (json.state === 'opened') return {go: false, cards: (json.jobs || []).map(toCard), from: json.read_by};
-      if (json.state !== 'reading' || now() >= until || signal?.aborted) return {go: false, why: SKIP[json.state] || `not opened (${json.state || 'no state'})`};
-      await sleep(WAIT_STEP_MS, signal);
-    }
+    if (signal?.aborted) return {go: false, why: 'stopped before the shared CI mark was asked: not opened'};
+    const {status, json} = await post({op: 'reserve', page: item.url}).catch(() => ({status: 0, json: {}}));
+    if (status !== 200) return {go: false, why: `the shared CI mark did not answer (HTTP ${status}): not opened`};
+    if (json.go === true) return {go: true};
+    if (json.state === 'opened') return {go: false, cards: (json.jobs || []).map(toCard), from: json.read_by};
+    return {go: false, why: SKIP[json.state] || `not opened (${json.state || 'no state'})`};
   };
   const told = async (item, answer) => {
     if (!post) return;

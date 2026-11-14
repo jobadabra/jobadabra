@@ -2,7 +2,7 @@
 // CI's side of the broker's board mark (tools/persona-search/board-mark.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)", "For good (Recommended)").
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {markSeams, toCard, WAIT_READING_MS} from '../../../../tools/persona-search/board-mark.mjs';
+import {markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
 
 const item = {url: 'https://www.trans.bg/search?q=driver', name: 'TRANS.BG', kind: 'board'};
 const job = {title: 'Шофьор', url: 'https://www.trans.bg/job/1', company: 'Acme', place: 'София', date: '2026-11-13'};
@@ -14,6 +14,7 @@ test('only a go opens the page; every other answer of the mark is a skip with it
     [{go: false, state: 'stopped'}, /turned CI's browser away before/],
     [{go: false, state: 'waiting'}, /slow down/],
     [{go: false, state: 'host-full'}, /daily reads are used/],
+    [{go: false, state: 'reading'}, /reading this page right now; not opened twice, not waited for/],
     [{go: false, state: 'something new'}, /not opened/],
   ]) {
     const {post} = answers([{status: 200, json}]);
@@ -34,17 +35,10 @@ test('no answer from the mark is never a read: a failed call, a non-200 and a CI
   assert.deepEqual(await markSeams(null, {ci: false}).ask(item), {go: true}, 'on the owner\'s Mac, one install: the app\'s own limits');
 });
 
-test('a page another CI search is still reading is waited for (a pair\'s other side), then reused; past the wait it is skipped, never opened', async () => {
-  let t = 0;
-  const clock = {now: () => t, sleep: async ms => { t += ms; }};
-  const {post, sent} = answers([{status: 200, json: {go: false, state: 'reading'}}, {status: 200, json: {go: false, state: 'reading'}}, {status: 200, json: {go: false, state: 'opened', jobs: [job]}}]);
-  assert.equal((await markSeams(post, clock).ask(item)).cards.length, 1);
-  assert.equal(sent.length, 3);
-  t = 0;
-  const still = answers([{status: 200, json: {go: false, state: 'reading'}}]);
-  const verdict = await markSeams(still.post, clock).ask(item);
-  assert.equal(verdict.go, false); assert.match(verdict.why, /still reading/);
-  assert.ok(t >= WAIT_READING_MS);
+test('a page another CI search is reading is skipped at once, asked once, never waited for (owner, 14 Nov 2026: "No wait, skip")', async () => {
+  const {post, sent} = answers([{status: 200, json: {go: false, state: 'reading'}}]);
+  const verdict = await markSeams(post).ask(item);
+  assert.equal(verdict.go, false); assert.equal(sent.length, 1);
 });
 
 test('after a read the mark is told how it ended: jobs as opened, a stop or a 429 as such, anything else not at all (the page stays reading)', async () => {
@@ -61,15 +55,9 @@ test('after a read the mark is told how it ended: jobs as opened, a stop or a 42
   ]);
 });
 
-test('Gitar on #4306: a Stop before the ask sends nothing; a Stop during the wait ends it without a 3 s nap', async () => {
+test('Gitar on #4306: a Stop before the ask sends nothing', async () => {
   const stop = new AbortController(); stop.abort();
   const {post, sent} = answers([{status: 200, json: {go: true}}]);
   assert.equal((await markSeams(post).ask(item, stop.signal)).go, false);
   assert.equal(sent.length, 0);
-  const started = Date.now();
-  await markSeams(post).ask.call(null, item, undefined);   // a plain go still goes
-  const later = new AbortController(), reading = answers([{status: 200, json: {go: false, state: 'reading'}}]);
-  setTimeout(() => later.abort(), 50);
-  const verdict = await markSeams(reading.post).ask(item, later.signal);
-  assert.equal(verdict.go, false); assert.ok(Date.now() - started < 2000, 'ended at the Stop, not after the 3 s step');
 });
