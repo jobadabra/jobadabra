@@ -50,8 +50,7 @@ export function loginOf(storage, {now = Date.now} = {}) {
 const moveLogin = (storage, state, {now = Date.now} = {}) => save(storage, {login: {state, at: now()}});   // 'none' is written, not dropped: with no `login` an older install reads from `on`
 /** True while a sign-in is kept (renderer/apply-settings-model.js linkedinSignedIn, the one rule). */
 export const signedIn = storage => linkedinSignedIn(storage.settings());
-/** True while LinkedIn jobs is on AND a sign-in is kept: the one reading the headless read starts from. A lost sign-in leaves the switch on but inactive (renderer/apply-settings-model.js linkedinLost). */
-export const active = storage => state(storage).on && !linkedinLost(storage.settings());
+
 
 /**
  * Store the copied session in the Keychain. It turns no switch on: the press that asked turns its own switch on once the sign-in is kept (the window's lib/linkedin-handlers.js,
@@ -164,9 +163,10 @@ export function nextSignin(prev, verdict) {
  * -> {event, why}: 'needs-you' (this press ended in Needs you: raise the notice, again at every such press), 'renewed' (Needs you, then a read that worked), or null; always null while the switch is off.
  */
 export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}, {log = appLog} = {}) {
-  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = inUse(storage);   // Gitar on #4395: an Easy-Apply-only sign-in has verdicts too
+  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = inUse(storage), lost = linkedinLost(storage.settings());   // Gitar on #4395: an Easy-Apply-only sign-in has verdicts too
   const ended = live && ENDED_BY_LINKEDIN.has(String(verdict)) ? endedAfter(storage, at) : null;
-  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live ? {signin: next} : {}), ...(ended ? {keptAt: undefined} : {})});
+  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live && !lost ? {signin: next} : {}),   // Why (Gitar on #4419): a lost sign-in is the derived state (linkedinLost); no stored verdict is written for it, so a renewal leaves nothing stale
+    ...(ended ? {keptAt: undefined} : {})});
   if (ended) log('linkedin-jobs', 'sign-in ended by LinkedIn', {why: String(verdict), hours: ended.hours});
   if (!live) return {event: null, why: ''};
   if (verdict === 'done' && prev.state === 'needs-you') return {event: 'renewed', why: ''};

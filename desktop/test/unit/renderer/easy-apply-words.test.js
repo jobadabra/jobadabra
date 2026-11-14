@@ -55,3 +55,12 @@ test('a lost sign-in: the row is inactive and says so, ⌘K offers Renew, a pres
   assert.equal(rowOf(view({signedIn: false})).lost, false, 'a switch that was off stays off, not lost');
   assert.equal(commandOf(view(), () => {}).label, 'Turn on LinkedIn Easy Apply');
 });
+
+// Gitar on #4419: the Settings card is the one place a lost Easy Apply is seen; its Renew button comes from needsYou and its click opens the Easy Apply flow (which goes to the sign-in first).
+test('Settings: a lost Easy Apply is a needsYou card whose button is Renew and opens the Easy Apply flow', () => {
+  const page = readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8');
+  assert.match(page, /needsYou: \{'linkedin-jobs': !!needs, 'linkedin-easy-apply': easyApplyRow\(easyApplyView\)\.lost\}/, 'the row\'s lost state marks the card');
+  assert.match(page, /needsYou \? .Renew./, 'the button reads Renew while a card needs you');
+  assert.match(page, /service\.id === 'linkedin-easy-apply' \? openEasyApply\(\)/, 'its click opens the Easy Apply flow');
+  assert.equal(nextStep(view({on: false, lost: true, signedIn: false})), 'linkedin-first', 'which goes to the sign-in first');
+});

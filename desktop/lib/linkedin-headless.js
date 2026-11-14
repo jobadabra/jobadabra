@@ -57,7 +57,7 @@ export function endOf(result, seen, signal) {
 // Every gate before anything is started; -> {state, jobs} to stop here, or {session} to go on.
 function gate({storage, browser, signal, now, readSession}) {
   if (!realSession.state(storage).on) return {state: 'off', jobs: 0, quiet: true};
-  if (!realSession.active(storage)) return {state: 'no-session', jobs: 0};   // on, but its sign-in was lost: inactive until renewed, nothing is opened
+  if (!realSession.signedIn(storage)) return {state: 'no-session', jobs: 0};   // on, but its sign-in was lost: inactive until renewed, nothing is opened
   if (signal?.aborted) return {state: 'stopped', jobs: 0};
   if (realSession.pausedUntil(storage) > now()) return {state: 'limited', jobs: 0};
   const session = readSession();

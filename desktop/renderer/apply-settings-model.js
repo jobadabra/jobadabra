@@ -74,9 +74,11 @@ export const easyApplyOn = settings => settings?.easyApply?.on === true && linke
  * True for a switch that is saved on while no sign-in is kept: it stays on but is inactive until the sign-in is renewed (owner, 14 Nov 2026: "Lost sign-in, means they are not active anymore ... Renew sign in bring the one on back to on and active";
  * a switch that was off stays off). No stored flag: it is the saved switch AND the one sign-in state, so a renewal brings it back with nothing else to undo. Read by lib/linkedin-session.js and lib/easy-apply-switch.js too.
  */
-export const linkedinLost = settings => settings?.linkedinJobs?.on === true && !linkedinSignedIn(settings);
+const lostOf = (settings, on) => on === true && !linkedinSignedIn(settings);   // the one rule for both switches (Gitar on #4419)
+/** True when LinkedIn jobs is saved on and no sign-in is kept: on but inactive until renewed. Reads `settings.linkedinJobs.on` and the one sign-in state; false for a switch that was off. */
+export const linkedinLost = settings => lostOf(settings, settings?.linkedinJobs?.on);
 /** True when Easy Apply is saved on and no sign-in is kept: on but inactive until renewed. Same rule as `linkedinLost`; reads `settings.easyApply.on` and the one sign-in state; false for a switch that was off. */
-export const easyApplyLost = settings => settings?.easyApply?.on === true && !linkedinSignedIn(settings);
+export const easyApplyLost = settings => lostOf(settings, settings?.easyApply?.on);
 /**
  * True when the Full automation confirmation must also carry the LinkedIn line: Easy Apply is on and the saved confirmation has no "LinkedIn may send" yes yet.
  * Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"; D1 "Follow the Apply mode (Recommended)"): LinkedIn sends only after its own yes,
