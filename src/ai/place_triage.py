@@ -79,7 +79,8 @@ def _key(search):
 
 
 def norm(location):
-    return ' '.join(str(location or '').lower().split())[:120]
+    from .. import geo
+    return geo.norm(location)   # one key width for the map and the place answers (geo.KEY_WIDTH)
 
 
 def _load():
