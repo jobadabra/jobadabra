@@ -17,6 +17,9 @@ PLACES = {
     'münchen, germany; nürnberg, germany; augsburg, germany': ('city', 'DE', 48.137, 11.576, 25),   # what the map answered for a list in the b08 replay: its first city
     'bielefeld, germany; bochum, germany': ('city', 'DE', 52.02, 8.53, 15), 'bielefeld, germany': ('city', 'DE', 52.02, 8.53, 15), 'bochum, germany': ('city', 'DE', 51.48, 7.22, 12),
     'bochum, germany;': ('city', 'DE', 51.48, 7.22, 12),   # a stray ';' names one place
+    'bonn, germany': ('city', 'DE', 50.73, 7.1, 15), 'bremen, germany': ('city', 'DE', 53.08, 8.8, 15), 'dresden, germany': ('city', 'DE', 51.05, 13.74, 15),
+    'duisburg, germany': ('city', 'DE', 51.43, 6.76, 12), 'hannover, germany': ('city', 'DE', 52.37, 9.73, 15), 'mannheim, germany': ('city', 'DE', 49.49, 8.47, 12),
+    'wuppertal, germany': ('city', 'DE', 51.26, 7.15, 12),
     'germany': ('country', 'DE', None, None, None), 'remote - emea': ('remote', '', None, None, None), 'bogus': ('city', 'XX', 91.0, 8.0, 10)}
 
 
@@ -144,11 +147,23 @@ class TriageTests(unittest.TestCase):
         with mock.patch.dict(feeds.placed(), {geo.norm(listed): got[geo.norm(listed)]}, clear=False):
             self.assertTrue(feeds.wanted_location({'location': listed, 'title': 'x'}))
 
+    def test_a_long_list_of_places_still_names_the_one_that_is_yours(self):
+        """b08 replay (14 Nov 2026): a 181-character list "Bielefeld, …, Nürnberg, …, Wuppertal" was cut at 120 characters (KEY_WIDTH then), the city yours was never seen and the job
+        was closed on every side. The real string, the real wanted_location."""
+        from src.sources import feeds
+        listed = ('Bielefeld, Germany; Bochum, Germany; Bonn, Germany; Bremen, Germany; Dresden, Germany; Duisburg, Germany; Hannover, Germany; '
+                  'Mannheim, Germany; Nürnberg, Germany; Wuppertal, Germany')
+        self.assertGreater(len(listed), 120)
+        got = geo.verdicts([listed], {'best_places': ['nürnberg'], 'anywhere_in': [], 'cities_abroad': []}, Client())
+        self.assertEqual(got.get(geo.norm(listed)), 'best')
+        with mock.patch.dict(feeds.placed(), {geo.norm(listed): got[geo.norm(listed)]}, clear=False):
+            self.assertTrue(feeds.wanted_location({'location': listed, 'title': 'x'}))
+
     def test_the_edges_of_a_list_of_places(self):
-        """Each branch of the part-by-part answer: a stray ';' is one place (decided whole, as before), a key cut at 120 characters is never 'out', a part the
+        """Each branch of the part-by-part answer: a stray ';' is one place (decided whole, as before), a key cut at geo.KEY_WIDTH is never 'out', a part the
         map cannot place leaves the list to the model, work rights decide only 'out'."""
         words = {'best_places': ['nürnberg'], 'anywhere_in': [], 'cities_abroad': []}
-        cut = ('bielefeld, germany; bochum, germany; ' * 4)[:130]
+        cut = ('bielefeld, germany; bochum, germany; ' * 8)[:geo.KEY_WIDTH + 10]
         got = geo.verdicts(['Bochum, Germany;', cut, 'Bielefeld, Germany; Nowhere Land', 'Bielefeld, Germany; Bochum, Germany'], words, Client())
         self.assertEqual(got['bochum, germany;'], 'out')
         self.assertNotIn(geo.norm(cut), got)

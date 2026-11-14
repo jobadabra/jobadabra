@@ -38,7 +38,9 @@ for an area the radius that covers it. For a country, remote or unknown: 0, 0, 0
 Never invent a place: when unsure, answer "unknown"."""
 
 
-KEY_WIDTH = 120   # a place's cache key is its normalized text cut to this: a caller that reads the same place must not cut it shorter
+KEY_WIDTH = 200   # a place's cache key is its normalized text cut to this: ONE width for every store (place_triage.norm reads it); a caller that reads the same place must not cut it shorter.
+# Why (nb, 14 Nov 2026, b08 replay): at 120 a 181-character list of cities was cut before the one that is the person's, and the job was closed. 200 is the longest wording
+# the shared pack takes (src/ai/meanings_pack.py MAX_WORDING); a list longer than that is still cut, and then never decided 'out' (geo._parts).
 
 
 def norm(text):

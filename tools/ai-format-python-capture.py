@@ -277,8 +277,8 @@ def capture_engine(prompts=False):
     slots = NS(carry=lambda function, *level: function, priority=lambda level: __import__("contextlib").nullcontext(), NORMAL=1, TITLES=0)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
                    time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None, now=time.monotonic, scored_beside=lambda: False),
-                   keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}))
-    geo = load('src/geo.py', ['BATCH', 'KINDS', 'MAX_RADIUS', 'SCHEMA', 'SYSTEM', 'valid', '_ask'], slots=slots)
+                   keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}, norm=lambda text: geo.norm(text)))   # norm: place_triage.norm reads geo's one key width (#4293)
+    geo = load('src/geo.py', ['BATCH', 'KINDS', 'MAX_RADIUS', 'SCHEMA', 'SYSTEM', 'KEY_WIDTH', 'norm', 'valid', '_ask'], slots=slots)
     strings = ['zurich, switzerland', 'remote']
     client = Client({'places': [{'n': 1, 'kind': 'city', 'cc': 'CH', 'lat': 47.37, 'lon': 8.54, 'r_km': 15},
                                {'n': 2, 'kind': 'remote', 'cc': '', 'lat': 0, 'lon': 0, 'r_km': 0}]})
@@ -330,8 +330,8 @@ def capture_engine(prompts=False):
              'src/ai/place_triage.py', 'response = client.messages.create(model=MODEL, max_tokens=1500, system=',
              'src/ai/place_triage.py', 'needs = {str(c).strip().lower()', action='place_triage')
 
-        # Why (30 Oct 2026, ap): jobs 5/5 declares app.placeVague rows, so the manifest needs the real vague() sender; its decided-places store is a one-word fixture.
-        IMPORTS['geo'] = NS(verdicts=lambda *a, **k: {}, cannot_hold=lambda *a: False)
+        # Why (30 Oct 2026, ap): jobs 5/5 declares app.placeVague rows, so the manifest needs the real vague() sender; its decided-places store is a one-word fixture, and its geo stand-in carries norm now that place_triage.norm reads geo's one key width (nb, #4293).
+        IMPORTS['geo'] = NS(verdicts=lambda *a, **k: {}, cannot_hold=lambda *a: False, norm=lambda text: geo.norm(text))
         vague_names = ['MODEL', 'VERSION', 'VAGUE_BATCH', 'VAGUE_SCHEMA', 'VAGUE_SYSTEM', '_TO_AI', 'places_words', '_key', 'norm', 'vague']
         vague_places = load('src/ai/place_triage.py', vague_names, **{k: v for k, v in bindings.items()}, known=lambda search: {'bern': 'out'}, _preferences=lambda: {},
                             _save=lambda key, decided: None, excluded_remote=lambda *a: False)
