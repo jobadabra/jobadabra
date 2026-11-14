@@ -145,14 +145,16 @@ jobs:
           path: data/jobs.sqlite
           key: jobadabra-db-${{ github.run_id }}
           restore-keys: jobadabra-db-
+      # Why-changed (14 Nov 2026, rb, owner: "Fix it now (Recommended)"; probe run 43623784345): an unset variable reads as null and `null != '0'` is false,
+      #   so these steps were skipped unless JOBADABRA_RENDER was set; `(vars.X || 'on')` keeps JOBADABRA_RENDER=0 as the only way to turn the browser off.
       - name: Install the headless browser
         # Job boards and careers pages built by scripts are read in it (src/sources/render.py; owner, 19 Oct 2026). Downloaded here in the
         # run, never in the app's installer. A failure never stops the search: those pages stay "open it yourself" visits.
-        if: (env.MODE == 'scheduled' || env.MODE == 'run') && vars.JOBADABRA_RENDER != '0'
+        if: (env.MODE == 'scheduled' || env.MODE == 'run') && (vars.JOBADABRA_RENDER || 'on') != '0'
         continue-on-error: true
         run: pip install --quiet -r requirements-render.txt
       - name: Chromium for the render (cached)
-        if: (env.MODE == 'scheduled' || env.MODE == 'run') && vars.JOBADABRA_RENDER != '0'
+        if: (env.MODE == 'scheduled' || env.MODE == 'run') && (vars.JOBADABRA_RENDER || 'on') != '0'
         continue-on-error: true
         uses: ./.github/actions/playwright-browser
         with: {runtime: python, mode: both}

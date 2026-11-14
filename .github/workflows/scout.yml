@@ -106,13 +106,15 @@ jobs:
           restore-keys: jobadabra-db-
       - name: Install the AI library
         run: pip install --quiet -r requirements.txt
+      # Why-changed (14 Nov 2026, rb, owner: "Fix it now (Recommended)"; probe run 43623784345): an unset variable reads as null and `null != '0'` is false,
+      #   so these steps were skipped unless JOBADABRA_RENDER was set; `(vars.X || 'on')` keeps JOBADABRA_RENDER=0 as the only way to turn the browser off.
       - name: Install the headless browser
         # Optional (src/sources/render.py): careers pages that only exist after JavaScript runs. A failure here never stops the scout.
-        if: vars.JOBADABRA_RENDER != '0'
+        if: (vars.JOBADABRA_RENDER || 'on') != '0'
         continue-on-error: true
         run: pip install --quiet -r requirements-render.txt
       - name: Chromium for the render (cached)
-        if: vars.JOBADABRA_RENDER != '0'
+        if: (vars.JOBADABRA_RENDER || 'on') != '0'
         continue-on-error: true
         uses: ./.github/actions/playwright-browser
         with: {runtime: python, mode: both}
