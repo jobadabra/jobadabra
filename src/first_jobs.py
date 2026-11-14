@@ -117,8 +117,10 @@ def propose_early(search=None):
 def _whole(board_ideas, search, country):
     """Ask the field's call here, beside the countries' one, and end when both have ended: their answers are cached, so the list built
     when the boards are read (_named_meanwhile) asks the AI nothing again. Only the answers are taken early, never the list (#2218)."""
-    board_ideas.field_ideas(search)
-    country.exception()
+    try:
+        board_ideas.field_ideas(search)
+    finally:   # a failed field call still waits for the countries' one, so no list is built while it runs
+        country.exception()
 
 
 def _wait_early(search, part='future'):

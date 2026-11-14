@@ -120,7 +120,7 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
             first_jobs.propose_early(SEARCH)
             got = first_jobs.board_jobs(lambda line: None, SEARCH)
         self.assertEqual(got, [], 'nothing is read once the cut has come')
-        self.assertEqual(len(self.country_asks), 1, 'the late country call was asked again inline, past the read cut')
+        self.assertEqual(len(self.country_asks), 1, 'the country call was asked more than once: a late call is never asked again inline past the read cut')
         self.assertEqual(self.reads, [])
 
 
