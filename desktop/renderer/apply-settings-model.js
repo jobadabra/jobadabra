@@ -65,7 +65,7 @@ export const applyChosen = settings => !!settings?.apply?.chosenAt;
 /** True once the person confirmed Full automation for the mode it is saved in; a change to another mode clears it. */
 export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
 /** True while a LinkedIn sign-in is kept, for either switch (owner, 14 Nov 2026: two switches, one sign-in). A sign-in kept before then has no mark: LinkedIn jobs on meant it was kept. The one rule, read by lib/linkedin-session.js too. */
-// Why (Gitar on #4283): one horizon for the LinkedIn sign-in wait: the window watches this long and the main side honours "who asked" exactly as long, so a copy that comes after the window said "stayed off" turns nothing on.
+// Why (Gitar on #4283): one horizon for the LinkedIn sign-in wait: the window watches this long and the main side takes the Chrome copy exactly as long (WANTED_MS), so a copy that comes after the window said "stayed off" is not kept.
 export const SIGNIN_WAIT_MS = 150000;
 export const linkedinSignedIn = settings => settings?.linkedinJobs?.signedIn ?? settings?.linkedinJobs?.on === true;   // an explicit mark wins (Gitar on #4271: a sign-out clears it while LinkedIn jobs stays on)
 /** True when LinkedIn Easy Apply is on: its switch (settings.easyApply) and a kept sign-in. The one rule, read by lib/easy-apply-switch.js too. */

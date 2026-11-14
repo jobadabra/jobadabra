@@ -11,12 +11,11 @@ import {easyApplyOn} from '../renderer/apply-settings-model.js';
 export function linkedinRoutes(storage, deps = {}) {
   const note = deps.refresh || realRefresh;
   return {
-    // Why (Gitar on #4276): only a copy someone asked for while the window still waits (WANTED_MS, Gitar on #4283) is kept (it turns on only that switch); with a sign-in kept, an unasked one is a refresh. The note is used up only on a kept copy.
+    // Why (Gitar on #4276, #4283): a copy is kept only while a Chrome way the window opened still waits (WANTED_MS), or as a refresh of a kept sign-in; it turns no switch on (owner, 14 Nov 2026).
     session: payload => {
-      const wanted = session.peekWanted(storage);
-      if (!wanted && !session.signedIn(storage)) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
-      const saved = session.saveSession(storage, payload?.cookies, {...deps, for: wanted === 'renew' ? undefined : wanted || undefined});
-      if (saved.ok && wanted) session.clearWanted(storage);
+      if (!session.signinOpen(storage) && !session.signedIn(storage)) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
+      const saved = session.saveSession(storage, payload?.cookies, deps);
+      if (saved.ok) session.closeSignin(storage);
       return saved;
     },
     pending: () => ({revoke: !session.signedIn(storage), refresh: (session.state(storage).on && note.look()) || session.copyIsOld(storage)}),   // a Find jobs press, or a kept copy 12 h old (Easy Apply alone); the permissions stay while a sign-in is kept
@@ -43,10 +42,10 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
   ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, signedIn: false, asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}, easyApply: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.(), easyApply: easyApplyOn(storage.settings())}));
   ipcMain.handle('linkedinJobsAsked', () => { if (!DEMO) session.noteAsked(storage); return {ok: true}; });
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
-  // `for`: which switch asked ('jobs' | 'easy-apply' | 'renew'), so the copy that arrives later turns on only that one (two switches, one sign-in, owner 14 Nov 2026).
-  ipcMain.handle('linkedinJobsConnect', (_, ask) => { if (DEMO) return {opened: true}; session.noteWanted(storage, ask?.for); return openPage(); });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
-  // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain and the switch turns on. One line per press, never a value.
-  ipcMain.handle('linkedinJobsSignIn', async (_, ask) => {
+  if (!DEMO) session.forgetUnused(storage, deps);   // a sign-in no switch uses is not kept past a start (Gitar on #4297)
+  ipcMain.handle('linkedinJobsConnect', () => { if (DEMO) return {opened: true}; session.openSignin(storage); return openPage(); });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
+  // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain; the window then turns on the switch that asked (linkedinJobsOn, easyApplyOn). One line per press, never a value.
+  ipcMain.handle('linkedinJobsSignIn', async () => {
     if (DEMO) return {ok: true};
     // Why (Gitar on #3080, 3 Nov 2026; 14 Nov 2026, owner: "Let's store them in Keychain/Credentials Manager (windows)"): the session is kept only in the Mac's Keychain or
     // Windows' Credential Manager (lib/keychain.js hasStore; an isolated run keeps its own file), never a file on disk, so a computer with neither (Linux) refuses before the window opens.
@@ -55,7 +54,7 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
       return {ok: false, reason: 'no-keychain'};
     }
     const got = await signIn();
-    const saved = got.ok ? session.saveSession(storage, got.cookies, {...deps, for: ask?.for}) : got;
+    const saved = got.ok ? session.saveSession(storage, got.cookies, deps) : got;
     log('linkedin-jobs', 'press', {path: 'window', outcome: saved.ok ? 'signed-in' : (got.ok ? 'not-kept' : got.reason)});
     return saved.ok ? {ok: true} : {ok: false, reason: got.ok ? 'not-kept' : got.reason, error: saved.error};
   });

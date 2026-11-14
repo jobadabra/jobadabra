@@ -103,8 +103,9 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   assert.match(page, /\$\('linkedin-way-chrome'\)\.disabled = !chrome;/);
   assert.match(page, /\$\('linkedin-way-chrome'\)\.checked = chrome;/, 'Chrome is picked first when it can be');
   assert.match(page, /ways && dialog\.returnValue === 'default' && \$\('linkedin-way-chrome'\)\.checked \? 'chrome'/, 'Continue with Chrome picked goes the Chrome way');
-  assert.match(page, /linkedinJobsSignIn\(\{for: wanted\}\)/, 'the window way says which switch asked');
-  assert.match(page, /linkedinJobsConnect\(\{for: wanted\}\)/, 'so does the Chrome way');
+  // Owner, 14 Nov 2026 ("Simplify, then reopen (Recommended)" after Gitar on #4297): a sign-in turns no switch on; the press that asked turns LinkedIn jobs on once it is kept.
+  assert.match(page, /answer\?\.ok && wanted === 'jobs'\) return turnOnKept\(\)/, 'the window way: LinkedIn jobs\' press turns it on');
+  assert.match(page, /if \(view\.signedIn\) return wanted === 'jobs' \? turnOnKept\(\) : true;/, 'the Chrome way, once the copy came');
 });
 
 // #3911 (owner, 12 Nov 2026: "how to renew the linkedin sign-in?" … searched ⌘K for "link" and found no way): the card says "Needs you", ⌘K has "Renew LinkedIn sign-in", and one dialog says the one step.

@@ -57,11 +57,12 @@ test('a Chrome sign-out leaves each switch as saved; any new sign-in makes the o
   linkedin.refreshSession(storage, [], {keychain: kc});
   assert.equal(state(storage).on, false, 'inactive after the sign-out');
   assert.equal(viewOf(storage, {packaged: false}).on, true, 'still on, drawn inactive');
-  linkedin.saveSession(storage, LI, {keychain: kc, for: 'jobs'});
+  linkedin.saveSession(storage, LI, {keychain: kc});   // signed in again from LinkedIn jobs' Turn on
   assert.equal(state(storage).on, true, 'the sign-in is back: Easy Apply is active again');
-  assert.equal(linkedin.state(storage).on, true, 'LinkedIn jobs: the switch that asked');
+  assert.equal(linkedin.state(storage).on, false, 'the sign-in itself turns LinkedIn jobs on? no: its press does');
+  assert.deepEqual(linkedin.turnOn(storage), {ok: true});
   const off = store({linkedinJobs: {on: true, signedIn: true}, easyApply: {on: false}}), kc2 = keychain();
-  linkedin.saveSession(off, LI, {keychain: kc2, for: 'jobs'});
+  linkedin.saveSession(off, LI, {keychain: kc2});
   linkedin.refreshSession(off, [], {keychain: kc2});
   linkedin.saveSession(off, LI, {keychain: kc2});
   assert.equal(state(off).on, false, 'the one off stays off');
@@ -72,8 +73,8 @@ test('a Chrome sign-out leaves each switch as saved; any new sign-in makes the o
 // · "a turn on should focus just on that specific case (easy apply or linkedin jobs)" · "Then the user can press another turn on for the other"; asked via AskUserQuestion: "Yes, this design (Recommended)").
 test('the owner\'s scenario: Easy Apply alone on a fresh install, LinkedIn jobs later with no second sign-in, each off on its own', () => {
   const storage = store(), kc = keychain();
-  assert.deepEqual(linkedin.saveSession(storage, LI, {keychain: kc, for: 'easy-apply'}), {ok: true}, 'signed in from Easy Apply\'s door');
-  assert.equal(linkedin.state(storage).on, false, 'a sign-in for Easy Apply does not turn LinkedIn jobs on');
+  assert.deepEqual(linkedin.saveSession(storage, LI, {keychain: kc}), {ok: true}, 'signed in from Easy Apply\'s door');
+  assert.equal(linkedin.state(storage).on, false, 'a sign-in turns no switch on');
   assert.equal(linkedin.signedIn(storage), true);
   assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: true}, 'Easy Apply alone');
   assert.equal(state(storage).on, true);
@@ -91,9 +92,9 @@ test('the owner\'s scenario: Easy Apply alone on a fresh install, LinkedIn jobs 
 
 test('LinkedIn jobs alone, then Easy Apply with no second sign-in; Easy Apply off keeps LinkedIn jobs\' sign-in', () => {
   const storage = store(), kc = keychain();
-  assert.deepEqual(linkedin.saveSession(storage, LI, {keychain: kc, for: 'jobs'}), {ok: true});
-  assert.equal(linkedin.state(storage).on, true);
-  assert.equal(state(storage).on, false, 'a sign-in for LinkedIn jobs does not turn Easy Apply on');
+  assert.deepEqual(linkedin.saveSession(storage, LI, {keychain: kc}), {ok: true});
+  assert.deepEqual(linkedin.turnOn(storage), {ok: true}, 'LinkedIn jobs\' press turns its switch on once the sign-in came');
+  assert.equal(state(storage).on, false, 'Easy Apply stays off');
   assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: true}, 'only the warning, no sign-in');
   turnOff(storage, {keychain: kc});
   assert.ok(linkedin.readSession({keychain: kc}), 'LinkedIn jobs still uses it');
