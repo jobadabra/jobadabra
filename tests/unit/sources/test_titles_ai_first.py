@@ -106,9 +106,19 @@ class LevelGoesToTheAiTest(unittest.TestCase):
 
 
 class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
-    EXEMPT = {'src/sources/feeds.py': 'the gate itself',
+    # Why (#4352, part 3c): board_pass has direct judging tests; part 4 must remove this temporary exemption before production activation.
+    EXEMPT = {'src/sources/board_pass.py': 'standalone judging API; activation and its title-order guard belong to part 4',
+              'src/sources/feeds.py': 'the gate itself',
               'src/sources/feed_facts.py': 'only which places still wait for an answer, after feed_scan sorted the titles',
               'src/sources/job_stage.py': 'keeps nothing: names why aggregators.kept, which sorted the titles first, did not keep a job'}
+
+    def test_a_direct_decide_call_does_not_exempt_an_unnamed_title_filter(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = pathlib.Path(folder)
+            (root / "src").mkdir()
+            (root / "src/other.py").write_text("wanted_title(job)\ntitle_triage.decide(titles)")
+            with mock.patch(__name__ + ".ROOT", root), self.assertRaises(AssertionError):
+                self.test_each_file_that_keeps_jobs_by_title_runs_the_ai_sort_on_them_first()
 
     def test_each_file_that_keeps_jobs_by_title_runs_the_ai_sort_on_them_first(self):
         missing = []
@@ -117,8 +127,7 @@ class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
             text = path.read_text()
             if rel in self.EXEMPT or not re.search(r'\bwanted_title\(', text):
                 continue
-            # Why (part 3a, 14 Nov 2026): board_pass calls the title decision owner directly, alongside its place round.
-            if not re.search(r'\b(triage(_with_places)?|title_triage\.decide)\(', text):
+            if not re.search(r'\btriage(_with_places)?\(', text):
                 missing.append(rel)
         self.assertEqual(missing, [], 'these keep jobs by feeds.wanted_title without feeds.triage: the role words alone decide there')
 
