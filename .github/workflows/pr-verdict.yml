@@ -115,7 +115,7 @@ jobs:
       cancel-in-progress: true
     timeout-minutes: 5
     permissions:
-      actions: write         # the commit's workflow runs (read)
+      actions: write         # the commit's workflow runs (read) and the search pair's start (write: tools/pr_verdict_pair.py, workflow_dispatch of search-pair.yml; owner via sa, 14 Nov 2026)
       checks: write          # failed steps' annotations (read: desktop/e2e/ci-alert.mjs stepCauses, tools/pr_flaky.py) and one display row per by-hand run on the PR's current head (write: tools/pr_verdict_rows.py; never a required check)
       pull-requests: read    # the PR's files and commits (the CI change budget)
       statuses: write        # the "All checks passed" status
@@ -129,6 +129,11 @@ jobs:
             tools/pr_verdict_sweep.py
             tools/pr_verdict_runs.py
             tools/pr_verdict_rows.py
+            tools/pr_verdict_pair.py
+            tools/pr-body-check.py
+            tools/persona-search/pair.py
+            tools/persona-search/pair_row.py
+            tools/persona-search/engine_calls.py
             tools/pr_verdict_greys.py
             tools/main_e2e_state.py
             tools/pr_ai_number.py
