@@ -116,7 +116,7 @@ test("a ⋯ menu pick says the check runs, and a second pick on the same job whi
   await first;
   held = Promise.resolve();
   assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start');
-  assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: ''}, 'the pick goes with the start');
+  assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: '', linkedinConfirmedAt: ''}, 'the pick goes with the start');
 });
 
 // Gitar on #3630 (8 Nov 2026): only the menu pick took the job's lock, so the row's Apply pressed while a pick was getting ready started the same job a second time.
@@ -134,7 +134,7 @@ test("the row's Apply pressed while a ⋯ menu pick on the same job gets ready s
   await Promise.all([pick, press]);
   held = Promise.resolve();
   assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start');
-  assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: ''}, 'the start is the pick\'s, in the picked mode (Gitar on #3630)');
+  assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: '', linkedinConfirmedAt: ''}, 'the start is the pick\'s, in the picked mode (Gitar on #3630)');
 });
 
 // #3638 (12 Nov 2026): the kitless row's Apply took no lock, so pressing it while a ⋯ menu pick's readiness (which drafts the kit) ran drafted the kit twice (AI credit twice).

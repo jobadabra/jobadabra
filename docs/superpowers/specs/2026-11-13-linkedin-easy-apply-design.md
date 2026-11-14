@@ -70,3 +70,6 @@ Plan: [`docs/superpowers/plans/2026-11-13-linkedin-easy-apply.md`](../plans/2026
 - [x] Owner's answers to D1–D6 (13 Nov 2026) (proof: none: the owner's answers, asked via AskUserQuestion by the coordinator, quoted word for word in the table above)
 - [x] The shared pause's owner: `lib/linkedin-session.js` notePause / pausedUntil (#3998, merged) (proof: desktop/lib/linkedin-session.js @d2c36a8)
 - [ ] 3/3 this spec (this PR), then the sending PRs
+- [x] 4b-1 Sending in dev builds: the "LinkedIn may send" yes in the Full automation confirmation, the Mac's Submit gate with 15 a day and 2 min apart, the CLAUDE.md "LinkedIn Easy Apply" line (proof: desktop/test/unit/main/background-apply-store.test.js)
+- [ ] 5/5 the owner's proof run, stopped before Send
+- [ ] 4b-2 the switch in the released app, and the D5 four-facts test

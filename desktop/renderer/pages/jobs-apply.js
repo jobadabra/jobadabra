@@ -17,7 +17,7 @@ import {sayRefused, toastMessage} from './startup.js';
 
 const gate = createApplyStartGate();
 let settings = {};   // the saved settings the dialog opened on
-let picked = '', confirmedAt = '';   // the card the person clicked in THIS dialog (empty: none, the batch follows Settings) and, for Full automation, the confirmation given for it; both start over each time it opens
+let picked = '', confirmedAt = '', linkedinAt = '';   // the card the person clicked in THIS dialog (empty: none, the batch follows Settings) and, for Full automation, the confirmation given for it (and its LinkedIn yes); both start over each time it opens
 let saving = false;   // a pick is being confirmed
 let batchFinished = false;
 // Why (7 Nov 2026, #3424; 8 Nov 2026, owner; [ad] try 3): each attempted job is one row (its title opens it) with one status chip; the words and counts come from renderer/apply-result-model.js.
@@ -47,7 +47,7 @@ async function pick(mode) {
   draw();
   try {
     const result = await applyDialogPick({mode, settings, confirm: askFullAutomation});
-    if (result.ok) ({mode: picked, autoConfirmedAt: confirmedAt} = result);
+    if (result.ok) ({mode: picked, autoConfirmedAt: confirmedAt, linkedinConfirmedAt: linkedinAt} = result);
   } finally {
     saving = false;
     draw();
@@ -60,7 +60,7 @@ export function wireApplyDialog({startedApplying, openJob}) {
   $('apply-open').addEventListener('click', async () => {
     message('apply-message', '');
     settings = (await window.pilot.state().catch(() => null))?.settings || {};
-    picked = ''; confirmedAt = '';   // Why (7 Nov 2026, owner, #3363: "The preselected modal apply modal option should be the one in settings"): every open starts on Settings' mode. No click, no pick sent: the first-choice gate replays Start after the person chose in it, and that choice must win (27 Oct 2026)
+    picked = ''; confirmedAt = ''; linkedinAt = '';   // Why (7 Nov 2026, owner, #3363: "The preselected modal apply modal option should be the one in settings"): every open starts on Settings' mode, with no confirmation and no LinkedIn yes of its own (plan 4b-1). No click, no pick sent: the first-choice gate replays Start after the person chose in it, and that choice must win (27 Oct 2026)
     batchFinished = false;
     showOutcomes(null, openJob);
     draw();
@@ -88,8 +88,8 @@ export function wireApplyDialog({startedApplying, openJob}) {
       $('apply-progress').hidden = false;   // the banner's progress bar stays below the action buttons
       draw();
       try {
-        // Why (7 Nov 2026, owner, fa: "the practice should go first ... and letting him confirm one more time"): a Full automation batch is held by the app; its check and the person's answer to the split (apply-check.js) are its result.
-        const result = await applyDialogStart({count: n, pick: picked, autoConfirmedAt: confirmedAt, chosen: applyChosen(settings), start: options => window.pilot.apply(options).then(answer => (answer?.check ? runCheck(answer.check).then(answered => mergeHeld(answer, answered)) : answer))});
+        // Why (7 Nov 2026, owner, fa: "the practice should go first ... and letting him confirm one more time"; 14 Nov 2026, plan 4b-1): a Full automation batch, with its LinkedIn yes, is held by the app; its check and the person's answer to the split (apply-check.js) are its result.
+        const result = await applyDialogStart({count: n, pick: picked, autoConfirmedAt: confirmedAt, linkedinConfirmedAt: linkedinAt, chosen: applyChosen(settings), start: options => window.pilot.apply(options).then(answer => (answer?.check ? runCheck(answer.check).then(answered => mergeHeld(answer, answered)) : answer))});
         if (result.ok || result.outcomes?.length) await Promise.resolve(startedApplying()).catch(() => {});   // a prepared row may leave New even when it never queued: refresh before leaving an Inspect action in the dialog
         if (result.ok && result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, {view: 'settings'}, 'warn');
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog

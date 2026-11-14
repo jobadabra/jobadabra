@@ -25,7 +25,7 @@ export function wireRowApply({startedApplying, confirm, toastMessage, sayRefused
 
 /**
  * The row's Apply for one job. `rerender` redraws the Jobs list. -> {start(button, {pick, ready, track}), modeItems()}: `start` gets the job ready through Apply readiness (unless `ready`: the
- * caller just did), then starts it in the saved mode or the `pick` ({mode, autoConfirmedAt}); `track('local'|'failed'|null)` tells a kitless row that the draft runs, was refused or is done;
+ * caller just did), then starts it in the saved mode or the `pick` ({mode, autoConfirmedAt, linkedinConfirmedAt}); `track('local'|'failed'|null)` tells a kitless row that the draft runs, was refused or is done;
  * `modeItems` are the ⋯ menu's rows, under one heading, the saved mode marked current.
  */
 export function createRowApply(job, {rerender}) {
@@ -75,7 +75,7 @@ export function createRowApply(job, {rerender}) {
     const picked = await applyDialogPick({mode, settings: shared.state?.settings, confirm: wired.confirm});   // the confirmation is a modal dialog: no other press reaches the row meanwhile
     if (!picked.ok) return;
     if (!STARTING.has(job.url)) sayChecking();
-    await start(null, {pick: {mode: picked.mode, autoConfirmedAt: picked.autoConfirmedAt}});
+    await start(null, {pick: {mode: picked.mode, autoConfirmedAt: picked.autoConfirmedAt, linkedinConfirmedAt: picked.linkedinConfirmedAt}});
   };
   const modeItems = () => {
     const saved = applyOf(shared.state?.settings).mode;

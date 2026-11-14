@@ -21,7 +21,7 @@ function rig({now, realNow} = {}) {
     if (entity === 'events' && method === 'add') { const old = events.find(e => e.source_id === args.source_id); if (old) return old; const row = {...args, id: `e${++id}`}; events.push(row); return row; }
     throw new Error(`unexpected ${entity}.${method}`);
   };
-  const make = () => createBackgroundApplyStore({}, {call, now: now || (() => time), realNow: realNow || (() => time), uuid: () => `attempt-${++id}`});
+  const make = (storage = {}, stopped = () => false) => createBackgroundApplyStore(storage, {call, now: now || (() => time), realNow: realNow || (() => time), uuid: () => `attempt-${++id}`, stopped});
   const add = (suffix = '1', company = 'Fictional Cloud') => {
     const job = {id: `job-${suffix}`, url: `https://jobs.example.test/${suffix}`, fit: 90, company, stage: 'Kit ready'};
     apps.set(job.url, job);
@@ -31,8 +31,8 @@ function rig({now, realNow} = {}) {
   return {make, add, apps, events, advance: ms => { time += ms; }, fail: () => { failed = true; }, setSection: (id, state) => sections.set(`${id}:Background Apply`, JSON.stringify(state)),
     setKit: (id, kit) => sections.set(`${id}:📝 Application kit`, kit === null ? '' : `\`\`\`json\n${JSON.stringify(kit)}\n\`\`\``)};
 }
-async function prepared(r, job = r.add(), mode = 'auto', opts = config) {
-  const store = r.make(), row = await store.queue(job.url, `session-${job.id}`, mode, {...opts, mode});
+async function prepared(r, job = r.add(), mode = 'auto', opts = config, storage = {}) {
+  const store = r.make(storage), row = await store.queue(job.url, `session-${job.id}`, mode, {...opts, mode});
   assert.equal((await store.claim(job.url, row.session, 'owned-browser')).ok, true);
   await store.ready(job.url, row.session, 'owned-browser', ready);
   return {store, job, session: row.session};
@@ -83,22 +83,82 @@ test('the automatic press needs the judge to have said no bot check: a bot check
   }
 });
 
-// Why (13 Nov 2026, owner, LinkedIn Easy Apply: "4a fill, 4b send (Recommended)", asked via AskUserQuestion): Full automation fills a LinkedIn job to ready and the person sends it, until plan 4b.
-test('a LinkedIn job is never reserved for an automatic press: the person finishes it', async () => {
-  const r = rig(), job = r.add('li');
+// Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"; D1 "Follow the Apply mode (Recommended)", D2 "15/day, 2 min apart (Recommended)"):
+// the Mac sends a filled LinkedIn form only with the item's own "LinkedIn may send" stamp, 15 a local day, 2 min apart; the press counts at the reservation.
+const LINKEDIN = {...config, linkedinConfirmedAt: '2026-10-27T10:00:02Z', auto: {waitMin: 0}};
+function settingsOf(settings = {linkedinJobs: {on: true}, easyApply: {on: true, warnedAt: '2026-10-27T09:00:00Z'}}) {
+  let mine = structuredClone(settings);
+  return {get mine() { return mine; }, settings: () => mine, saveSettings: patch => { mine = {...mine, ...patch}; return mine; }};
+}
+async function onLinkedin(r, suffix, opts, storage) {
+  const job = r.add(suffix);
   r.apps.delete(job.url);
-  const li = {...job, url: 'https://www.linkedin.com/jobs/view/4242'};
+  const li = {...job, url: `https://www.linkedin.com/jobs/view/${suffix}`};
   r.apps.set(li.url, li);
-  const {store, session} = await prepared(r, li, 'auto', {...config, auto: {waitMin: 0}});
-  const got = await store.reserve(li.url, session, 'owned-browser', ready, {...config, auto: {waitMin: 0}});
-  assert.equal(got.submit, false);
-  assert.equal(got.reason, 'send_not_allowed_here');
-  assert.equal((await store.read(li.url)).state, 'needs_user_handoff', 'the person finishes it');
+  return {...(await prepared(r, li, 'auto', opts, storage)), url: li.url};
+}
+const press = ({store, url, session}, proof = ready) => store.reserve(url, session, 'owned-browser', proof, LINKEDIN);
 
-  // Gitar on #4054: queued under another address, the page the judge saw is LinkedIn's.
-  const s = rig(), {store: other, job: queued, session: otherSession} = await prepared(s, s.add('short'), 'auto', {...config, auto: {waitMin: 0}});
-  const landed = await other.reserve(queued.url, otherSession, 'owned-browser', {...ready, page: 'https://www.linkedin.com/jobs/view/4242'}, {...config, auto: {waitMin: 0}});
-  assert.equal(landed.reason, 'send_not_allowed_here', 'the page landed on LinkedIn');
+test('a LinkedIn job sends only with its own "LinkedIn may send" stamp, and its press counts', async () => {
+  const r = rig(), storage = settingsOf();
+  const unstamped = await onLinkedin(r, '1', {...LINKEDIN, linkedinConfirmedAt: ''}, storage);
+  const refused = await press(unstamped);
+  assert.deepEqual([refused.submit, refused.reason], [false, 'linkedin_not_confirmed']);
+  assert.equal((await unstamped.store.read(unstamped.url)).state, 'needs_user_handoff', 'the filled form goes to the person');
+  assert.equal(storage.mine.easyApply.cap, undefined, 'a refusal counts no press');
+
+  const stamped = await onLinkedin(r, '2', LINKEDIN, storage);
+  assert.equal((await press(stamped)).submit, true);
+  assert.equal(storage.mine.easyApply.cap.sent, 1, 'counted at the reservation, before the click');
+
+  // Gitar on #4054: queued under another address, the page the judge saw is LinkedIn's: LinkedIn's rule, so no stamp is no send.
+  const s = rig(), elsewhere = await prepared(s, s.add('short'), 'auto', {...LINKEDIN, linkedinConfirmedAt: ''}, settingsOf());
+  const landed = await elsewhere.store.reserve(elsewhere.job.url, elsewhere.session, 'owned-browser', {...ready, page: 'https://www.linkedin.com/jobs/view/4242'}, LINKEDIN);
+  assert.equal(landed.reason, 'linkedin_not_confirmed', 'the page landed on LinkedIn');
+  const unreadable = await prepared(s, s.add('odd'), 'auto', LINKEDIN, settingsOf());
+  assert.equal((await unreadable.store.reserve(unreadable.job.url, unreadable.session, 'owned-browser', {...ready, page: 'not an address'}, LINKEDIN)).reason, 'send_not_allowed_here');
+});
+
+// Gitar on #4240: an address that cannot be read is no send on LinkedIn either, and a Stop that cancels the permit after the reservation spends none of the day's 15.
+test('a LinkedIn job whose page address cannot be read is handed over, and a Stop after the reservation counts no press', async () => {
+  const r = rig(), storage = settingsOf();
+  const odd = await onLinkedin(r, '1', LINKEDIN, storage);
+  assert.equal((await press(odd, {...ready, page: 'not an address'})).reason, 'send_not_allowed_here');
+  assert.equal(storage.mine.easyApply.cap, undefined, 'no press counted');
+
+  const late = await onLinkedin(r, '2', LINKEDIN, storage);
+  let asks = 0;
+  const stopping = r.make(storage, () => ++asks > 1);   // the Stop lands between the reservation and the permit
+  const cancelled = await stopping.reserve(late.url, late.session, 'owned-browser', ready, LINKEDIN);
+  assert.deepEqual([cancelled.submit, cancelled.reason], [false, 'stopped']);
+  assert.equal(storage.mine.easyApply.cap, undefined, 'a cancelled permit spends none of the day\'s 15 and starts no 2 min gap');
+});
+
+test('LinkedIn sends wait 2 min apart and for tomorrow after 15; the filled form stays ready meanwhile', async () => {
+  const r = rig(), storage = settingsOf();
+  const first = await onLinkedin(r, '1', LINKEDIN, storage), second = await onLinkedin(r, '2', LINKEDIN, storage);
+  assert.equal((await press(first)).submit, true);
+  const early = await press(second);
+  assert.deepEqual([early.submit, early.reason], [false, 'waiting']);
+  assert.equal(early.dueAt, Date.parse('2026-10-27T12:00:00Z') + 2 * 60000, 'two sends are never under 2 min apart');
+  assert.notEqual((await second.store.read(second.url)).state, 'needs_user_handoff', 'a wait hands nothing over');
+  r.advance(2 * 60000);
+  assert.equal((await press(second)).submit, true);
+
+  const day = settingsOf({...storage.mine, easyApply: {...storage.mine.easyApply, cap: {...storage.mine.easyApply.cap, sent: 15}}});
+  const sixteenth = await press(await onLinkedin(r, '3', LINKEDIN, day));
+  const now = new Date(Date.parse('2026-10-27T12:02:00Z'));
+  assert.deepEqual([sixteenth.reason, sixteenth.dueAt], ['waiting', new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()], 'the 16th waits for the next local date');
+  assert.equal(day.mine.easyApply.cap.sent, 15);
+});
+
+test('Easy Apply turned off or LinkedIn paused hands the filled LinkedIn form to the person', async () => {
+  const r = rig();
+  const off = await onLinkedin(r, '1', LINKEDIN, settingsOf({linkedinJobs: {on: true}, easyApply: {on: false, warnedAt: '2026-10-27T09:00:00Z'}}));
+  assert.equal((await press(off)).reason, 'linkedin_send_off');
+  const paused = await onLinkedin(r, '2', LINKEDIN, settingsOf({linkedinJobs: {on: true, pauseUntil: '2026-10-28T12:00:00Z'}, easyApply: {on: true, warnedAt: '2026-10-27T09:00:00Z'}}));
+  assert.equal((await press(paused)).reason, 'linkedin_send_paused');
+  assert.equal((await paused.store.read(paused.url)).state, 'needs_user_handoff');
 });
 
 test('mode 2 ends ready for review, while mode 3 waits and rechecks every guard before reserving', async () => {

@@ -43,7 +43,7 @@ import {demoFormsOpen, demoPath, demoTriageMatch, demoTriageRead, blocked} from 
 import {matchReads} from './triage-match.js';
 import {createReadiness} from './apply-readiness.js';
 import {cloudReadOf, keepReadiness} from './apply-readiness-registry.js';
-import {applyOf, batchConfirmation, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
+import {applyOf, batchOf, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
 
 /** One hidden-browser form read for the Jobs page: its flags, or null when nothing was read. A failure is logged with the job, never swallowed. */
 // Why (#2650, 1 Nov 2026): a browser-start error became a silent null, so a read that never reached its chip left no cause in any log.
@@ -111,7 +111,7 @@ export function registerApplyHandlers(ctx) {
     // THIS batch in that mode and writes nothing to Settings; its Full-automation confirmation is the one this call carries (batchConfirmation). A call without a pick follows the saved mode, as before.
     const settings = fromSettings ? storage.settings() : null;   // read only for a Settings-driven call: a gate's call with no settings (extension-gate.test.js) never reaches it
     const picked = fromSettings && modeBuilt(options?.pick) ? options.pick : '';
-    const batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(options.autoConfirmedAt, settings, clock()) : ''};
+    const batch = !picked ? null : batchOf(picked, options, settings, clock());
     const applyMode = fromSettings ? picked || applyOf(settings).mode : '';
     const mode = fromSettings ? modeRunner(applyMode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
     // Why (2026-10-28, Background apply B): the hidden browser runs only the person's saved mode, never a runner name the window sends.
@@ -131,7 +131,7 @@ export function registerApplyHandlers(ctx) {
     // Why (7 Nov 2026, owner; R2, 8 Nov 2026): one job runs in the saved mode unless its ⋯ menu picked one (below), always with the saved eligibility preference, captured on its hidden queue item.
     // Why (8 Nov 2026, owner, R2: "Yes, as drawn"): a mode picked in the job's ⋯ menu (`pick`) is that job's only and writes nothing to Settings; a Full automation pick carries its own confirmation (batchConfirmation), as a Jobs-dialog pick does.
     const settings = storage.settings(), applySettings = applyOf(settings), picked = modeBuilt(pick?.mode) ? pick.mode : '';
-    const applyMode = picked || applySettings.mode, batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(pick.autoConfirmedAt, settings, clock()) : ''};
+    const applyMode = picked || applySettings.mode, batch = !picked ? null : batchOf(picked, pick, settings, clock());
     const hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which, batch, {allowIneligible: applySettings.allowIneligible})} : null;
     const blocked = await allowanceBlock() || (hidden ? null : needExtension());
     if (blocked) return blocked;

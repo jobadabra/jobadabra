@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {test} from 'node:test';
 import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate} from '../../../renderer/apply-dialog-model.js';
-import {MODES, batchConfirmation, modeBuilt, modeRunner} from '../../../renderer/apply-settings-model.js';
+import {MODES, batchConfirmation, batchOf, modeBuilt, modeRunner} from '../../../renderer/apply-settings-model.js';
 import {registerApplyHandlers} from '../../../lib/apply-handlers.js';
 import {guard} from '../../../lib/apply-choice-gate.js';
 
@@ -47,7 +47,7 @@ test('an unbuilt mode cannot be picked in the dialog: nothing is asked or writte
 test('a pick in the dialog is that batch\'s mode only: Start carries it, Settings is never written, the next dialog opens on Settings\' mode', async () => {
   const registered = register('fill');
   const pick = await applyDialogPick({mode: 'check', settings: {apply: {mode: 'fill'}}, confirm: async () => assert.fail('Standard automation asks nothing')});
-  assert.deepEqual(pick, {ok: true, mode: 'check', autoConfirmedAt: ''});
+  assert.deepEqual(pick, {ok: true, mode: 'check', autoConfirmedAt: '', linkedinConfirmedAt: ''});
   assert.equal((await applyDialogStart({count: '2', pick: pick.mode, autoConfirmedAt: pick.autoConfirmedAt, chosen: true, start: args => registered.handles.get('apply')({}, args)})).ok, true);
   assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check', checkFirst: true, pick: 'check'}], 'the batch ran in the pick, not in Settings\' Background mode');
   assert.deepEqual(registered.saves, [], 'nothing was written to Settings');
@@ -63,13 +63,13 @@ test('a pick in the dialog is that batch\'s mode only: Start carries it, Setting
 test('Full automation is confirmed in the call that picks it: asked again for every batch, declined means no pick, Settings\' own confirmed Full automation is not asked again', async () => {
   const settings = {apply: {mode: 'fill'}}, asks = [], now = () => new Date('2026-11-07T10:00:00.000Z');
   const answer = yes => async () => { asks.push(yes); return yes; };
-  assert.deepEqual(await applyDialogPick({mode: 'auto', settings, confirm: answer(true), now}), {ok: true, mode: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z'});
-  assert.deepEqual(await applyDialogPick({mode: 'fill', settings, confirm: answer(true), now}), {ok: true, mode: 'fill', autoConfirmedAt: ''}, 'Background automation carries no confirmation');
+  assert.deepEqual(await applyDialogPick({mode: 'auto', settings, confirm: answer(true), now}), {ok: true, mode: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z', linkedinConfirmedAt: ''});
+  assert.deepEqual(await applyDialogPick({mode: 'fill', settings, confirm: answer(true), now}), {ok: true, mode: 'fill', autoConfirmedAt: '', linkedinConfirmedAt: ''}, 'Background automation carries no confirmation');
   assert.equal((await applyDialogPick({mode: 'auto', settings, confirm: answer(true), now})).ok, true);
   assert.deepEqual(asks, [true, true], 'the second Full automation batch asked again, nothing was inherited from the first');
   assert.equal((await applyDialogPick({mode: 'auto', settings, confirm: answer(false), now})).ok, false, 'declined: the pick stays where it was');
   const confirmedInSettings = {apply: {mode: 'auto', autoConfirmedAt: '2026-11-01T08:00:00.000Z'}};
-  assert.deepEqual(await applyDialogPick({mode: 'auto', settings: confirmedInSettings, confirm: async () => assert.fail('Settings\' own confirmation stands'), now}), {ok: true, mode: 'auto', autoConfirmedAt: ''});
+  assert.deepEqual(await applyDialogPick({mode: 'auto', settings: confirmedInSettings, confirm: async () => assert.fail('Settings\' own confirmation stands'), now}), {ok: true, mode: 'auto', autoConfirmedAt: '', linkedinConfirmedAt: ''});
 });
 
 test('the confirmation a batch runs under is the one in its own call (recent) or Settings\' own, never another batch\'s', () => {
@@ -80,6 +80,25 @@ test('the confirmation a batch runs under is the one in its own call (recent) or
   assert.equal(batchConfirmation('2026-11-07T10:30:00.000Z', fill, now), '', 'a stamp from the future is no confirmation');
   assert.equal(batchConfirmation('', fill, now), '', 'Settings on Background automation holds no Full automation confirmation');
   assert.equal(batchConfirmation('nonsense', {apply: {mode: 'auto', autoConfirmedAt: '2026-11-01T08:00:00.000Z'}}, now), '2026-11-01T08:00:00.000Z', 'Settings\' own confirmed Full automation');
+});
+
+// Why (14 Nov 2026, owner, plan 4b-1, asked via AskUserQuestion: "In the Full auto confirm (Recommended)"): LinkedIn sends only after its own yes, asked in the Full automation confirmation.
+test('with Easy Apply on, Full automation\'s confirmation shows the LinkedIn line and its yes is the "LinkedIn may send" stamp; a confirmed Full automation without it asks again', async () => {
+  const at = '2026-11-14T10:00:00.000Z', now = () => new Date(at), on = {linkedinJobs: {on: true}, easyApply: {on: true}}, asked = [];
+  const confirm = async options => { asked.push(options); return true; };
+  assert.deepEqual(await applyDialogPick({mode: 'auto', settings: {...on, apply: {mode: 'fill'}}, confirm, now}), {ok: true, mode: 'auto', autoConfirmedAt: at, linkedinConfirmedAt: at});
+  const confirmedBefore = {...on, apply: {mode: 'auto', autoConfirmedAt: '2026-11-01T08:00:00.000Z'}};
+  assert.equal((await applyDialogPick({mode: 'auto', settings: confirmedBefore, confirm, now})).linkedinConfirmedAt, at, 'Easy Apply turned on after Full automation was confirmed: asked again');
+  const both = {...on, apply: {mode: 'auto', autoConfirmedAt: '2026-11-01T08:00:00.000Z', linkedinConfirmedAt: '2026-11-01T08:00:00.000Z'}};
+  assert.deepEqual(await applyDialogPick({mode: 'auto', settings: both, confirm: async () => assert.fail('both yeses stand'), now}), {ok: true, mode: 'auto', autoConfirmedAt: '', linkedinConfirmedAt: ''});
+  assert.equal((await applyDialogPick({mode: 'auto', settings: {linkedinJobs: {on: true}, easyApply: {on: false}, apply: {mode: 'fill'}}, confirm, now})).linkedinConfirmedAt, '', 'Easy Apply off: no LinkedIn yes');
+  assert.deepEqual(asked, [{linkedin: true}, {linkedin: true}, {linkedin: false}], 'the line shown is the yes stamped');
+
+  const clock = Date.parse(at), fresh = '2026-11-14T09:59:00.000Z';
+  assert.deepEqual(batchOf('auto', {autoConfirmedAt: fresh, linkedinConfirmedAt: fresh}, {apply: {mode: 'fill'}}, clock), {autoConfirmedAt: fresh, linkedinConfirmedAt: fresh}, 'this call\'s yeses');
+  assert.deepEqual(batchOf('auto', {}, both, clock), {autoConfirmedAt: '2026-11-01T08:00:00.000Z', linkedinConfirmedAt: '2026-11-01T08:00:00.000Z'}, 'Settings\' own yeses');
+  assert.deepEqual(batchOf('auto', {}, confirmedBefore, clock), {autoConfirmedAt: '2026-11-01T08:00:00.000Z', linkedinConfirmedAt: ''}, 'no LinkedIn yes anywhere: LinkedIn jobs wait for the person');
+  assert.deepEqual(batchOf('fill', {autoConfirmedAt: fresh, linkedinConfirmedAt: fresh}, both, clock), {autoConfirmedAt: '', linkedinConfirmedAt: ''}, 'only Full automation carries a yes');
 });
 
 test('a mode is built exactly when it names its batch runner; Standard\'s is the visible Chrome batch, Background\'s the hidden browser', () => {

@@ -68,13 +68,17 @@ export async function save(change = {}, {chosen = false} = {}) {
   return saved ? current : null;
 }
 
-/** The one confirmation for Full automation: the checks it will run under, one button to turn it on. Resolves true only on that button. */
-export async function askFullAutomation() {
+/**
+ * The one confirmation for Full automation: the checks it will run under, one button to turn it on. Resolves true only on that button.
+ * `linkedin`: the caller's easyApplyOn (renderer/apply-save.js, apply-dialog-model.js), which also decides the "LinkedIn may send" stamp, so the line shown is the yes stamped (plan 4b-1).
+ */
+export async function askFullAutomation({linkedin = false} = {}) {
   const dialog = $('auto-confirm-dialog');
   const channel = await prepareChannel();   // no way to be told yet: the same step asks for one (pages/auto-confirm-channel.js)
   const auto = applyOf(current).auto;
   $('auto-confirm-checks').replaceChildren(...[
     auto.waitMin ? t('pagesDynamicSetup.m66', {"waitMin": auto.waitMin}) : t('pagesFinalLabels.noWait'),
+    ...(linkedin ? [t('pagesFinalLabels.linkedinSends')] : []),
   ].map(text => Object.assign(document.createElement('li'), {textContent: text})));
   return new Promise(resolve => {
     const finish = yes => { dialog.close(); resolve(yes); };

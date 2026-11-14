@@ -2,7 +2,7 @@
 import '../i18n/screens-helpers.js';
 import '../i18n/screens-pages.js';
 import {t} from '../i18n/index.js';
-import {dialogNeedsConfirm, modeBuilt} from './apply-settings-model.js';
+import {dialogNeedsConfirm, easyApplyOn, modeBuilt} from './apply-settings-model.js';
 import {GROUPS, splitBatch, urlsOf} from './apply-split.js';
 import {chipOf} from './apply-triage-pick.js';
 
@@ -20,26 +20,30 @@ export function applyButtonLabel(count) {
 
 /**
  * A card pick in Apply to jobs: THIS batch's mode, never saved (Settings → Apply is the person's own default, changed only there). Full automation asks its confirmation first (`confirm` resolves true only on its button);
- * the stamp of that answer goes with Start, so it belongs to this call and to no later one. -> {ok: true, mode, autoConfirmedAt} | {ok: false} (a mode not built, or a declined confirmation: the pick stays where it was).
+ * the stamp of that answer goes with Start, so it belongs to this call and to no later one; with Easy Apply on it shows the LinkedIn line and its yes is also `linkedinConfirmedAt` (plan 4b-1).
+ * -> {ok: true, mode, autoConfirmedAt, linkedinConfirmedAt} | {ok: false} (a mode not built, or a declined confirmation: the pick stays where it was).
  * Why (7 Nov 2026, owner, #3363: "We don't want to change the settings from the Apply to jobs. We should let the user explicitly go and change that in the settings"): replaces the 28 Oct rule that a card pick is saved
  * through Settings → Apply's writer, for this dialog only.
  */
 export async function applyDialogPick({mode, settings, confirm, now = () => new Date()}) {
   if (!modeBuilt(mode)) return {ok: false};   // Why (28 Oct 2026, owner): a mode that does nothing yet can never be chosen
-  if (!dialogNeedsConfirm(mode, settings)) return {ok: true, mode, autoConfirmedAt: ''};
-  return await confirm() ? {ok: true, mode, autoConfirmedAt: now().toISOString()} : {ok: false};
+  if (!dialogNeedsConfirm(mode, settings)) return {ok: true, mode, autoConfirmedAt: '', linkedinConfirmedAt: ''};
+  const linkedin = easyApplyOn(settings);
+  if (!await confirm({linkedin})) return {ok: false};
+  const at = now().toISOString();
+  return {ok: true, mode, autoConfirmedAt: at, linkedinConfirmedAt: linkedin ? at : ''};
 }
 
 /**
  * Start: a valid count goes to the main process with the dialog's pick (and its Full-automation confirmation), which runs the batch in that mode (lib/apply-handlers.js).
  * Why (7 Nov 2026, #3363, code review): `chosen` is whether Settings → Apply was ever chosen. When not, the first-choice gate holds this call and replays it with the SAME arguments after the person's choice there, so a pick sent now would override what they just chose in the gate: it is not sent and the batch follows the gate's choice.
  */
-export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', chosen = false, cancelled = false, start}) {
+export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', linkedinConfirmedAt = '', chosen = false, cancelled = false, start}) {
   if (cancelled) return {cancelled: true};
   const n = validCount(count);
   if (!n) return {ok: false, error: t('helperFlow.applyCountBounds')};
-  // Why (8 Nov 2026, [fa] 2/2): `checkFirst` asks the app to hold a Full automation batch for its form check and the person's answer to the split (pages/apply-check.js); other modes ignore it.
-  try { return await start({n, mode: 'settings', checkFirst: true, ...(pick && chosen ? {pick} : {}), ...(autoConfirmedAt && chosen ? {autoConfirmedAt} : {})}); } catch (error) {
+  // Why (8 Nov 2026, [fa] 2/2; 14 Nov 2026, plan 4b-1): `checkFirst` asks the app to hold a Full automation batch for its form check and the person's answer to the split (pages/apply-check.js); other modes ignore it. The LinkedIn yes goes with the pick, under the same `chosen` rule.
+  try { return await start({n, mode: 'settings', checkFirst: true, ...(pick && chosen ? {pick} : {}), ...(autoConfirmedAt && chosen ? {autoConfirmedAt} : {}), ...(linkedinConfirmedAt && chosen ? {linkedinConfirmedAt} : {})}); } catch (error) {
     // Why (2026-10-28, owner screenshot): a rejected call arrives as "Error invoking remote method 'apply': Error: <reason>"; the person gets the reason and what to do, not Electron's wrapper.
     const reason = String(error?.message || '').replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '').trim();
     return {ok: false, error: t('helperFlow.applyStartFailed', {reason: `${reason || t('helperFlow.somethingWrong')}${reason.endsWith('.') || !reason ? '' : '.'}`})};
