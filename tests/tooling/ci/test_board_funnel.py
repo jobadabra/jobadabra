@@ -68,11 +68,12 @@ class BoardFunnel(unittest.TestCase):
         text = board_funnel.table(folder([
             '[6s] Stage: Job boards found read https://www.a.example/p#Welder',
             '[7s] Stage: Job boards found never_asked https://www.a.example/p#Welder | Berlin, DE',
+            '[7s] Stage: Job boards found no_link -',
             '[7s] Stage: Job boards found no_link -']))
         rows = {line.split(' | ')[0].strip('| '): line for line in text.splitlines()}
         self.assertIn('| a.example | - | no reason logged | - | - | - | - | - | 1 |', rows['a.example'])   # read + never_asked, one job: counted once as never judged
         self.assertIn('| jobs with no link |', rows['jobs with no link'])
-        self.assertIn(' | 1 | ', rows['jobs with no link'])
+        self.assertIn(' | 2 | ', rows['jobs with no link'])   # two link-less jobs are two, not one key
 
     def test_unmerged_columns_are_named_not_guessed(self):
         text = board_funnel.table(folder(['[1s] Finding your first jobs…']))
