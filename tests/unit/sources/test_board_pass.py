@@ -96,11 +96,31 @@ class ThePassTime(unittest.TestCase):
         self.assertEqual(seen, {'other': True, 'carried': False, 'pool': False}, 'scoring and the lane keep their stops; the pass\'s workers do not')
 
 
+class SlowTown(Model):
+    """The place calls' fake model, with one town whose place call answers only when `slow` is set (a round still out at the deadline)."""
+
+    def __init__(self):
+        super().__init__()
+        self.slow = threading.Event()
+
+    def create(self, **kwargs):
+        if 'slow town' in kwargs['messages'][0]['content'] and 'The job locations:' in kwargs['messages'][0]['content']:
+            self.slow.wait(timeout=30)   # a hang guard, never the clock the test depends on
+        return super().create(**kwargs)
+
+
+def slow_board():
+    """The board's page and one job in a town whose place call is slow."""
+    return board() + [{**board()[1], 'title': 'Slow role', 'location': 'Slow town', 'url': 'https://board.example.test/job/9', 'id': '9'}]
+
+
 class TheLastPass(unittest.TestCase):
     def setUp(self):
         tmp = pathlib.Path(tempfile.mkdtemp())
-        self.model = Model()
+        self.model = SlowTown()
         self.model.gate.set()
+        self.addCleanup(self.model.slow.set)
+        self.addCleanup(self.model.gate.set)
         self.said = []
         for patch in (mock.patch.object(place_triage, 'STORE', tmp / 'p.json'), mock.patch.object(title_triage, 'STORE', tmp / 't.json'),
                       mock.patch.object(geo, 'STORE', tmp / 'g.json'), mock.patch.object(places_later, 'STORE', tmp / 'later.json'),
@@ -130,6 +150,13 @@ class TheLastPass(unittest.TestCase):
         lane.wake()
         if wait:
             self.assertTrue(lane.passed.wait(timeout=30), 'the lane ran its pass at the pass time')
+
+    def until(self, ready, what):
+        """Waits for a state the pass leaves (a hang guard, never the clock the test depends on)."""
+        end = time.monotonic() + 30
+        while not ready():
+            self.assertLess(time.monotonic(), end, what)
+            time.sleep(0.01)
 
     def queue(self):
         """The queue after the search, as the app runs it: a process of its own, with its own clock and counts (src/daily.py, src/press/after_search.py).
@@ -177,7 +204,49 @@ class TheLastPass(unittest.TestCase):
         line = next(line for line in self.said if line.startswith('Board pass: at '))
         self.assertRegex(line, r'^Board pass: at 1\d\ds of 165s: 1 location\(s\) and 3 title\(s\) to ask$')
         self.assertIn('Board pass: board.example.test places asked 2 · inside 2 · outside 0 · no answer 0', self.said)
-        self.assertIn('Board pass: board.example.test titles asked 3 · fit 3 · not 0 · no answer 0', self.said)
+        self.assertIn('Board pass: board.example.test titles asked 3 · fit 3 · not 0 · no answer 0 · placed outside 0', self.said)
+
+    def test_a_lane_done_before_the_pass_time_is_judged_at_the_hand_over_not_at_the_pass_time(self):
+        """CI store suite on e0d6e55c (#4199): the last hand-over waited for a pass that starts only at the pass time, though every board had
+        ended; a search done early sat idle until then (9 store files past their 180 s). Done reads: the pass starts when the hand-over comes."""
+        at(100)
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        self.assertTrue(lane.done.is_set(), 'positive control: every board has ended')
+        began = time.monotonic()
+        lane.last_pass(self.db, shown.extend)
+        self.assertLess(time.monotonic() - began, 10, 'no wait for the pass time (it is 50 s away)')
+        self.assertEqual(sorted(job['title'] for job in shown), ['Known role 0', 'Late role 0', 'Late role 1'])
+        self.assertIn('Board pass: asked 1 place(s), 3 title(s), listed 3, at 100 s', self.said)
+
+    def test_the_title_round_is_asked_while_the_place_round_is_still_out(self):
+        """Pair 43604153744 (14 Nov 2026, d05): the map, place and title rounds ran one after the other in the pass's ~16 s; no answer came by the deadline.
+        Side by side, the title answers come with the first round."""
+        at(100)
+        self.model.gate.clear()   # every place call waits
+        lane, _shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        self.pass_time(lane, wait=False)
+        self.until(lambda: feeds.judged_title('Late role 0') is not None, 'the titles are answered while the places are asked')
+        self.assertNotIn('place answered', self.model.log, 'positive control: the place round is still out')
+        self.model.gate.set()
+        self.assertTrue(lane.passed.wait(timeout=30))
+        rounds = [line.split(' answered at ')[0] for line in self.said if ' answered at ' in line and line.startswith('Board pass: ')]
+        self.assertEqual(rounds, ['Board pass: titles', 'Board pass: places'], 'each round says its second as it ends')
+
+    def test_a_pass_cut_at_the_deadline_lists_what_both_answers_cover(self):
+        """Pair 43604153744 (14 Nov 2026, d05): the pass was cut at the deadline and every answer it had was dropped ("not run: it had not ended")."""
+        at(100)
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', slow_board())]))
+        with mock.patch.object(place_triage, 'BATCH', 1):   # one call a town: Late town's answer lands while Slow town's is still out
+            self.pass_time(lane, wait=False)
+            self.until(lambda: feeds.place_of({'location': 'Late town'}) == 'in' and feeds.judged_title('Slow role') is not None, 'the answers that came')
+            at(170)   # the deadline: the pass is still out
+            lane.last_pass(self.db, shown.extend)
+        self.assertFalse(lane.passed.is_set(), 'positive control: the pass had not ended')
+        self.assertEqual(sorted(job['title'] for job in shown), ['Known role 0', 'Late role 0', 'Late role 1'], 'what both answers cover is listed')
+        self.assertEqual([job['title'] for _, job in waiting_jobs.held(self.db, SEARCH)], ['Slow role'], 'the rest waits for the queue')
+        self.assertIn(f'Board pass: answered 1 of 2 place(s), 4 of 4 title(s) by the deadline, listed 3, at {PASS} s', self.said)
+        self.model.slow.set()
+        self.assertTrue(lane.passed.wait(timeout=30), 'the pass ends once its last call answers (no thread left for the next test)')
 
     def test_a_board_read_after_the_pass_waits_and_the_queue_lists_its_jobs(self):
         at(100)
@@ -188,8 +257,8 @@ class TheLastPass(unittest.TestCase):
             yield 'the slow board', late
         judge = board_pass.judge
 
-        def judged_then_the_page_lands(jobs):
-            done = judge(jobs)
+        def judged_then_the_page_lands(*args):
+            done = judge(*args)
             passed.set()
             return done
         with mock.patch('src.sources.board_reader.read', side_effect=read), mock.patch.object(board_pass, 'judge', judged_then_the_page_lands):

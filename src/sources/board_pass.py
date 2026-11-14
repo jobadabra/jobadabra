@@ -2,9 +2,12 @@
 Design (owner, 14 Nov 2026, asked via AskUserQuestion: "Judge in search + show both (Recommended)"; L05: "Yes, stop new reads then (Recommended)"):
 - Every board job read before the pass's time (read_budget.pass_at, its one owner) is placed and title-judged in the search; one read after it waits
   for the queue after the search (src/sources/waiting_jobs.py), as before.
-- One pass, at the end only: one place round (the locations nobody placed, most-shared first: feed_places' order), then one title round (feeds.triage's
-  order, your places nearest first). No order of its own and no gate of its own: the existing owners (place_triage.decide, title_triage.decide) ask,
-  under time_budget.to_the_end, so no step's share or reserve stops them, and no AI call starts in the run's last seconds (L04).
+- One pass, at the end only: one place round (the locations nobody placed, most-shared first: feed_places' order) and, beside it, one title round
+  of every owed job (your places' titles first). No order of its own and no gate of its own: the existing owners (place_triage.decide,
+  title_triage.decide) ask, under time_budget.to_the_end, so no step's share or reserve stops them, and no AI call starts in the run's last seconds (L04).
+  Each batch's answers reach the shared stores as it lands; a pass still out at the deadline lists what they cover (cut), the rest waits for the queue.
+  Why (#4199 try 3, pair 43604153744, d05): map, place and title rounds one after the other did not fit the pass's ~16 s, and a cut pass kept nothing.
+  The cost: a title is asked for a job the place round then puts outside (`placed outside` on the per-board line).
 - Asked by the boards' lane in a thread of its own at the pass's time (boards_first.Beside._pass), which writes only the shared AI answer stores;
   the job cache stays the main thread's: its last hand-over (Beside.last_pass, from daily_search.keep_late_boards) keeps them again, whenever
   scoring lets it come, with no AI call of its own.
@@ -30,14 +33,27 @@ def owed(jobs):
     return out
 
 
-def judge(jobs):
-    """Places, then titles, of the jobs of `jobs` still owed an answer, in this search, by the lane at the pass's time (boards_first.Beside._pass)
-    -> Done: the jobs an answer came for (to be kept again by the main thread: aggregators.kept lists the ones both answers say yes to), the
-    second it began, how many places and titles it asked, and `why` it asked nothing (None when it ran). Says one plan line and, per board, what
-    each round answered, or one `Board pass: not run: <why>` line. Asks nothing once the run has ended (L04). Writes only the shared AI answer
-    stores (place_triage, title_triage through feeds): the job cache stays the main thread's (Beside.last_pass)."""
+class Track:
+    """What a pass set out to ask, filled as it starts (judge), so the last hand-over lists what was answered by the deadline when the pass is
+    still out (cut). Written by the lane's pass thread once, before its first AI call; read by the main thread after it."""
+
+    def __init__(self):
+        self.waiting, self.unplaced, self.at, self.why = [], [], None, None
+
+
+def judge(jobs, track=None):
+    """Places and titles, side by side, of the jobs of `jobs` still owed an answer, in this search, by the lane at the pass's time
+    (boards_first.Beside._pass) -> Done: the jobs an answer came for (to be kept again by the main thread: aggregators.kept lists the ones both
+    answers say yes to), the second it began, how many places and titles it asked, and `why` it asked nothing (None when it ran). Says one plan
+    line, each round's second as it ends, and per board what each round answered; or one `Board pass: not run: <why>` line. Asks nothing once
+    the run has ended (L04). Writes only the shared AI answer stores (place_triage, title_triage), each answer as its batch lands: the job cache
+    stays the main thread's (Beside.last_pass). `track` (Track): filled before the first call, for cut().
+    Why side by side (#4199 try 3, pair 43604153744, d05): the map, place and title rounds ran one after the other in ~16 s; nothing came by the deadline."""
+    import threading
     from .. import time_budget
+    from ..ai import slots
     from . import feed_places, feeds
+    track = track if track is not None else Track()
     waiting = owed(jobs)
     why = ('the search has no time budget' if time_budget.DEADLINE is None else 'no board job waits for an answer' if not waiting
            else 'the run had ended (its last seconds start no AI call)' if time_budget.ended() else None)
@@ -45,31 +61,90 @@ def judge(jobs):
     at = int(time_budget.now() - began)
     if why:
         print(f'Board pass: not run at {at}s: {why}', flush=True)
+        track.why = why
         return Done([], at, 0, 0, why)
     # only the places still open: a job the place words put in your places waits for its title alone (job_stage.of)
     unplaced = [job for job in waiting if feeds.place_of(job) is None and not feeds.wanted_location(job) and (job.get('location') or '').strip()]
-    places, titles = len({(job.get('location') or '').strip() for job in unplaced}), len({job.get('title') for job in waiting})
+    track.waiting, track.unplaced, track.at = waiting, unplaced, at
+    places, titles = _counts(track)
     end = time_budget.end() - time_budget.part(time_budget.TAIL)
     print(f"Board pass: at {at}s of {int(end - began)}s: {places} location(s) and {titles} title(s) to ask", flush=True)
+    said = lambda round_: print(f'Board pass: {round_} answered at {int(time_budget.now() - began)}s', flush=True)
     with time_budget.to_the_end():
-        feed_places.place_jobs(unplaced, chosen=True)
-        titled = [job for job in waiting if job.get('title') and feeds.wanted_location(job)]   # the ones feeds.triage asks about
-        feeds.triage(waiting)
-    _say(unplaced, titled)
-    answered = [job for job in waiting if (feeds.place_of(job) is not None) or feeds.judged_title(job.get('title') or '') is not None]
-    return Done(answered, at, places, titles, None)
+        sorting = threading.Thread(target=slots.carry(lambda: (_titles(waiting), said('titles'))), name='boards-pass-titles', daemon=True)
+        sorting.start()
+        feed_places.place_jobs(unplaced, chosen=True, land=True)
+        said('places')
+        sorting.join()
+    _say(unplaced, [job for job in waiting if job.get('title')])
+    return Done(_answered(waiting), at, places, titles, None)
+
+
+def cut(track):
+    """The pass still out at the deadline -> Done with what its answers cover now (Beside.last_pass), or None when it had not begun."""
+    if track.at is None or track.why:
+        return None
+    places, titles = _counts(track)
+    got = (len({_where(job) for job in track.unplaced if _placed(job)}), len({job.get('title') for job in track.waiting if _titled(job)}))
+    return Done(_answered(track.waiting), track.at, places, titles, None, got)
+
+
+def _titles(waiting):
+    """The title round of the pass: every owed job's title, whatever its place (the place round runs beside it), your places' titles first.
+    Each batch's answers reach the shared title store as it lands (title_triage's land), so a cut pass keeps them."""
+    from .. import features
+    from ..ai import engine, providers, title_triage
+    from ..ai.providers.contract import reason
+    from . import feeds
+    titles = [job['title'] for job in waiting if job.get('title')]
+    if not titles or features.disabled('title_triage') or not engine.ready():
+        return
+    store = feeds._triaged()   # read in this thread: the batches land in title_triage's own
+    store[feeds.ASKED] = True
+    try:
+        store.update(title_triage.decide(titles, feeds._SEARCH, local=[job['title'] for job in waiting if feeds.in_my_place(job)],
+                                         land=lambda fit, batch: store.update({title: title in fit for title in batch})))
+    except Exception as error:  # noqa: BLE001 — not sorted in the search: the queue after it asks them, said
+        print(f'Warning: the board pass did not sort its titles with {providers.who()} ({reason(error)}): the queue after the search asks them', flush=True)
+
+
+def _where(job):
+    return (job.get('location') or '').strip()
+
+
+def _placed(job):
+    from . import feeds
+    return feeds.place_of(job) is not None
+
+
+def _titled(job):
+    from . import feeds
+    return feeds.judged_title(job.get('title') or '') is not None
+
+
+def _counts(track):
+    return len({_where(job) for job in track.unplaced}), len({job.get('title') for job in track.waiting})
+
+
+def _answered(waiting):
+    return [job for job in waiting if _placed(job) or _titled(job)]
 
 
 class Done:
-    """What one pass did: `answered` jobs, the second it began (`at`), the places and titles it asked, `why` it asked nothing (None: it ran)."""
+    """What one pass did: `answered` jobs, the second it began (`at`), the places and titles it asked, `why` it asked nothing (None: it ran),
+    and `got`: (places, titles) answered by the deadline when it was cut (None: it ended)."""
 
-    def __init__(self, answered, at, places, titles, why):
-        self.answered, self.at, self.places, self.titles, self.why = answered, at, places, titles, why
+    def __init__(self, answered, at, places, titles, why, got=None):
+        self.answered, self.at, self.places, self.titles, self.why, self.got = answered, at, places, titles, why, got
 
     def said(self, listed):
-        """The main thread's line once it kept them: `Board pass: asked N place(s), M title(s), listed K, at S s` (or not run, and why)."""
+        """The main thread's line once it kept them: `Board pass: asked N place(s), M title(s), listed K, at S s`, or for a cut pass
+        `Board pass: answered n of N place(s), m of M title(s) by the deadline, listed K, at S s` (or not run, and why)."""
         if self.why:
             return f'Board pass: not run: {self.why}'
+        if self.got is not None:
+            return (f'Board pass: answered {self.got[0]} of {self.places} place(s), {self.got[1]} of {self.titles} title(s) by the deadline, '
+                    f'listed {listed}, at {self.at} s')
         return f'Board pass: asked {self.places} place(s), {self.titles} title(s), listed {listed}, at {self.at} s'
 
 
@@ -87,7 +162,9 @@ def _say(unplaced, titled):
     for job in titled:
         verdict = feeds.judged_title(job.get('title') or '')
         titles[_host(job)][('no answer' if verdict is None else 'fit' if verdict else 'not')] += 1
+        titles[_host(job)]['placed outside'] += feeds.place_of(job) == 'out'   # asked beside the place round: the cost of side by side
     for host, counts in places.items():
         print(f"Board pass: {host} places asked {sum(counts.values())} · inside {counts['inside']} · outside {counts['outside']} · no answer {counts['no answer']}", flush=True)
     for host, counts in titles.items():
-        print(f"Board pass: {host} titles asked {sum(counts.values())} · fit {counts['fit']} · not {counts['not']} · no answer {counts['no answer']}", flush=True)
+        asked = counts['fit'] + counts['not'] + counts['no answer']
+        print(f"Board pass: {host} titles asked {asked} · fit {counts['fit']} · not {counts['not']} · no answer {counts['no answer']} · placed outside {counts['placed outside']}", flush=True)

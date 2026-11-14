@@ -121,8 +121,12 @@ def _keep(key, decided):
         batch_scope.view('places_store', _load).setdefault(key, {}).update(decided)
 
 
-def decide(locations, search, client=None):
-    """Ask about the locations not decided yet for these places (a batch this refresh can finish), keep the answers; returns all known."""
+def decide(locations, search, client=None, land=None):
+    """Ask about the locations not decided yet for these places (a batch this refresh can finish), keep the answers; returns all known.
+    land({location: 'best' | 'in'}): called as answers come (the map's, then each batch's) with the ones inside the person's places; an 'out' waits for
+    the vague-location round, so it comes only with the return. The visa mark (':visa') comes with the return too: it only flags a listed job
+    (digest.needs_sponsorship), never decides whether it is listed, and the return overwrites the early answer.
+    Why (#4199 try 3, pair 43604153744): the search's last pass was cut at the deadline with its answers still inside this call."""
     resume.ran('places')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     from . import cost, engine
     from .. import time_budget as budget
@@ -140,6 +144,10 @@ def decide(locations, search, client=None):
         detail('map of places', error)
         mapped = {}
     decided.update(mapped)
+    rights = words.get('work_rights') or []
+    final = (lambda got: {n: v for n, v in got.items() if v in ('best', 'in')}) if land else (lambda got: {})
+    if final(mapped):
+        land(final(mapped))
     ask = [n for n in ask if n not in mapped]
     if not ask:
         _keep(key, decided)
@@ -173,12 +181,14 @@ def decide(locations, search, client=None):
                 decided[batch[n - 1]] = place
                 if place != 'out' and item.get('country'):
                     countries[batch[n - 1]] = str(item['country']).strip()[:40]
+            got = final({where: decided[where] for where in batch if where in decided})
             sorted_[0] += len(batch)
             ticker.tick(sorted_[0])
+        if got:
+            land(got)
     began = budget.now()
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.at_once()))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
-    rights = words.get('work_rights') or []
     if countries and rights:
         try:
             response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': VISA_SYSTEM}],
