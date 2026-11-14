@@ -247,11 +247,13 @@ def _per_wording(real):
             role = _role(base)
             (waits if role == 'other' else mine).append((i, base, role))
         if mine:   # our own batch first, before any wait: a side never holds claims while it waits for the other's
+            began = time.monotonic()
             results = real(topic, [pairs[i] for i, _, _ in mine], answers, instructions, client, allowance)
+            took = round(time.monotonic() - began, 3)   # Why (14 Nov 2026, Gitar on #4400): the other side waits the model's seconds too, so it is not faster inside its clock
             for (i, base, role), answer in zip(mine, results):
                 got[i] = answer
                 if role == 'first':
-                    _write(base + '.json', json.dumps({'answer': None if answer is UNASKED else answer, **({'error': 'unasked'} if answer is UNASKED else {}), 'seconds': 0}).encode())
+                    _write(base + '.json', json.dumps({'answer': None if answer is UNASKED else answer, **({'error': 'unasked'} if answer is UNASKED else {}), 'seconds': took}).encode())
             _count('wording_asked', len(mine))
         late = []
         for i, base, _ in waits:

@@ -49,6 +49,38 @@ class PerWording(unittest.TestCase):
             self.assertEqual((got, asked), (['a'], ['one']))
             self.assertIsNot(got[0], UNASKED)
 
+    def test_a_lost_record_falls_back_to_our_own_ask_and_the_batch_keeps_its_order(self):
+        asked = []
+
+        def real(topic, pairs, answers, instructions, client, allowance):
+            asked.extend(w for _, w in pairs)
+            return [f'ours-{w}' for _, w in pairs]
+        with tempfile.TemporaryDirectory() as folder:
+            same_inputs.folder = folder
+            try:
+                for wording, record in (('two', {'answer': 'theirs', 'seconds': 0}), ('three', None)):   # answered; claimed by a process that is gone, no record
+                    base = os.path.join(folder, same_inputs._wording_key('links', ('a', 'b'), 'task', wording))
+                    with open(base + '.lock', 'w', encoding='utf-8') as file:
+                        file.write('other:999999999')
+                    if record:
+                        with open(base + '.json', 'w', encoding='utf-8') as file:
+                            json.dump(record, file)
+                got = same_inputs._per_wording(real)('links', [('1', 'one'), ('2', 'two'), ('3', 'three')], ('a', 'b'), 'task', None, None)
+            finally:
+                same_inputs.folder = ''
+        self.assertEqual((got, asked), (['ours-one', 'theirs', 'ours-three'], ['one', 'three']))
+
+    def test_the_record_carries_the_seconds_the_ask_took_so_the_other_side_waits_the_same(self):
+        import time
+
+        def real(topic, pairs, answers, instructions, client, allowance):
+            time.sleep(0.3)
+            return ['a'] * len(pairs)
+        with tempfile.TemporaryDirectory() as folder:
+            self._run(folder, [('1', 'one')], real)
+            with open(os.path.join(folder, same_inputs._wording_key('links', ('a', 'b'), 'task', 'one') + '.json'), encoding='utf-8') as file:
+                self.assertGreaterEqual(json.load(file)['seconds'], 0.25)
+
 
 if __name__ == '__main__':
     unittest.main()
