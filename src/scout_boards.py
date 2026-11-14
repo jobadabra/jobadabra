@@ -442,13 +442,15 @@ def _country_of(board, country):
 
 
 def facts(db, today=None):
-    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, family_jobs?, listed_families?, browser?, layout?}]
-    (family_jobs: the jobs of each family, only when a pass counted them; listed_families: the families whose count was read from the board's own list, only when there are some; browser: true only; layout only in its checked shape: jobadabra-web api/employers.js
+    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, day, family_jobs?, listed_families?, browser?, layout?}]
+    (day: the date it was read, which the site stores, so its 30 days count from the read; family_jobs: the jobs of each family, only when a pass counted them; listed_families: the families whose count was read from the board's own list, only when there are some; browser: true only; layout only in its checked shape: jobadabra-web api/employers.js
     boardFactsOf checks both again)."""
     ensure(db)
     cutoff = ((today or datetime.now(timezone.utc).date()) - timedelta(days=FACT_DAYS)).isoformat()
-    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'family_jobs': counts} if counts is not None else {}),
+    # Why (14 Nov 2026, zb for sa, #4346): sent without its day, a fact was stored with the publish date, so every publish moved it forward: a board read on 13 Nov was served
+    # dated 14 Nov, and it stayed up to 30 days after the last publish that sent it instead of 30 days after its read.
+    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, 'day': read_at[:10], **({'family_jobs': counts} if counts is not None else {}),
              **({'listed_families': listed} if listed else {}), **({'browser': True} if browser else {}), **({'layout': layout} if layout else {})}
-            for host, country, url, families, jobs, browser, kept, text, marks in db.execute(
-                'SELECT host, country, url, families, local_jobs, browser, layout, family_jobs, listed_families FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))
+            for host, country, url, families, jobs, browser, kept, text, marks, read_at in db.execute(
+                'SELECT host, country, url, families, local_jobs, browser, layout, family_jobs, listed_families, read_at FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))
             for layout in [_checked(kept)] for counts in [_counts(text) if text is not None else None] for listed in [[f for f in listed_of(marks) if counts and f in counts]]]
