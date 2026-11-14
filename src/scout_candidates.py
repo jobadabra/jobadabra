@@ -274,6 +274,20 @@ def search_kinds():
         return ()
 
 
+def linkedin_employer_candidates(db, index=None):
+    """The employers of this Mac's open saved jobs still on LinkedIn's address (no employer copy found, src/sources/employer_copy.py) with no known feed (the
+    downloaded index and feed_sources): origin LINKEDIN_ORIGIN, most jobs first. Read from the saved jobs, the one owner of that state.
+    Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Scout reads the store (Recommended)"): a flag file the press wrote drew ~10 Gitar rounds of wrong-flag cases."""
+    from .sources import employer_copy, linkedin_guest
+    if index is None:   # the cached index only, never a download (like src/scout_need.py covered)
+        from . import employer_index
+        index = (employer_index._read(employer_index.CACHE) or {}).get('feeds') or []
+    rows = db.execute("SELECT c.name AS name, COUNT(*) AS n FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.state = 'open' AND j.url LIKE ? "
+                      "GROUP BY c.name ORDER BY n DESC, c.name", (linkedin_guest.JOB_URL.split('{')[0] + '%',)).fetchall()
+    known = [*index, *employer_copy._local_feeds(db)]
+    return [dict(name=row['name'], origin=LINKEDIN_ORIGIN, priority=LINKEDIN_PRIORITY) for row in rows if not employer_copy.feeds_of(row['name'], known)]
+
+
 def board_employer_candidates():
     """Employers named on the jobs that boards and aggregators list, whatever the role: origin "Board employer" (src/sources/board_employers.py)."""
     from .sources import board_employers
@@ -307,6 +321,9 @@ def default_sources(db, seeds, countries, skip=()):
 
 
 MET_ORIGIN = 'Met by you'
+from .sources.board_employers import BOARD_ORIGIN   # one copy (Gitar on #4274)
+LINKEDIN_ORIGIN = 'LinkedIn employer'   # an employer of a saved job still on LinkedIn's address (linkedin_employer_candidates)
+LINKEDIN_PRIORITY = 80   # after the seeds and met employers (90+), before a board's names (65)
 MET_PRIORITY = 96      # a company the person met comes before every list (seeds are 90-100, boards 65)
 MET_PER_RUN = 200
 
@@ -331,8 +348,9 @@ def met_company_candidates(stores):
 
 
 def counts_when_covered(candidate):
-    """On a day the shared list needs no new names, a name the person added (manual watch) or met is still checked."""
-    return candidate['status'] == 'manual' or candidate['origin'] == MET_ORIGIN
+    """On a day the shared list needs no new names, a name the person added (manual watch), met, or saw on their own LinkedIn search is still checked.
+    Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Both"): a covered Zurich SRE's Scout checked 0 of 19 LinkedIn employers; a board's employers still wait."""
+    return candidate['status'] == 'manual' or candidate['origin'] in (MET_ORIGIN, LINKEDIN_ORIGIN)
 
 
 def harvest_met(db, seeds, stores, skip=()):
@@ -378,6 +396,10 @@ def _harvest(db, seeds, sources, skip, until):
             key = key_for(c['name'])
             if key in known and c.get('website'):   # a name first seen without an address (Hacker News) learns it from a catalog
                 db.execute('UPDATE scout_candidates SET website = COALESCE(website, ?) WHERE key = ?', (c['website'], key))
+            if key in known and c['origin'] == LINKEDIN_ORIGIN:
+                # Why (Gitar on #4274): a board name still waiting that the person's LinkedIn search also lists is checked even on a covered day.
+                db.execute('UPDATE scout_candidates SET origin = ?, priority = MAX(priority, ?) WHERE key = ? AND status = ? AND origin = ?',
+                           (LINKEDIN_ORIGIN, c['priority'], key, 'pending', BOARD_ORIGIN))
             if not key or key in excluded or key in known or c['origin'].startswith(skip):
                 continue
             known.add(key)

@@ -3,12 +3,13 @@
 The scout argument is the public module's dependency seam, retaining its exported names
 and the existing offline fakes. Worker-only notes are collected until probing ends.
 """
+import functools
 import json
 import os
 import re
 from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED
 from datetime import timedelta
-from . import budget_tape, read_methods, run_exit, employer_index, scout_need, scout_queue, scout_role_search, scout_core
+from . import budget_tape, read_methods, run_exit, employer_index, scout_candidates, scout_need, scout_queue, scout_role_search, scout_core
 from .ai import decide
 from .sources import ats, careers
 
@@ -47,6 +48,7 @@ def harvest_names(scout, db, seeds, stores, harvest_sources, skip, budget, deadl
     # order of each source's yield, and a source with no feed in many checks stops waiting (src/scout_queue.py).
     added = 0 if have else scout.harvest(db, seeds, harvest_sources, skip, until=None if scout_core.CENTRAL or not budget else deadline - budget / 2)   # Why (27 Oct 2026, in scout.run until qf 5/8): a list's 504 ran 93 s
     added += scout.harvest_met(db, seeds, stores, skip) if harvest_sources is None else 0   # the employers the person met: even on a day with no new names
+    added += scout.harvest(db, seeds, [functools.partial(scout_candidates.linkedin_employer_candidates, db)], skip) if harvest_sources is None else 0   # and the employers of their saved jobs still on LinkedIn: every run, covered or not
     if not have:
         print(f'Scout: {added} new candidate(s) from the lists; asking the AI for ideas…')
     ideas = scout.ai_ideas(db, harvest_sources) if may_add() else None

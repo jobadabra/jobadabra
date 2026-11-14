@@ -13,6 +13,7 @@ from ..press import resume
 PLACEHOLDERS = ('Unknown employer', 'via ')   # what the readers put when the page names nobody
 MAX_LOOKUPS = 20      # job pages fetched per run for jobs without an employer
 MAX_KEPT = 2000       # employer names kept
+BOARD_ORIGIN = 'Board employer'   # the Scout's origin of these names (src/scout_candidates.py reads it from here)
 
 
 def fetch(url):
@@ -67,7 +68,7 @@ def note_site(name, website, source):
 def candidates():
     """The scout's candidates: every kept employer name, most jobs first (the scout's own queue does the real ranking)."""
     for name, entry in sorted(_load().items(), key=lambda item: -item[1].get('jobs', 0)):
-        yield dict(name=name, origin='Board employer', priority=65, **({'website': entry['website']} if entry.get('website') else {}))
+        yield dict(name=name, origin=BOARD_ORIGIN, priority=65, **({'website': entry['website']} if entry.get('website') else {}))
 
 
 def fill_missing(jobs, fetch=None):
