@@ -4,7 +4,7 @@
 // Settings: settings.easyApply.cap = {day, sent, lastAt} (day = the computer's local date; a new date starts at 0) and settings.easyApply.stops. The pause itself is LinkedIn's one shared pause
 // (lib/linkedin-session.js notePause / pausedUntil), so a stop here also stops both LinkedIn reads, and their pause stops Easy Apply. Guard: test/unit/main/easy-apply-limits.test.js.
 import {notePause, pausedUntil} from './linkedin-session.js';
-import {state} from './easy-apply-switch.js';
+import {state, turnOff as easyApplyOff} from './easy-apply-switch.js';
 
 export const CAP = 15;                    // D2: at most 15 sends a day per install
 export const GAP_MS = 2 * 60 * 1000;      // D2: at least 2 min between sends, a fixed gap (never a random human-like delay)
@@ -26,7 +26,7 @@ function counter(storage, now) {
 
 /**
  * May a send start at `now` (a Date)? -> {go: true} | {wait: 'off'} | {wait: 'paused' | 'cap' | 'gap', until: epoch ms}.
- * Invariant, in this order: the switch (Easy Apply on and LinkedIn jobs on), the shared LinkedIn pause, 15 a local day, 2 min since the last press.
+ * Invariant, in this order: the switch (Easy Apply on, with a LinkedIn sign-in kept), the shared LinkedIn pause, 15 a local day, 2 min since the last press.
  */
 export function turn(storage, now) {
   if (!state(storage).on) return {wait: 'off'};
@@ -59,14 +59,15 @@ export function notePress(storage, now) {
 /**
  * LinkedIn warned (a warning, checkpoint, "unusual activity", sign-in page or 401/403/429/999) at `now`: all LinkedIn pauses 24 h through the shared pause, never retried;
  * the second stop since Easy Apply was last turned on turns it off (the pause stays). LinkedIn jobs' own switch is not touched. `countedTo`: the newest hand-off this stop covers
- * (the store's time; default `now`). -> {until: epoch ms, off}.
+ * (the store's time; default `now`); `keychain` only for tests. -> {until: epoch ms, off}.
  */
-export function noteStop(storage, now, countedTo = now.getTime()) {
+export function noteStop(storage, now, countedTo = now.getTime(), {keychain} = {}) {
   const until = now.getTime() + STOP_MS;
   notePause(storage, new Date(until).toISOString());
   const stops = (Number(mine(storage).stops) || 0) + 1;
   const off = stops >= STOPS_TO_OFF;
-  save(storage, {stops, stopAt: countedTo, ...(off ? {on: false} : {})});
+  save(storage, {stops, stopAt: countedTo});
+  if (off) easyApplyOff(storage, keychain ? {keychain} : {});   // Why (Gitar on #4271): the one off path, so with LinkedIn jobs off too the sign-in is deleted (both off)
   return {until, off};
 }
 

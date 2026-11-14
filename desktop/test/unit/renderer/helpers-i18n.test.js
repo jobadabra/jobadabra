@@ -251,9 +251,9 @@ test('LinkedIn consent translates its warning and keeps action keys and raw fail
   const {execFileSync} = await import('node:child_process');
   const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {CONSENT,KEY,notOpened,signInEnded,linkedinEntries}=await import('./renderer/linkedin-words.js'); console.log(JSON.stringify({words:CONSENT.ask,key:KEY,note:notOpened({reason:'missing',note:'Original provider note'})[1],error:signInEnded({reason:'not-kept',error:'Original provider error'})[1],action:linkedinEntries({view:{loaded:true}})[0].actions[0].do}));"], {cwd: root, encoding: 'utf8'});
   const value = JSON.parse(output);
-  assert.equal(value.words.yes, 'Bei LinkedIn anmelden');
+  assert.equal(value.words.yes, 'Weiter', 'the choice decides the way; the button only continues');
   assert.match(value.words.line, /Konten einschränken/);
-  assert.match(value.words.lead, /Jobadabra sieht es nie/);
+  assert.match(value.words.lead, /Jobadabra sieht Ihr Passwort nie/);
   assert.equal(value.key, 'linkedin:jobs');
   assert.equal(value.action, 'turn_on_linkedin');
   assert.match(value.note, /Original provider note$/);

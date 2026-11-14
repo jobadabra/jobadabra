@@ -15,6 +15,7 @@ test('the Suggestions entry: one row while off, with the one-click action and No
   assert.equal(entry.key, KEY);
   assert.deepEqual(entry.actions, [{label: 'Sign in to LinkedIn', do: 'turn_on_linkedin'}]);
   assert.deepEqual(entry.answers, ['Not now']);
+  assert.match(entry.detail, /with Chrome's sign-in, or in a Jobadabra window/, 'the entry opens the choice, so it names both ways');
   assert.equal(entry.home, 'focus');
   assert.deepEqual(linkedinEntries({view: {...off, on: true}}), [], 'on: no entry');
   assert.deepEqual(linkedinEntries({view: {...off, loaded: false}}), [], 'state not read yet: no flash of an offer');
@@ -39,16 +40,45 @@ test('the consent words: the owner\'s warning line verbatim, what is read, where
     const words = CONSENT[mode];
     assert.equal(words.line, LINE);
     assert.match(words.lead, /background/);
-    assert.match(words.lead, /in a Jobadabra window, on LinkedIn's own page/, 'the sign-in window (owner, 3 Nov 2026), not Chrome');
-    assert.match(words.lead, /you type your password there and Jobadabra never sees it/);
+    assert.match(words.lead, /the way you choose below: Jobadabra never sees your password/, 'owner, 14 Nov 2026: "Ask, Chrome first"');
     assert.ok(words.lead.includes(`stays on this ${process.platform === 'win32' ? 'PC' : 'Mac'}`));
     assert.match(words.lead, /Settings → Connections → LinkedIn/);
-    assert.equal(words.yes, 'Sign in to LinkedIn');
-    assert.equal(words.chrome, 'Use my Chrome sign-in', 'the shortcut, shown only while the extension is connected');
+    assert.equal(words.yes, 'Continue');
     assert.equal(words.no, 'Not now');
   }
   assert.equal(CONSENT.manage.yes, 'Turn off');
   assert.equal(CONSENT.manage.no, 'Keep on');
+});
+
+// Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Ask, Chrome first (Recommended)"; then "a turn on should focus just on that specific case (easy apply or linkedin jobs)" · "he should never login 2 times"):
+// every dialog that leads to a sign-in asks how, Chrome first; Easy Apply's door speaks only of Easy Apply; a sign-in already kept is never asked for again; Manage asks nothing.
+test('every sign-in door asks how to sign in, Chrome first; each door speaks of its own switch; a kept sign-in is not asked again', () => {
+  for (const mode of ['ask', 'turn-on', 'renew', 'easy-apply']) {
+    const {ways, yes} = CONSENT[mode];
+    assert.ok(ways, `${mode} asks how to sign in`);
+    assert.equal(ways.title, 'How do you want to sign in?');
+    assert.equal(ways.chrome, 'Use my LinkedIn sign-in from Chrome');
+    assert.match(ways.chromeNote, /^Recommended\. No password/);
+    assert.match(ways.chromeMissing, /Settings → Connections → Chrome extension/, 'without the extension the Chrome way says what it needs');
+    assert.equal(ways.window, 'Sign in in a Jobadabra window');
+    assert.equal(yes, 'Continue', `${mode}: the choice decides the way, so the button only continues`);
+  }
+  for (const mode of ['manage', 'turn-on-kept']) assert.equal(CONSENT[mode].ways, undefined, `${mode} signs nobody in`);
+  const easy = CONSENT['easy-apply'];
+  assert.equal(easy.title, 'Turn on LinkedIn Easy Apply?');
+  assert.match(easy.line, /LinkedIn's terms do not allow automated applying/, 'the owner\'s Easy Apply warning (D4), so Continue is the warned yes');
+  assert.doesNotMatch(`${easy.title} ${easy.lead} ${easy.line}`, /LinkedIn jobs|Find jobs/, 'it speaks only of Easy Apply');
+  const kept = CONSENT['turn-on-kept'];
+  assert.equal(kept.yes, 'Turn on');
+  assert.match(kept.lead, /with the LinkedIn sign-in it already keeps for Easy Apply/);
+  assert.doesNotMatch(kept.lead, /choose below/);
+  assert.doesNotMatch(CONSENT.manage.lead, /Easy Apply/, 'LinkedIn jobs off no longer stops Easy Apply');
+  const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
+  assert.match(page, /const kept = \(mode === 'turn-on' \|\| mode === 'ask'\) && view\.signedIn;/);
+  assert.match(page, /export function openLinkedinConsent\(/, 'no wait before the dialog opens (Gitar on #4265: two openers raced past the one-dialog check)');
+  const door = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
+  assert.match(door, /const kept = await openLinkedinConsent\(\{mode: 'easy-apply'\}\);/, 'Easy Apply\'s door opens its own words');
+  assert.match(door, /return kept \? turnOn\(true\) : undefined;/, 'on once the sign-in came, by either way');
 });
 
 test('every door opens the one consent: Settings row, ask on Find jobs, Suggestions entry, ⌘K', () => {
@@ -64,11 +94,18 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.equal(html.match(/id="linkedin-dialog"/g)?.length, 1);
   assert.match(html, /<dialog id="linkedin-dialog" class="save-dialog panel-dialog">/);
-  assert.match(html, /<button class="secondary" id="linkedin-chrome" value="chrome" formnovalidate hidden><\/button>/, 'the Chrome shortcut button is hidden until the page shows it');
+  assert.doesNotMatch(html, /id="linkedin-chrome"/, 'no side button: the choice is the one way');
+  assert.match(html, /<div class="choice-list" role="radiogroup" aria-labelledby="linkedin-ways-title">/, 'the shared choice list');
+  for (const way of ['chrome', 'window']) assert.match(html, new RegExp(`<input type="radio" name="linkedin-way" value="${way}" id="linkedin-way-${way}">`));
+  assert.ok(html.indexOf('id="linkedin-way-chrome"') < html.indexOf('id="linkedin-way-window"'), 'Chrome first');
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
-  assert.match(page, /chrome: !!\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
-  assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !chrome;/, 'the shared dialog shows the shortcut only when asked to');
-  assert.match(page, /linkedinJobsSignIn\(\)/, 'the primary button opens the sign-in window');
+  assert.match(page, /chrome: !!\(words\.ways && view\.extension\)/, 'the Chrome way can be picked only while the extension is connected');
+  assert.match(page, /\$\('linkedin-way-chrome'\)\.disabled = !chrome;/);
+  assert.match(page, /\$\('linkedin-way-chrome'\)\.checked = chrome;/, 'Chrome is picked first when it can be');
+  assert.match(page, /ways && dialog\.returnValue === 'default' && \$\('linkedin-way-chrome'\)\.checked \? 'chrome'/, 'Continue with Chrome picked goes the Chrome way');
+  // Owner, 14 Nov 2026 ("Simplify, then reopen (Recommended)" after Gitar on #4297): a sign-in turns no switch on; the press that asked turns LinkedIn jobs on once it is kept.
+  assert.match(page, /answer\?\.ok && wanted === 'jobs'\) return turnOnKept\(\)/, 'the window way: LinkedIn jobs\' press turns it on');
+  assert.match(page, /if \(view\.signedIn\) return wanted === 'jobs' \? turnOnKept\(\) : true;/, 'the Chrome way, once the copy came');
 });
 
 // #3911 (owner, 12 Nov 2026: "how to renew the linkedin sign-in?" … searched ⌘K for "link" and found no way): the card says "Needs you", ⌘K has "Renew LinkedIn sign-in", and one dialog says the one step.
@@ -92,14 +129,14 @@ test('⌘K finds "Renew LinkedIn sign-in" for "link", "renew" and "sign in" whil
   assert.ok(renewCommandOf(ok), 'also while it works: the person may want to renew before it breaks');
   const words = CONSENT.renew;
   assert.match(words.title, /Renew/);
-  for (const part of [/Chrome/, /extension/, /Find jobs/]) assert.match(words.lead, part, 'the one step');
-  assert.equal(words.yes, 'Sign in to LinkedIn', 'the sign-in window works without Chrome');
-  assert.equal(words.chrome, 'Use my Chrome sign-in');
+  assert.match(words.lead, /Sign in to LinkedIn again, the way you choose below/, 'neutral: it opens for a sign-out, a check, or by hand');
+  assert.ok(words.ways, 'the same choice as turning on');
 });
 
 test('the renew dialog is the third mode of the one consent: its yes signs in, never turns off', () => {
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
-  assert.match(page, /mode === 'manage' \? turnOff\(\) : signInHere\(mode === 'renew'\)/, 'only manage turns off; renew and turn-on sign in');
+  assert.match(page, /mode === 'manage' \? turnOff\(\)\.then\(\(\) => true\) : kept \? turnOnKept\(\) : signInHere\(wanted\)/, 'only manage turns off; renew and turn-on sign in (a kept sign-in is never asked again)');
+  assert.match(page, /const wanted = mode === 'renew' \? 'renew' : mode === 'easy-apply' \? 'easy-apply' : 'jobs';/);
   const settings = readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8');
   assert.match(settings, /mode: needsYou \? .renew. :/, 'the card\'s button opens renew while it needs you');
 });
@@ -107,7 +144,6 @@ test('the renew dialog is the third mode of the one consent: its yes signs in, n
 test('a renewal never says "LinkedIn jobs is on" and never waits for the switch (Gitar on #3914): it says the copy is saved; the next good read says "renewed"', () => {
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /answer\?\.ok && renew\) toast\(.LinkedIn sign-in saved./, 'the sign-in window path');
-  assert.match(page, /if \(!renew\) watchUntilOn\(\)/, 'the Chrome path does not wait for an "on" that is already true');
-  assert.match(page, /turnOnWithChrome\(mode === 'renew'\)/);
-  assert.match(page, /signInHere\(mode === 'renew'\)/);
+  assert.match(page, /return wanted === 'renew' \? false : watchUntilSignedIn\(wanted\);/, 'the Chrome path does not wait for an "on" that is already true');
+  assert.match(page, /const renew = wanted === 'renew';/);
 });

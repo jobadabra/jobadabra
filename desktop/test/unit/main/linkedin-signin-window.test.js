@@ -121,10 +121,10 @@ function app({signIn, seen = null, platform = 'darwin'}) {
   return {handlers, lines, items, keychain};
 }
 
-test('the handler: a sign-in keeps the session in the Keychain, turns the switch on, logs the press without a value', async () => {
+test('the handler: a sign-in keeps the session in the Keychain, turns no switch on, logs the press without a value', async () => {
   const {handlers, lines, items, keychain} = app({signIn: async () => ({ok: true, cookies: [li(), {name: 'bcookie', value: 'track', domain: '.linkedin.com'}]})});
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: true});
-  assert.equal((await handlers.get('linkedinJobsState')()).on, true);
+  assert.equal((await handlers.get('linkedinJobsState')()).on, false, 'the window turns on the switch that asked (linkedin-consent.js)');
   assert.equal(readSession({keychain}).li_at, SECRET);
   assert.equal(items.get(SERVICE).includes('track'), false, 'only the allow-listed cookies are kept');
   assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'signed-in'}]]);
@@ -283,7 +283,7 @@ test('the handler logs the popup outcome without a value, and the words for it p
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: false, reason: 'popup-ended', error: undefined});
   assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'popup-ended'}]]);
   const connected = signInEnded({ok: false, reason: 'popup-ended'}, {extension: true}), notYet = signInEnded({ok: false, reason: 'popup-ended'}, {extension: false});
-  assert.match(connected[1], /Google or Apple/); assert.match(connected[1], /Use my Chrome sign-in/);
+  assert.match(connected[1], /Google or Apple/); assert.match(connected[1], /Use my LinkedIn sign-in from Chrome/);
   assert.match(notYet[1], /Settings → Connections → Chrome extension/);
   assert.doesNotMatch(connected[1], /Settings → Connections → Chrome extension/, 'the shortcut is named only when it is there');
 });

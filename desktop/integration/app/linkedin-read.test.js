@@ -133,8 +133,8 @@ function rig(t, {kinds = ['list'], searches = 1} = {}) {
   t.after(() => { setLinkedinStep(null); fs.rmSync(dir, {recursive: true, force: true}); });
   return {
     dir, storage, browser, linkedin, engineCalls, lines, ipc,
-    /** The extension delivers the session it copied from the person's Chrome (the consent page's yes): the switch turns on. */
-    connect: () => assert.deepEqual(routes['/extension/linkedin-session']({cookies: COPIED}), {ok: true}),
+    /** The person picks the Chrome way, the extension delivers the session it copied (the consent page's yes), then the window turns the switch that asked on (linkedin-consent.js). */
+    connect: async () => { await ipc.linkedinJobsConnect({}); assert.deepEqual(routes['/extension/linkedin-session']({cookies: COPIED}), {ok: true}); assert.deepEqual(await ipc.linkedinJobsOn(), {ok: true}); },
     /** The person's Find jobs press: the search task with the LinkedIn step beside the engine's steps, as pipeline-tasks.js searchOnce runs it. -> {ok, run}. */
     press: () => tracked(storage, 'search', 'you', line => lines.push(line), async (tee, signal) => {
       const {code} = await besideSteps(storage, tee, signal, {mode: 'run', trigger: 'you'}, async () => ({code: 0, result: null}));
@@ -158,7 +158,7 @@ function holding(root) {
 
 test('LinkedIn on: a press reads the guest list in the app\'s hidden browser with the copied session, keeps the jobs, and leaves no LinkedIn cookie in that browser', async t => {
   const r = rig(t);
-  r.connect();
+  await r.connect();
   const {ok, run} = await r.press();
   assert.equal(ok, true, 'the press itself ended well');
   assert.equal(r.linkedin.searches(), 1, 'the one search was read');
@@ -179,7 +179,7 @@ for (const [kind, verdict, words, name] of [
 ]) {
   test(name, async t => {
     const r = rig(t, {kinds: [kind], searches: 2});
-    r.connect();
+    await r.connect();
     const {run} = await r.press();
     assert.equal(r.mine().last?.state, verdict);
     assert.equal(r.linkedin.searches(), 1, 'the read stopped at the wall: no retry, no next search');
@@ -206,7 +206,7 @@ for (const [kind, name] of [
 ]) {
   test(name, async t => {
     const r = rig(t, {kinds: [kind]});
-    r.connect();
+    await r.connect();
     const {run} = await pressOverTime(t, r);
     assert.equal(r.linkedin.searches(), 1, 'the control: the one search was opened');
     const applog = fs.readFileSync(path.join(r.dir, 'logs', 'app.log'), 'utf8');
@@ -221,7 +221,7 @@ for (const [kind, name] of [
 
 test('a LinkedIn read the extension never answers says it could not be read, never "none new"', async t => {
   const r = rig(t, {kinds: ['silent', 'silent'], searches: 2});
-  r.connect();
+  await r.connect();
   const {run} = await pressOverTime(t, r);
   assert.equal(r.linkedin.searches(), 2, 'the control: both searches were opened');
   assert.equal(r.mine().last?.state, 'failed', 'no search answered: the verdict is failed');
@@ -231,7 +231,7 @@ test('a LinkedIn read the extension never answers says it could not be read, nev
 
 test('Stop in the middle of a LinkedIn read closes its tab and takes the session out of the browser', async t => {
   const r = rig(t, {kinds: ['hold']});
-  r.connect();
+  await r.connect();
   const pressed = r.press();
   await r.linkedin.held;   // LinkedIn has the request and has not answered
   assert.equal(r.browser.tabs.size, 1, 'the control: the read\'s tab is open before Stop');
@@ -247,7 +247,7 @@ test('Stop in the middle of a LinkedIn read closes its tab and takes the session
 
 test('the copied session is in no log, run or store file of the app, only in the run\'s secrets file', async t => {
   const r = rig(t, {kinds: ['list', 'check', 'hold', 'limited']});   // every way a read ends, one press each, in one app folder
-  r.connect();
+  await r.connect();
   assert.deepEqual(holding(r.dir), ['isolated-secrets.json'], 'the control: the scan finds the session where it is kept');
   for (const kind of ['list', 'check', 'hold', 'limited']) {
     const pressed = r.press();
@@ -263,7 +263,7 @@ test('the copied session is in no log, run or store file of the app, only in the
 
 test('with the switch off a press asks LinkedIn for nothing and the session is gone from the secrets file', async t => {
   const r = rig(t);
-  r.connect();
+  await r.connect();
   assert.ok(SERVICE in r.secrets(), 'the control: the session is in the secrets file while the switch is on');
   assert.deepEqual(await r.ipc.linkedinJobsOff(), {ok: true});
   const {ok, run} = await r.press();

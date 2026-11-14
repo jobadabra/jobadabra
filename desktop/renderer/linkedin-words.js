@@ -1,6 +1,7 @@
 // LinkedIn jobs on every Find jobs (owner, 31 Oct 2026, spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the words of the one consent and the Suggestions entry, and
 // when the ask is due. Pure, so test/unit/renderer/linkedin-consent.test.js checks them; pages/linkedin-consent.js draws the dialog, and the four doors (Settings, Find jobs ask, Suggestions, ⌘K) open it.
 import '../i18n/screens-helpers.js';
+import '../i18n/screens-pages.js';
 import {t} from '../i18n/index.js';
 import {NO_PLACE} from './targets.js';
 export const KEY = 'linkedin:jobs';
@@ -9,11 +10,18 @@ export const LINE = t('helperFlow.linkedinWarning');
 const WHERE = t('helperFlow.linkedinWhere');
 const LEAD = t('helperFlow.linkedinLead', {where: WHERE});
 
+// The ways to sign in, shown in the dialog's choice (pages/linkedin-consent.js showWays).
+const WAYS = {title: t('helperFlow.linkedinWays'), chrome: t('helperFlow.linkedinWayChrome'), chromeNote: t('helperFlow.linkedinWayChromeNote'), chromeMissing: t('helperFlow.linkedinWayChromeMissing'),
+  window: t('helperFlow.linkedinWayWindow'), windowNote: t('helperFlow.linkedinWayWindowNote')};
 export const CONSENT = {
-  ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
-  'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
-  // #3911: the way to renew a dead sign-in (⌘K, the card's Renew); its yes signs in here, the Chrome shortcut copies Chrome's.
-  renew: {title: t('pagesLinkedinServices.renewTitle'), lead: t('pagesLinkedinServices.renewLead'), line: '', yes: t('helperFlow.linkedinSignin'), no: t('pagesCommon.close'), chrome: t('helperFlow.linkedinChrome')},
+  ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
+  'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
+  // #3911: the way to renew a dead sign-in (⌘K, the card's Renew); the same choice as turning on: Chrome's sign-in copied, or a Jobadabra window.
+  renew: {title: t('pagesLinkedinServices.renewTitle'), lead: t('pagesLinkedinServices.renewLead'), line: '', yes: t('helperFlow.continue'), no: t('pagesCommon.close'), ways: WAYS},
+  // Why (owner, 14 Nov 2026: "a turn on should focus just on that specific case (easy apply or linkedin jobs)"): with a sign-in already kept (made for Easy Apply), LinkedIn jobs asks no sign-in.
+  'turn-on-kept': {title: t('helperFlow.linkedinAsk'), lead: t('helperFlow.linkedinLeadKept', {where: WHERE}), line: LINE, yes: t('pagesCommon.turnOn'), no: t('helperState.notNow')},
+  // Easy Apply's door with no sign-in kept (pages/easy-apply-consent.js): its own words and the owner's warning (D4), then how to sign in; Continue is the warned yes.
+  'easy-apply': {title: t('pagesEasyApply.title'), lead: t('pagesEasyApply.lead'), line: t('pagesEasyApply.warning'), yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
   manage: {title: t('helperFlow.linkedinOn'), lead: t('helperFlow.linkedinManage'), line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
 };
 
