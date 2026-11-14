@@ -255,6 +255,7 @@ def discover(db, run=None, out=print, today=None):
     from . import scout_board_candidates
     kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out, reported=scout_board_candidates.fetch(out))   # the boards installs reported (site GET ?boards=1, the Scout's key)
     cells.record(db, country, families, kept, today, again=again)
+    out(cells.rule_line(db, today))   # the number of facts still measured under an older rule, after this pass's re-reads
     out(cells.line(db, today, named_first))
     return kept
 

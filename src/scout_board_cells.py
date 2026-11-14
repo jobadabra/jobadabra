@@ -4,13 +4,13 @@ the pass picked the country with the fewest employers (src/scout_boards.py next_
 had a turn. A cell is (country, family) because a board fact carries its families (src/pool_tags.py FAMILIES) and installs match boards by them.
 The cell with the fewest boards of MIN_LOCAL+ local jobs goes first (the lab's priority cells first among equals); a run takes its country and that
 country's PER_RUN weakest families. A cell that kept no board rests REST_DAYS (1, 2, 4, 8, then 30 days); a kept board clears its rest. A fact older
-than REFRESH_DAYS is read again before the site drops it at FACT_DAYS. Memory: scout_meta key CELLS. Tests: tests/unit/sources/test_scout_board_cells.py."""
+than REFRESH_DAYS, or measured under an older rule than scout_board_counts.LISTED_RULE, is read again before the site drops it at FACT_DAYS; those re-reads and the reported boards share the pass's places (share). Memory: scout_meta key CELLS. Tests: tests/unit/sources/test_scout_board_cells.py."""
 import sqlite3
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
 
-from . import pool_tags, scout_cells
+from . import pool_tags, scout_board_counts, scout_cells
 
 CELLS = 'board_cells'          # scout_meta: {"<country>|<family>": {"tries": n, "until": "YYYY-MM-DD", "asked": "YYYY-MM-DD"}}
 PER_RUN = 3                    # families one run asks a country's boards for (one AI ideas call names boards for all of them)
@@ -47,20 +47,49 @@ def strength(db, today):
                    for family in scout_boards.proven_families({'family_jobs': counts}))
 
 
+def _rules(db):
+    """{(host, country): rule} of every fact kept (scout_board_facts.rule; None for a fact measured before the rules were numbered). Call after _facts(): that makes the column."""
+    return {(host, country): rule for host, country, rule in db.execute('SELECT host, country, rule FROM scout_board_facts')}
+
+
 def stale(db, today):
-    """{country: [board]} of facts older than REFRESH_DAYS and not yet dropped (and the facts kept before 13 Nov 2026, with no count per family, at once), the boards in the shape the pass reads, oldest country first.
-    A fact read again within REREAD_DAYS that did not pass waits: one board under the floor now must not take every run until it is dropped."""
+    """{country: [board]} of facts due to be read again and not yet dropped, the boards in the shape the pass reads, oldest read first (countries in that order). Due: older than REFRESH_DAYS, or kept before
+    13 Nov 2026 (no count per family), or measured under an older rule than scout_board_counts.LISTED_RULE (a fact with no rule included), at once.
+    A fact read again within REREAD_DAYS that did not pass waits: one board under the floor now must not take every run until it is dropped.
+    Why (14 Nov 2026, sa for the owner): a fact does not say under which rule it was measured, so airlinejobs.com's es 53 (read from a list before the listed rule) lived on as a searched count until its 20-day refresh."""
     from . import scout_boards
     old, gone = (today - timedelta(days=REFRESH_DAYS)).isoformat(), (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()
     tried, recent = scout_cells._meta(db, REREAD, {}), (today - timedelta(days=REREAD_DAYS)).isoformat()
     tried = tried if isinstance(tried, dict) else {}
-    due = sorted((read_at, country, host, url) for host, country, url, _, read_at, counts in _facts(db)
-                 if gone <= read_at and (read_at < old or counts is None) and str(tried.get(f'{host}|{country}') or '') < recent)
+    facts = _facts(db)
+    rules = _rules(db)
+    due = sorted((read_at, country, host, url) for host, country, url, _, read_at, counts in facts
+                 if gone <= read_at and (read_at < old or counts is None or (rules.get((host, country)) or 0) < scout_board_counts.LISTED_RULE)
+                 and str(tried.get(f'{host}|{country}') or '') < recent)
     out = {}
     for _, country, host, url in due:
         out.setdefault(country, []).append({'name': host, 'host': host, 'search_url': url, 'countries': [pool_tags.COUNTRIES.get(country, country)],
                                             'kinds': ['any'], 'source_kind': 'sector'})   # sector: a measured listing page may have no {role}
     return out
+
+
+def share(again, candidates, places=None):
+    """(re-reads, reported candidates) the pass reads: `places` (default scout_boards.MAX_BOARDS) split in half, a half that is not used given to the other, each list in the order it came
+    (the oldest read first; the best-ranked candidate first). The AI's and Google's boards fill what both leave.
+    Design (14 Nov 2026, sa for the owner): the places have two owners with two kinds of claim: a fact of an older rule or past its refresh (read again) and a board installs reported (never measured).
+    Every old-rule fact is due at once after a rule bump (hundreds), so re-reads alone would fill every pass; and the reported boards (Jobeka, Trabajo.org) alone would leave them to the 20-day refresh.
+    Half and half, the unused half to the other, so neither starves the other; it judges nothing about a page. With the default reserve (4 candidates) a pass re-reads 8."""
+    from . import scout_boards
+    half = (places or scout_boards.MAX_BOARDS) // 2
+    return list(again)[:half + max(0, half - len(candidates))], list(candidates)[:half + max(0, half - len(again))]
+
+
+def rule_line(db, today):
+    """One log line: how many of the facts the site still serves (not dropped, MIN_LOCAL+ local jobs) were measured under an older rule than LISTED_RULE, as `Board pass: facts at an older rule: N of M`."""
+    from . import scout_boards
+    gone = (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()
+    facts, rules = [fact for fact in _facts(db) if fact[4] >= gone], _rules(db)
+    return f"Board pass: facts at an older rule: {sum(1 for fact in facts if (rules.get((fact[0], fact[1])) or 0) < scout_board_counts.LISTED_RULE)} of {len(facts)}"
 
 
 def parse(text):
@@ -184,10 +213,10 @@ def seed(db, path, out=print):
             columns = {row[1] for row in source.execute('PRAGMA table_info(scout_board_facts)')}   # #3910: measured in the browser; 13 Nov 2026: its layout
             rows = source.execute('SELECT host, country, url, families, local_jobs, read_at, ' + ('browser' if 'browser' in columns else '0')
                                   + ', ' + ('layout' if 'layout' in columns else 'NULL') + ', ' + ('family_jobs' if 'family_jobs' in columns else 'NULL')
-                                  + ', ' + ('listed_families' if 'listed_families' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
+                                  + ', ' + ('listed_families' if 'listed_families' in columns else 'NULL') + ', ' + ('rule' if 'rule' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
     except sqlite3.Error:
         return 0
-    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', rows)
+    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families, rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', rows)
     for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
         try:
             with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:

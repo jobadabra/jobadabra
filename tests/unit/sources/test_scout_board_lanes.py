@@ -12,7 +12,7 @@ from contextlib import closing
 from datetime import date, timedelta
 from unittest import mock
 
-from src import pool_tags, scout, scout_board_cells as cells, scout_board_lanes as lanes, scout_boards, scout_cells
+from src import pool_tags, scout, scout_board_cells as cells, scout_board_counts, scout_board_lanes as lanes, scout_boards, scout_cells
 
 TODAY = date(2026, 11, 13)
 FAMILIES = list(pool_tags.FAMILIES)
@@ -21,9 +21,9 @@ FAMILIES = list(pool_tags.FAMILIES)
 def fact(db, host, country, families, read_at=TODAY, jobs=5, right=scout_boards.MIN_RIGHT):
     """A kept fact: each family has `right` jobs (None: a fact kept before 13 Nov 2026, with no count per family)."""
     scout_boards.ensure(db)
-    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs, rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                (host, country, f'https://{host}/jobs?q={{role}}', ','.join(families), jobs, read_at.isoformat(),
-                None if right is None else json.dumps({family: right for family in families})))
+                None if right is None else json.dumps({family: right for family in families}), scout_board_counts.LISTED_RULE))   # measured under the current rule: not due for that
 
 
 def cover(db, countries):
