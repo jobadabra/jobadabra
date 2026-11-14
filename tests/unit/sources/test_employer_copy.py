@@ -1,4 +1,6 @@
 """A LinkedIn job whose employer's own feed lists it is kept under the employer's address, so Apply opens the employer's page (src/sources/employer_copy.py)."""
+import contextlib
+import sqlite3
 import unittest
 
 from src.sources import employer_copy
@@ -118,6 +120,11 @@ class EmployerCopy(unittest.TestCase):
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([{**FEED[0], 'location': ''}, {**FEED[0], 'location': ''}]), log=lambda line: None, guess=self.guess)
         self.assertEqual(job['url'], FEED[0]['url'])
 
+    def test_a_known_feed_without_the_job_still_lets_the_name_be_tried(self):
+        self.guessed = [('ashby', 'canonical', FEED)]
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([FEED[1]]), log=lambda line: None, guess=self.guess)
+        self.assertEqual((job['url'], self.guesses), (FEED[0]['url'], ['Canonical']))
+
     def test_a_feed_that_fails_keeps_linkedin(self):
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(None), log=lambda line: None, guess=self.guess)
         self.assertEqual(job['url'], LINKEDIN['url'])
@@ -131,7 +138,7 @@ class EmployerCopy(unittest.TestCase):
 
 
 class LinkedInRow(unittest.TestCase):
-    def read(self, disable='', note=None):
+    def read(self, disable='', note=None, locked=False):
         """LinkedIn's reader row on a temporary jobs file: {job, reads, loads, feeds: [(ats, slug, company, added_at)], notes}."""
         import tempfile
         from contextlib import closing
@@ -144,8 +151,11 @@ class LinkedInRow(unittest.TestCase):
                 mock.patch('src.sources.ats.probe', side_effect=lambda system, slug: FEED if system == 'greenhouse' else None) as probe, \
                 mock.patch('src.sources.board_employers.note', side_effect=note) as noted, \
                 mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': disable, 'JOBADABRA_FIXTURE_DIR': ''}):
-            [job] = reader_rows._linkedin_read(None, {})
+            with mock.patch('src.store.connect', side_effect=sqlite3.OperationalError('database is locked')) if locked else contextlib.nullcontext():
+                [job] = reader_rows._linkedin_read(None, {})
             with closing(store.connect(Path(folder) / 'jobs.sqlite')) as db:
+                from src import scout_core
+                scout_core.ensure_tables(db)
                 feeds = [tuple(row) for row in db.execute('SELECT ats, slug, company, added_at FROM feed_sources')]
         return {'job': job, 'reads': probe.call_count, 'loads': load.call_count, 'feeds': feeds, 'notes': noted.call_count}
 
@@ -161,6 +171,10 @@ class LinkedInRow(unittest.TestCase):
     def test_a_kept_feed_is_dated_like_every_other_feed_source(self):
         [(*_, added_at)] = self.read(disable='index')['feeds']
         self.assertRegex(added_at, r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$')
+
+    def test_a_locked_jobs_file_never_costs_the_jobs_read(self):
+        got = self.read(locked=True)
+        self.assertEqual((got['job']['url'], got['feeds']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', []))
 
     def test_a_scout_file_that_cannot_be_written_never_costs_the_jobs_read(self):
         got = self.read(disable='index', note=OSError('read-only'))
