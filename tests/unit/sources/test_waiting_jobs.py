@@ -66,6 +66,21 @@ class JobsJudgedAfterTheSearch(unittest.TestCase):
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'listed: off the waiting list')
         self.assertIn('3 listed', said[0])
 
+    def test_jobs_whose_import_fails_stay_waiting_for_the_next_queue(self):
+        """#3979: the queue took the listed jobs off the waiting list before Find jobs put them in the store; a failed import lost them while the
+        warning said they wait for the next queue (src/press/after_search.py)."""
+        self.late_search()
+
+        def keep(items):
+            raise sqlite3.OperationalError('database is locked')
+        with self.assertRaises(sqlite3.OperationalError):
+            waiting_jobs.judge(self.db, SEARCH, NOW, out=lambda line: None, keep=keep)
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 3, 'not stored: all three still wait')
+        kept = []
+        _, items = waiting_jobs.judge(self.db, SEARCH, NOW, out=lambda line: None, keep=kept.extend)
+        self.assertEqual((len(kept), len(items)), (3, 3), 'the next queue lists them')
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'stored: off the waiting list')
+
     def test_a_reader_of_the_whole_world_keeps_only_the_jobs_in_the_persons_places(self):
         """A free job API lists the whole world: its unplaced towns are not kept waiting (hundreds of titles asked for nobody)."""
         self.late_search('Example jobs API')

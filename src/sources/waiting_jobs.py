@@ -76,10 +76,11 @@ def count(db, search):
     return db.execute('SELECT count(*) FROM waiting_jobs WHERE search = ?', (_key(search),)).fetchone()[0]
 
 
-def judge(db, search, now, out=print, land=None):
+def judge(db, search, now, out=print, land=None, keep=None):
     """The queue's first step: asks the AI about the waiting jobs' titles, then about the places of the ones whose title fits, and hands back the
     ones both say yes to, in the report's shape (aggregators._item, recorded in the seen history) -> (checked, items to list). land(fit titles, batch): as each title batch lands.
-    A row leaves the list when it is listed, when an answer says no, or after TRIES runs that answered its title; one whose title is unanswered stays for the next queue."""
+    A row leaves the list when it is listed, when an answer says no, or after TRIES runs that answered its title; one whose title is unanswered stays for the next queue.
+    keep(items): stores the jobs to list (Find jobs' store); their rows leave only once it returned, so a failed store keeps them waiting (#3979)."""
     from ..ai import title_triage
     from . import aggregators, feed_places, feeds
     rows = held(db, search)
@@ -111,9 +112,14 @@ def judge(db, search, now, out=print, land=None):
                 items.append(aggregators._item(db, name, job, now))
             elif feeds.judged_title(job['title']) is False or feeds.place_of(job) == 'out':   # an answer said no
                 refused.append(job['url'])
-        db.executemany('DELETE FROM waiting_jobs WHERE url = ?', [(item['url'],) for item in items] + [(url,) for url in refused])
-        db.executemany('UPDATE waiting_jobs SET tries = tries + 1 WHERE url = ?', [(url,) for url in answered])
+        db.executemany('DELETE FROM waiting_jobs WHERE url = ?', [(url,) for url in refused])
+        # Why (#3979): a job to list is not a try: its row waits for keep(), and TRIES never drops it before it is stored
+        db.executemany('UPDATE waiting_jobs SET tries = tries + 1 WHERE url = ?', [(url,) for url in answered - {item['url'] for item in items}])
         db.execute('DELETE FROM waiting_jobs WHERE tries >= ?', (TRIES,))
+    if keep is not None and items:
+        keep(items)   # raises: the rows stay for the next queue
+    with db:
+        db.executemany('DELETE FROM waiting_jobs WHERE url = ?', [(item['url'],) for item in items])
     left = count(db, search)
     out(f"Checked {len(rows)} job(s) your last search had no time for: {len(items)} listed, {len(refused)} not for you"
         f"{f', {left} still wait' if left else ''}")
