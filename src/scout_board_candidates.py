@@ -13,6 +13,11 @@ shape): a candidate with one is read THERE, like an AI-named template board; one
 Design (a 3rd fix in 7 days on this file, so the state is written down): a candidate's read state is per (host, country, target), the one owner being this file's stamp (`board_candidates` in scout_meta): target = the address, or '' for the home page.
 Verdicts: reported -> read at its target (stamp host|country[|address], any outcome) -> not a candidate AGAIN for REFRESH_DAYS at that target. A candidate WITH an address is due until that exact address was read (a home read, kept or empty, says
 nothing about it); a candidate WITHOUT one is blocked by any read of the host in the country, as before. The 20-day rule itself is unchanged.
+Design (a 4th fix in 7 days on this file; 14 Nov 2026, sa for the owner: "a subdomain board is never served, so the whole chain is dead for it"; local run: the Scout's fact for Jobeka had host jobeka.com and url on es.jobeka.com, which the
+site's boardFactsOf and the engine's served() both drop): **a board's host is the host of the address it is read at, `www.` dropped (`read_host`, here, its one owner)**. The report host (the company domain a CI search or an install named) is
+only the NAME a report is matched by (stopped hosts, the stamps and facts a read left: `names`); it never leaves this file as a fact's host. Chain: report {host: jobeka.com, ci_urls es: https://es.jobeka.com/..} -> candidate {name: jobeka.com,
+host: es.jobeka.com} -> fact {host: es.jobeka.com, url: that address} -> the site keeps it (urlHost == host, jobadabra-web api/employers.js boardFactsOf) -> the engine serves it (board_ideas.served: valid()'s host == the fact's host). Who compares what:
+due() and choose() compare a read (a stamp or a fact) with EITHER name; nobody else compares hosts. A candidate without an address is read at https://<report host>/: both are the same host, as before.
 Invariants: (1) the list comes from the Scout's own key and route only (GET <scout-memory>?boards=1, INDEX_PUBLISH_KEY); never an install id (the site sends none, `fetch` keeps only host,
 countries, installs, local); (2) a reported search template is a HINT, never read: a reported template can be a job-alert subscribe form (rabota.md: `?subscribePosition={role}&subscribeName={place}`),
 so a candidate is the board's HOME page marked 'home' and the pass finds its own search form (src/scout_board_homes.py), counting only through what it measured itself: no typing, no submit,
@@ -50,6 +55,18 @@ def address_ok(url, host):
     if not found or not (found[1] == host or found[1].endswith('.' + host)) or '{role}' not in url:
         return None
     return url if FIXED.fullmatch(found[2].replace('{role}', 'x').replace('{place}', 'x')) else None
+
+
+def read_host(address, host):
+    """The host a board is kept under (the fact's, the stamp's): the host of the address it is read at, `www.` dropped, else the reported `host`. The one definition of "the board's host" after a report (Design: top of the file):
+    it is board_ideas._host, the function the engine's served() compares a fact's host with, so the Scout writes exactly what the app reads back."""
+    from .ai import board_ideas
+    return (board_ideas._host(address) if isinstance(address, str) else '') or host
+
+
+def names(report, country):
+    """Both hosts a read of this report may sit under: the reported host (a stamp or a fact kept before the address) and the host of its address in `country` (the fact the address's read keeps)."""
+    return {report['host'].removeprefix('www.'), read_host((report.get('ci_urls') or {}).get(country), report['host'])}
 
 
 def reserve():
@@ -101,7 +118,8 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
         out(f"Board pass: reported boards: not read ({type(error).__name__}{f' HTTP {code}' if code else ''}{f': {said}' if said else ''})")
         return []
     reports = [report for report in map(valid, boards[:MAX_BOARDS]) if report]
-    out(f'Board pass: reported boards: {len(reports)} of {len(boards)} read')
+    other = sum(1 for report in reports if any(read_host(url, report['host']) != report['host'] for url in (report.get('ci_urls') or {}).values()))
+    out(f'Board pass: reported boards: {len(reports)} of {len(boards)} read' + (f'; {other} with an address on another host than the reported one' if other else ''))
     return reports
 
 
@@ -118,9 +136,9 @@ def for_country(reports, country, measured=(), today=None, refresh_days=20):
         return (report.get('ci_urls') or {}).get(country)
 
     def due(report):
-        return not any(host == report['host'] and code == country and (not address(report) or target == address(report)) for host, code, target in read)
+        return not any(host in names(report, country) and code == country and (not address(report) or target == address(report)) for host, code, target in read)
     wanted = sorted((report for report in reports if country in report['countries'] and due(report)), key=lambda report: (-report.get('local', 0), -report['installs'], report['host']))
-    return [{'name': report['host'], 'host': report['host'], 'search_url': address(report) or f"https://{report['host']}/", **({} if address(report) else {'home': True}),
+    return [{'name': report['host'], 'host': read_host(address(report), report['host']), 'search_url': address(report) or f"https://{report['host']}/", **({} if address(report) else {'home': True}),
              'countries': [pool_tags.COUNTRIES.get(country, country)], 'kinds': ['any'], 'source_kind': 'sector'} for report in wanted[:reserve()]]
 
 
@@ -146,7 +164,7 @@ def choose(db, reported, country):
     # a 401/403, a bot check, a sign-in page) is final, so the memory wins over the report and the host is not asked again, by this pass or any later one. One owner of the question
     # (scout_board_cells.stopped_hosts, Gitar on #4075) and `www.` is ignored on both sides: a press may write www.jooble.org for a stop stored as jooble.org.
     stopped = scout_board_cells.stopped_hosts(db)
-    return for_country([report for report in reported if report['host'].removeprefix('www.') not in stopped], country, measured) if reported else []
+    return for_country([report for report in reported if not names(report, country) & stopped], country, measured) if reported else []
 
 
 def stamp_read(db, country, picked, counts):
