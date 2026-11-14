@@ -119,10 +119,16 @@ def _wait_early(search):
 
 def _named_meanwhile(board_ideas, search):
     """The boards the AI proposed while the measured boards were being read (propose_early), for the places they left; none once the
-    search's read cut has come: nothing is asked or started past it."""
+    search's read cut has come: nothing is asked or started past it.
+    Why (14 Nov 2026, sa, c02 Vienna: karriere.at, proposed first, never read; the local run's log): ideas() puts the boards that only carry an install rank (steirerjobs.at 28 for Vienna,
+    0 relevant) before the AI's own for the full read (#3835, board_ideas._merge, unchanged); the pack's proven boards already took their places, so the places left go to the boards named for THIS
+    search first, the ranked ones after them, each group in ideas()'s order."""
     from .sources import read_budget
     _wait_early(search)
-    return [] if read_budget.past_cut() else _proposed(board_ideas, search)
+    if read_budget.past_cut():
+        return []
+    named = _proposed(board_ideas, search)
+    return [board for board in named if board.get('proposed')] + [board for board in named if not board.get('proposed')]   # the AI's own boards take the places first, each group in its order
 
 
 def _refused(board_ideas):
