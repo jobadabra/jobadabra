@@ -2,7 +2,7 @@
 rest/<path, every non-alphanumeric as _>: the JSON body for that path, with an ETag of its hash (304 when the request sends that ETag). A missing file: [] for a list, else 404.
 The watcher's looks (tests/test_ship_watch.py): when states exists, repos/<r>/pulls/<n> and the head's check-runs/status follow one line per look of
 states (OPEN | MERGED <sha> | CLOSED | REFUSED), mergeables, checks (pending | <failing name> | empty = pass), runs (none | running | gate | ok | refused: a 403), verdicts (pending | none | ok),
-heads (the head sha, default new1), labels (comma-separated names), titles (default "[t] A change"), twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
+heads (the head sha, default new1), labels (comma-separated names), titles (default "[t] A change"), reviews.json (the PR's reviews, REST shape), twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
 Every call is appended to calls; any other gh command fails like an unknown call.
 REST out (10 Nov 2026, the GraphQL fallback of tools/pr-rest-lib.sh): a refuse_rest file makes every REST read a 403 "API rate limit exceeded"; `gh api rate_limit` prints the number in rate_core (default 5000);
 `gh api graphql` answers the query it recognises from graphql_view.json (pullRequest), graphql_checks.json (checkSuites) or graphql_runs.json (the aliased resource lookups), each a full {"data": ...} body, and
@@ -112,6 +112,9 @@ if (d / 'states').exists() and re.search(r'/commits/[^/]+/status$', path):
 f = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', path)
 if f.exists():
     answer(json.loads(f.read_text()))
+if '/reviews?' in path and (d / 'reviews.json').exists():   # the PR's reviews, REST shape (reviews.json)
+    page = int((re.search(r'[?&]page=(\d+)', path) or [0, 1])[1])   # 100 a page, like GitHub
+    answer(json.loads((d / 'reviews.json').read_text())[(page - 1) * 100:page * 100])
 if re.search(r'/(comments|reviews|commits)\?|/pulls\?', path):
     answer([])
 print('HTTP/2.0 404 Not Found\n\n{"message":"Not Found"}')

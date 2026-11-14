@@ -41,11 +41,24 @@ pr_get() {
 # pr_view <repo> <n> [full]: the PR like `gh pr view --json number,url,title,state,mergeable,headRefOid,headRefName,mergeCommit` (state OPEN|MERGED|CLOSED,
 # mergeable MERGEABLE|CONFLICTING|UNKNOWN, labels: the label names). "full" adds comments, reviews and commits in the same shape (3 more reads, free while unchanged).
 pr_view() { _pr_view_rest "$@" || { _pr_rest_out && _pr_gql_view "$@"; }; }
+# _pr_reviews_all <repo> <n>: every review of the PR (REST lists oldest first, 100 a page, so the newest one sits on the last page); at most 10 pages.
+# Why (13 Nov 2026, Gitar's findings on #4124 and #4131; the GraphQL fallback below asks reviews(last:100) for the same reason): READY reads the newest Claude review of the head; the first page alone would miss it on a PR with more than 100 reviews. The first request keeps its old path (cache key).
+_pr_reviews_all() {
+  local page=1 acc part
+  acc="$(pr_get "repos/$1/pulls/$2/reviews?per_page=100")" || return 1
+  part="$acc"
+  while [ "$(jq 'length' <<<"$part" 2>/dev/null || echo 0)" -ge 100 ] && [ "$page" -lt 10 ]; do
+    page=$((page + 1))
+    part="$(pr_get "repos/$1/pulls/$2/reviews?per_page=100&page=$page")" || return 1
+    acc="$(jq -sc 'add' <<<"$acc $part")"
+  done
+  printf '%s\n' "$acc"
+}
 _pr_view_rest() {
   local p c r k
   p="$(pr_get "repos/$1/pulls/$2")" || return 1
   if [ "${3:-}" = full ]; then
-    c="$(pr_get "repos/$1/issues/$2/comments?per_page=100")" && r="$(pr_get "repos/$1/pulls/$2/reviews?per_page=100")" && k="$(pr_get "repos/$1/pulls/$2/commits?per_page=100")" || return 1
+    c="$(pr_get "repos/$1/issues/$2/comments?per_page=100")" && r="$(_pr_reviews_all "$1" "$2")" && k="$(pr_get "repos/$1/pulls/$2/commits?per_page=100")" || return 1
   else c='[]'; r='[]'; k='[]'; fi
   printf '%s\n%s\n%s\n%s\n' "$p" "$c" "$r" "$k" | jq -sc '.[0] as $p | {number: $p.number, url: $p.html_url, title: $p.title, headRefOid: $p.head.sha, headRefName: $p.head.ref,
       isDraft: ($p.draft // false), state: (if $p.merged_at then "MERGED" elif $p.state == "closed" then "CLOSED" else "OPEN" end),
@@ -99,7 +112,7 @@ _pr_gql() { GH_GRAPHQL_WHY="fallback: REST out" gh api graphql -f query="$1" "${
 _pr_gql_view() {
   local full=false; [ "${3:-}" = full ] && full=true
   _pr_gql 'query($o:String!,$r:String!,$n:Int!,$full:Boolean!){repository(owner:$o,name:$r){pullRequest(number:$n){number url title headRefOid headRefName isDraft state mergeable mergeStateStatus
-      mergeCommit{oid} labels(first:100){nodes{name}} comments(first:100)@include(if:$full){nodes{id author{__typename login} body url createdAt}} reviews(first:100)@include(if:$full){nodes{id author{__typename login} body state submittedAt}}
+      mergeCommit{oid} labels(first:100){nodes{name}} comments(first:100)@include(if:$full){nodes{id author{__typename login} body url createdAt}} reviews(last:100)@include(if:$full){nodes{id author{__typename login} body state submittedAt}}
       commits(first:100)@include(if:$full){nodes{commit{authoredDate committedDate}}}}}}' -f o="${1%%/*}" -f r="${1#*/}" -F n="$2" -F full="$full" \
     | jq -ce 'def login: (.author.login // "") + (if .author.__typename == "Bot" then "[bot]" else "" end);   # Why (Gitar, 10 Nov 2026): GraphQL names a bot without the [bot] suffix REST puts on it; pc_items tells bots by that suffix
       .data.repository.pullRequest | select(. != null) | {number, url, title, headRefOid, headRefName, isDraft, state, mergeable, mergeState: (.mergeStateStatus | ascii_downcase),

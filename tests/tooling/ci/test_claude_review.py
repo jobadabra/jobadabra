@@ -81,6 +81,36 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertRegex(text, r'(?m)^\s+allowed_bots: github-actions\s*$')
         self.assertNotIn("allowed_bots: '*'", text)
 
+    def test_a_plan_limit_is_a_skipped_review_not_a_red_job_and_any_other_failure_stays_red(self):
+        """13 Nov 2026 (owner's Telegram: 90% of CI's Claude week used): when the plan is out the review job ends green with one clear line; a real error still fails the job. Only the run's LAST result message
+        decides (Gitar's finding on #4119): a transcript that merely mentions a quota or a 429 must not turn a real failure into a skip."""
+        with tempfile.TemporaryDirectory() as tmp:
+            def failed(messages):
+                file = Path(tmp) / 'execution.json'
+                file.write_text(json.dumps(messages), encoding='utf-8')
+                env = {**os.environ, 'PR': '7', 'EXECUTION_FILE': str(file), 'GITHUB_STEP_SUMMARY': str(Path(tmp) / 'summary.md'), 'GITHUB_REPOSITORY': ''}
+                return subprocess.run(['node', TOOL, 'failed'], capture_output=True, text=True, env=env, timeout=30)
+            soft = failed([{'type': 'result', 'is_error': True, 'result': 'Claude AI usage limit reached|1700000000'}])
+            self.assertEqual(soft.returncode, 0)
+            self.assertIn('plan limit is reached', soft.stdout)
+            talks_about_quotas = {'type': 'user', 'message': {'content': 'the diff adds a quota check and retries on 429 too many requests, rate limit reached'}}
+            self.assertNotEqual(failed([talks_about_quotas, {'type': 'result', 'is_error': True, 'result': 'Unsupported event type: push'}]).returncode, 0)
+            self.assertNotEqual(failed([talks_about_quotas]).returncode, 0, 'no error result at all is not a plan limit')
+
+    def test_a_skipped_review_leaves_one_note_on_the_pr_per_head(self):
+        """Gitar's finding on #4119: nothing on the PR said why READY never came. The note carries a marker, so a second skip of the same head posts nothing."""
+        pr = lambda comments: {'data': {'repository': {'pullRequest': {'number': 7, 'state': 'OPEN', 'isDraft': False, 'title': 't', 'headRefOid': HEAD, 'baseRefName': 'main', 'headRepository': {'nameWithOwner': 'o/r'},
+              'commits': {'nodes': []}, 'reviews': {'nodes': []}, 'comments': {'nodes': [{'body': c} for c in comments]}, 'labels': {'nodes': []}}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / 'execution.json'
+            file.write_text(json.dumps([{'type': 'result', 'is_error': True, 'result': 'usage limit reached'}]), encoding='utf-8')
+            env = json.dumps({'PR': '7', 'HEAD': HEAD, 'GITHUB_REPOSITORY': 'o/r', 'EXECUTION_FILE': str(file), 'GITHUB_STEP_SUMMARY': str(Path(tmp) / 's.md')})
+            def notes(existing):
+                answer = json.dumps(json.dumps(pr(existing)))
+                return node(f"(() => {{ const seen = []; const run = (...a) => {{ seen.push(a[0] + ' ' + a[1]); return a[1] === 'graphql' ? {answer} : ''; }}; m.failed({env}, run); return seen.filter(x => x.startsWith('pr comment')).length; }})()")
+            self.assertEqual(notes([]), 1)
+            self.assertEqual(notes([f'Claude review skipped\n<!-- claude-review-skipped sha={HEAD} -->']), 0)
+
     def test_a_push_is_reviewed_on_the_diff_since_the_last_reviewed_head_only_when_it_is_an_ancestor(self):
         self.assertEqual(node("m.diffBase('abc', 'ahead')"), 'abc')
         self.assertEqual(node("m.diffBase('abc', 'diverged')"), '')
@@ -100,6 +130,14 @@ class ClaudeReviewTest(unittest.TestCase):
         prompt = node(f"m.promptFor({{number: '7', head: '{HEAD}', base: 'main', from: '', prior: [], rules: 'RULE A text'}}, {json.dumps(template)})")
         self.assertIn('RULE A text', prompt)
         self.assertNotIn('{{', prompt)
+
+    def test_every_read_of_the_reviews_asks_for_the_newest_ones(self):
+        """Gitar's findings on #4131: READY and the label pick the newest Claude review, so a read of the reviews must be a window of the NEWEST (`last`), never the oldest (`first`)."""
+        review_query = (ROOT / 'tools' / 'claude-review.mjs').read_text(encoding='utf-8')
+        self.assertIn('reviews(last: 100) { nodes { author { login } submittedAt body } }', review_query)
+        graphql_view = (ROOT / 'tools' / 'pr-rest-lib.sh').read_text(encoding='utf-8')
+        self.assertIn('reviews(last:100)@include(if:$full)', graphql_view)
+        self.assertNotIn('reviews(first:', graphql_view)
 
 
 if __name__ == '__main__':
