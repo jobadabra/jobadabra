@@ -25,42 +25,42 @@ export async function refreshLinkedin() {
 }
 const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;
 let watching = false;
-// The person finishes in Chrome: look every few seconds, for a couple of minutes, until the app has the session. -> true when it came (LinkedIn jobs on, or for Easy Apply the sign-in kept).
-const arrived = wanted => (wanted === 'jobs' ? view.on : view.signedIn);
+// The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until the sign-in is kept. Then the press that asked turns its own
+// switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the sign-in came (and, for LinkedIn jobs, it is on).
 async function watchUntilSignedIn(wanted) {
   if (watching) return false;
   watching = true;
   const until = Date.now() + WATCH_FOR_MS;
   try {
-    while (Date.now() < until && !arrived(wanted)) {
+    while (Date.now() < until && !view.signedIn) {
       await new Promise(done => setTimeout(done, WATCH_MS));
       await refreshLinkedin().catch(() => {});
     }
   } finally { watching = false; }
-  if (arrived(wanted) && wanted === 'jobs') toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
-  else if (!arrived(wanted) && wanted === 'easy-apply') toast(t('pagesEasyApply.stayedOff'), '', NO_PLACE.itself, 'warn');   // Gitar on #4276: the copy never came, so say Easy Apply stayed off
-  return arrived(wanted);
+  if (view.signedIn) return wanted === 'jobs' ? turnOnKept() : true;
+  if (wanted === 'easy-apply') toast(t('pagesEasyApply.stayedOff'), '', NO_PLACE.itself, 'warn');   // Gitar on #4276: the copy never came, so say Easy Apply stayed off
+  return false;
 }
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.
 let signingIn = false;   // Why (independent review, 3 Nov 2026): the dialog is closed while the window is open, so a Find jobs press must not ask again (and count a decline) meanwhile
-// `wanted`: which switch asked ('jobs' | 'easy-apply' | 'renew'); only that one turns on. -> true when the sign-in was kept.
+// `wanted`: which switch asked ('jobs' | 'easy-apply' | 'renew'); LinkedIn jobs is turned on here once the sign-in is kept, Easy Apply by its own door. -> true when the sign-in was kept.
 async function signInHere(wanted) {
   const renew = wanted === 'renew';
   signingIn = true;
-  const answer = await window.pilot.linkedinJobsSignIn({for: wanted}).catch(() => null);
+  const answer = await window.pilot.linkedinJobsSignIn().catch(() => null);
   signingIn = false;
   await refreshLinkedin().catch(() => {});
   // Why (Gitar on #3914, 12 Nov 2026): a renewal is no "LinkedIn jobs is on" (it was on); the next read that works is what says "renewed", so this only says the copy is saved.
   if (answer?.ok && renew) toast(t('pagesLinkedinServices.savedTitle'), t('pagesLinkedinServices.savedBody'), NO_PLACE.itself, 'good');
-  else if (answer?.ok && wanted === 'jobs') toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+  else if (answer?.ok && wanted === 'jobs') return turnOnKept();
   else if (!answer?.ok) toast(...signInEnded(answer, view));
   return !!answer?.ok;   // Easy Apply says its own "on" (pages/easy-apply-consent.js)
 }
 
 // The Chrome way, while the Chrome extension is connected: its own page in Chrome copies the sign-in Chrome already has. -> true when the sign-in arrived (waits for it, except a renewal).
 async function turnOnWithChrome(wanted) {
-  const opened = await window.pilot.linkedinJobsConnect({for: wanted}).catch(() => null);
+  const opened = await window.pilot.linkedinJobsConnect().catch(() => null);
   if (!opened?.opened) { toast(...notOpened(opened)); return false; }
   toast(t('pagesFinalLabels.finishChrome'), t('pagesAuditPunct.a41'), NO_PLACE.itself, 'info');
   // Why (Gitar on #4265, 14 Nov 2026): Easy Apply's door goes on only once the copy has come, so its flow waits here instead of ending before it. A renewal has nothing to wait for (Gitar on #3914).

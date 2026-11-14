@@ -3,7 +3,7 @@
 // the twin writes its own file, never the owner's), never the settings file, a log, the store or an upload.
 // Design (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times. Once logged in, then we should share it for the other"; asked via
 // AskUserQuestion: "Yes, this design (Recommended)", then "Fold the split in (Recommended)"): two switches, one sign-in. This module owns the sign-in (the Keychain item + `signedIn`) and
-// LinkedIn jobs' switch (`on`); lib/easy-apply-switch.js owns Easy Apply's. A sign-in turns on only the switch that asked for it (`for`); either switch turned on while a sign-in is kept
+// LinkedIn jobs' switch (`on`); lib/easy-apply-switch.js owns Easy Apply's. A sign-in turns no switch on: the press that asked turns its own switch on once it is kept (owner, 14 Nov 2026); either switch turned on while a sign-in is kept
 // asks for none; the sign-in is deleted only when both switches are off (forget). Settings: settings.linkedinJobs = {on, signedIn, asked, declined, …} (not settings.linkedin: that is the
 // profile import's, lib/linkedin-oauth.js). Guards: test/unit/main/linkedin-session.test.js, test/unit/main/easy-apply-switch.test.js.
 import * as realKeychain from './keychain.js';
@@ -41,15 +41,18 @@ export function cleanCookies(list) {
 export const signedIn = storage => linkedinSignedIn(storage.settings());
 
 /**
- * Store the copied session in the Keychain. `for`: which switch asked for it: 'jobs' turns LinkedIn jobs on; 'easy-apply' or none (a renewal) turns nothing on (Easy Apply's own
- * switch turns on after its warning, lib/easy-apply-switch.js). -> {ok: true} | {ok: false, error}; the value is never in the answer.
+ * Store the copied session in the Keychain. It turns no switch on: the press that asked turns its own switch on once the sign-in is kept (renderer/pages/linkedin-consent.js,
+ * pages/easy-apply-consent.js). -> {ok: true} | {ok: false, error}; the value is never in the answer.
  */
-export function saveSession(storage, cookies, {keychain = realKeychain, now = Date.now, for: wanted} = {}) {
+export function saveSession(storage, cookies, {keychain = realKeychain, now = Date.now} = {}) {
   const clean = cleanCookies(cookies);
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   const before = signedIn(storage) ? readSession({keychain})?.li_at : undefined;   // in memory only: the same sign-in saved again keeps its clock (Gitar on #4247)
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {signedIn: true, copiedAt: now(), ...(wanted === 'jobs' ? {on: true} : {}), ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; `for`, owner 14 Nov 2026: two switches, one sign-in): only the switch that asked turns on; a saved copy is no verdict, so `signin` stays, only its keep time is stamped: the next read that works after Needs you is what says "renewed"
+  const byChrome = storage.settings().linkedinJobs?.signedOutByChrome === true;   // Gitar on #4297: a Needs you the Chrome sign-out wrote (no read did) is ended by the next sign-in itself
+  save(storage, {signedIn: true, copiedAt: now(), signedOutByChrome: undefined, ...(byChrome ? {signin: undefined} : {}), ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});
+  // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; owner 14 Nov 2026, "Simplify, then reopen (Recommended)" after Gitar on #4297): a sign-in turns no switch on by itself; a saved
+  // copy is no verdict, so a `signin` a read wrote stays and only its keep time is stamped: the next read that works after Needs you is what says "renewed"
   return {ok: true};
 }
 
@@ -62,7 +65,7 @@ export function refreshSession(storage, cookies, {keychain = realKeychain, held 
   if (!signedIn(storage)) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271: Easy Apply alone keeps one too
   if (!held) { save(storage, {copiedAt: now()}); return {ok: true, kept: true}; }   // the extension answered: no new ask for 12 h (copyIsOld)
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined, copiedAt: undefined, ...(state(storage).on ? {signin: nextSignin(signinView(storage), 'signed-out')} : {})}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271); On with nothing kept is Needs you, Sign in again (Gitar on #4283)
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined, copiedAt: undefined, ...(state(storage).on ? {signin: nextSignin(signinView(storage), 'signed-out'), signedOutByChrome: true} : {})}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271); On with nothing kept is Needs you, Sign in again (Gitar on #4283)
   const before = readSession({keychain})?.li_at;   // compared in memory only: a copy of the same sign-in is no new sign-in
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
   save(storage, {copiedAt: now(), ...(before !== clean.li_at ? {keptAt: new Date(now()).toISOString()} : {})});
@@ -74,17 +77,13 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
-const WANTS = new Set(['jobs', 'easy-apply', 'renew']);
-export const WANTED_MS = SIGNIN_WAIT_MS;   // Why (Gitar on #4271, #4283): a Chrome way left unfinished must not decide a later copy; it lasts exactly as long as the window's own watch
-/** The Chrome way was opened by `wanted` ('jobs' | 'easy-apply' | 'renew'): kept (with its time) until the extension's copy arrives, so that copy turns on only the switch that asked. */
-export function noteWanted(storage, wanted, {now = Date.now} = {}) { if (WANTS.has(wanted)) save(storage, {wanted, wantedAt: now()}); }
-/** Who asked for the copy now arriving ('jobs' | 'easy-apply' | 'renew'), or null when nobody did within the window's watch (WANTED_MS). Reads only: the route clears it once the copy was kept (Gitar on #4276). */
-export function peekWanted(storage, {now = Date.now} = {}) {
-  const mine = storage.settings().linkedinJobs || {};
-  return WANTS.has(mine.wanted) && now() - (Number(mine.wantedAt) || 0) <= WANTED_MS ? mine.wanted : null;
-}
-/** The copy was kept: the note is used up. */
-export const clearWanted = storage => save(storage, {wanted: undefined, wantedAt: undefined});
+export const WANTED_MS = SIGNIN_WAIT_MS;   // Why (Gitar on #4271, #4283): a Chrome way left unfinished must not let a much later copy in; it lasts exactly as long as the window's own watch
+/** The Chrome way was opened: the extension's copy is taken while the window still waits for it. It names no switch (owner, 14 Nov 2026: a sign-in turns no switch on). */
+export const openSignin = (storage, {now = Date.now} = {}) => save(storage, {wanted: undefined, signinOpenAt: now()});
+/** True while a Chrome way opened in the last WANTED_MS waits for its copy. */
+export const signinOpen = (storage, {now = Date.now} = {}) => now() - (Number(storage.settings().linkedinJobs?.signinOpenAt) || 0) <= WANTED_MS;
+/** The copy was kept: the open Chrome way is done. */
+export const closeSignin = storage => save(storage, {wanted: undefined, wantedAt: undefined, signinOpenAt: undefined});
 
 // Why (Gitar on #4276): a sign-in kept for Easy Apply alone gets no Find jobs press to ask for a fresh copy, so the extension's own minute look asks once the last copy is this old.
 export const COPY_AGE_MS = 12 * 3600000;
@@ -107,10 +106,15 @@ export function turnOff(storage, {keychain = realKeychain} = {}) {
   return {ok: true};
 }
 
+/** At start: a sign-in kept with both switches off (a sign-in whose press never turned its switch on, the window closed meanwhile) is deleted (Gitar on #4297). */
+export function forgetUnused(storage, {keychain = realKeychain} = {}) {
+  if (signedIn(storage) && !state(storage).on && storage.settings().easyApply?.on !== true) forget(storage, {keychain});
+}
+
 /** Delete the kept sign-in (both switches are off): the Keychain item, its mark, its state and its keep time. Writes no switch. */
 export function forget(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  save(storage, {signedIn: false, signin: undefined, keptAt: undefined, copiedAt: undefined});
+  save(storage, {signedIn: false, signin: undefined, signedOutByChrome: undefined, keptAt: undefined, copiedAt: undefined});
 }
 
 // Design (#3911, owner, 12 Nov 2026: "Why I don't get any notification or feedback"): "is the person's LinkedIn sign-in working" has ONE owner, settings.linkedinJobs.signin, moved only by a read's
