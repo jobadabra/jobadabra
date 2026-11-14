@@ -106,6 +106,19 @@ class UnlinkedJobsTests(unittest.TestCase):
         self.assertNotEqual(unlinked_job_url(PAGE, 'Dev Madrid'), unlinked_job_url(PAGE, 'Dev', '', 'Madrid'))
         self.assertNotEqual(unlinked_job_url(PAGE, 'Sales Rep', 'Acme'), unlinked_job_url(PAGE, 'Acme Sales Rep'))
 
+    def test_titles_in_any_script_and_with_symbols_keep_their_own_address(self):
+        """xc, 14 Nov 2026: folding accents by dropping every non-ASCII letter gave every Cyrillic, Greek or Chinese title the same empty address
+        (`#job:----`), so a Chisinau board's link-less jobs became one again, and 'C++' and 'C#' became 'c'."""
+        titles = ['Инженер-программист', 'Бухгалтер', 'Λογιστής', '软件工程师', 'C++ Developer', 'C# Developer', 'C Developer']
+        addresses = [unlinked_job_url(PAGE, title, '', 'Кишинёв') for title in titles]
+        self.assertEqual(len(set(addresses)), len(titles), 'one address per job, whatever its script')
+        self.assertEqual(unlinked_job_url(PAGE, 'Бухгалтер', '', 'Кишинёв'), unlinked_job_url(PAGE, 'бухгалтер', '', 'Кишинев'), 'case and accents still fold')
+        self.assertTrue(all(address.isascii() for address in addresses), 'the address stays plain ASCII for every store, log and link')
+        self.assertEqual(unlinked_job_url(PAGE, 'Oficial de 1ª Electricista', 'Grupo Proteccion', 'Madrid, España'),
+                         f'{PAGE}#job:grupo-proteccion--oficial-de-1a-electricista--madrid', 'a Latin title keeps the address the search pair measured')
+        jobs = board_read(page_reader.clean([{'name': title, 'place': 'Кишинёв', 'link': '', 'employer': ''} for title in titles], PAGE))
+        self.assertEqual(imported(self.db, jobs).count('new'), len(titles))
+
     def test_a_job_with_its_own_link_keeps_it(self):
         link = 'https://board.example/oferta/123/oficial-electricista'
         ai = page_reader.clean([{'name': 'Oficial Electricista', 'place': 'Madrid', 'link': link, 'employer': ''}], PAGE)[0]

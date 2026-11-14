@@ -1,15 +1,16 @@
 """The identity of a job a listing page names with no link of its own: one address the board read and the store both tell apart (unlinked_job_url)."""
 import re
 import unicodedata
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 UNLINKED = 'job:'   # the fragment's mark; src/notion/dedupe.py IDENTIFYING_FRAGMENT keeps a fragment that starts with it
 
 
 def _words(text):
-    """'Madrid, España' -> 'madrid-espana': lower case, accents folded, word characters only."""
-    plain = unicodedata.normalize('NFKD', (text or '').lower()).encode('ascii', 'ignore').decode()
-    return '-'.join(re.findall(r'\w+', plain))
+    """'Madrid, España' -> 'madrid-espana', 'Кишинёв' -> 'кишинев', 'C++' -> 'c++': case and accents folded, the words of any script kept.
+    Why (xc, 14 Nov 2026, #4183): dropping every non-ASCII letter gave every Cyrillic, Greek or Chinese title one empty address, and 'C++' 'c'."""
+    plain = ''.join(char for char in unicodedata.normalize('NFKD', (text or '').casefold()) if not unicodedata.combining(char))
+    return '-'.join(re.findall(r'[\w+#]+', plain))
 
 
 def unlinked_job_url(page, title, employer='', place=''):
@@ -25,4 +26,4 @@ def unlinked_job_url(page, title, employer='', place=''):
     (a Madrid electrician board). A position number (#1, #2) is not an identity: the list reorders between searches."""
     first = re.split(r'[,;]| - ', place or '')[0]
     fields = '--'.join(_words(field) for field in (employer, title, first))
-    return f"{urlsplit(page)._replace(fragment='').geturl()}#{UNLINKED}{fields}"
+    return f"{urlsplit(page)._replace(fragment='').geturl()}#{UNLINKED}{quote(fields, safe='-')}"   # percent-encoded: plain ASCII in every store and link
