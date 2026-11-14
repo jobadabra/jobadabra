@@ -335,6 +335,45 @@ class TechnicalLineText(unittest.TestCase):
         self.assertNotIn('no free slot in time', self.line(False))
 
 
+class PairValidity(unittest.TestCase):
+    """Guard: release: a same-inputs pair says valid only when every failed call is the engine's own clock rule (or none), read from the lines contract.detail really writes."""
+
+    def lines(self, error, what='decide link-kind (a: b)', shared=True):
+        import contextlib
+        import io
+        out = io.StringIO()
+        env = {'JOBADABRA_TAPE_SHARED': '/tmp/x'} if shared else {}
+        with unittest.mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out):
+            if not shared:
+                os.environ.pop('JOBADABRA_TAPE_SHARED', None)
+            contract.detail(what, error)
+        return out.getvalue().splitlines()
+
+    def verdict(self, a, b):
+        import importlib.util
+        path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tools', 'persona-search', 'same_inputs_validity.py')
+        spec = importlib.util.spec_from_file_location('same_inputs_validity', path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.classify({'a': a, 'b': b})['verdict']
+
+    def clock(self, n):
+        return [l for _ in range(n) for l in self.lines(RuntimeError("the search's time was up before Claude Code had a free slot"))]
+
+    def test_clock_rule_drops_with_parentheses_and_colons_in_the_facts_are_valid(self):
+        self.assertEqual(self.verdict(self.clock(1), self.clock(2)), 'valid')
+
+    def test_a_gap_of_four_is_flagged_and_three_is_not(self):
+        self.assertEqual(self.verdict([], self.clock(3)), 'valid')
+        self.assertTrue(self.verdict([], self.clock(4)).startswith('valid, clock-rule gap'))
+
+    def test_another_text_is_not_valid(self):
+        self.assertEqual(self.verdict(self.lines(RuntimeError('plan refused: (x)')), []), 'NOT VALID')
+
+    def test_a_line_with_no_text_is_not_valid(self):
+        self.assertEqual(self.verdict([], self.lines(RuntimeError('boom'), shared=False)), 'NOT VALID')
+
+
 # Each engine: the environment that picks it, and the adapter class it builds.
 ENGINE_CASES = {
     'api': ({'ANTHROPIC_API_KEY': 'k'}, 'AnthropicApi'),
