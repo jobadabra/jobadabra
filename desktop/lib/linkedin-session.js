@@ -80,6 +80,15 @@ export const openSignin = (storage, {now = Date.now} = {}) => save(storage, {sig
 export const signinOpen = (storage, {now = Date.now} = {}) => now() - (Number(storage.settings().linkedinJobs?.signinOpenAt) || 0) <= WANTED_MS;
 /** The copy was kept: the open Chrome way is done. */
 export const closeSignin = storage => save(storage, {signinOpenAt: undefined});
+/** The Chrome way's state for the window's watch: 'open' (waiting), 'closed' (its copy was kept, or it was never opened) or 'expired' (WANTED_MS passed with no copy). */
+export const chromeWay = (storage, deps = {}) => (storage.settings().linkedinJobs?.signinOpenAt == null ? 'closed' : signinOpen(storage, deps) ? 'open' : 'expired');
+
+/** At start: a sign-in kept while LinkedIn jobs is off (its press never turned the switch on: the window closed meanwhile) is deleted, so no unused credential stays (Gitar on #4350). */
+export function forgetUnused(storage, {keychain = realKeychain} = {}) {
+  if (!signedIn(storage) || state(storage).on) return;
+  keychain.remove(SERVICE, {account: ACCOUNT});
+  save(storage, {signedIn: false, keptAt: undefined});
+}
 
 /** LinkedIn jobs on with the sign-in already kept (a Chrome copy that came after its window closed): nothing is asked. -> {ok: true} | {ok: false, reason: 'needs-signin'}. */
 export function turnOn(storage, {keychain = realKeychain} = {}) {

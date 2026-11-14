@@ -10,7 +10,7 @@ import {CONSENT, askOnPress, notOpened, renewCommandOf, signInEnded} from '../li
 import {NO_PLACE} from '../targets.js';
 import {SIGNIN_WAIT_MS} from '../apply-settings-model.js';
 
-export const view = {loaded: false, on: false, signedIn: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: false, easyApply: false, signin: {state: 'ok', why: '', empties: 0}};
+export const view = {loaded: false, on: false, signedIn: false, chromeWay: 'closed', asked: 0, declined: 0, ask: false, hasSession: false, extension: false, easyApply: false, signin: {state: 'ok', why: '', empties: 0}};
 // Why (31 Oct 2026, push gate no-circular): startup.js imports the pages that import this module, so it hands its toast in (bindToast) instead of being imported here.
 let toast = () => {};
 /** Startup gives this module its toast function once; before that a message is dropped, never thrown. */
@@ -25,20 +25,21 @@ export async function refreshLinkedin() {
 }
 const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;
 let watching = false;
-// The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until the sign-in is kept. Then the press that asked turns its own
-// switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the asking switch is on.
+// The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until this press's Chrome way ends. Then, only if its copy was kept,
+// the press that asked turns its own switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the asking switch is on.
+// Why (Gitar on #4350): an older kept sign-in is no answer to this press, so the watch reads this press's own Chrome way (lib/linkedin-session.js chromeWay), never `signedIn` alone.
 async function watchUntilSignedIn() {
   if (watching) return false;
   watching = true;
   const until = Date.now() + WATCH_FOR_MS;
   try {
-    while (Date.now() < until && !view.signedIn) {
+    await refreshLinkedin().catch(() => {});
+    while (Date.now() < until && view.chromeWay === 'open') {
       await new Promise(done => setTimeout(done, WATCH_MS));
       await refreshLinkedin().catch(() => {});
     }
   } finally { watching = false; }
-  if (view.signedIn) return turnOnKept();
-  return false;
+  return view.chromeWay === 'closed' && view.signedIn ? turnOnKept() : false;
 }
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.

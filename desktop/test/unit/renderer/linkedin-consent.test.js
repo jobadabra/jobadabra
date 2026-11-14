@@ -54,6 +54,41 @@ test('each door turns LinkedIn jobs on: window in main, Chrome after its copy ar
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
 });
 
+// Gitar on #4350: an older kept sign-in is no answer to this press: with the Chrome way open and no copy coming, LinkedIn jobs stays off when the wait ends.
+test('the Chrome way with an older sign-in kept waits for its own copy: none came, LinkedIn jobs stays off', async t => {
+  const previousWindow = globalThis.window, previousDocument = globalThis.document;
+  const node = Object.assign(new EventTarget(), {open: false, showModal() {
+    this.open = true;
+    queueMicrotask(() => { this.open = false; this.returnValue = 'chrome'; this.dispatchEvent(new Event('close')); });
+  }});
+  globalThis.document = {getElementById: () => node};
+  globalThis.window = Object.assign(new EventTarget(), {pilot: {state: async () => ({settings: {}})}});
+  try {
+    const consent = await import('../../../renderer/pages/linkedin-consent.js');
+    t.mock.timers.enable({apis: ['setTimeout', 'Date'], now: Date.parse('2026-11-14T08:00:00Z')});
+    const settings = {}, storage = {settings: () => settings, saveSettings: patch => Object.assign(settings, patch)};
+    const items = new Map(), keychain = {read: key => items.get(key), write: (key, value) => { items.set(key, value); return true; }, remove: key => items.delete(key)};
+    const handlers = new Map();
+    registerLinkedinHandlers({DEMO: false, storage, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}, extensionSeen: () => true},
+      deps: {keychain, isolated: true}, log: () => {}, openPage: async () => ({opened: true})});
+    keychain.write('older', 'kept');   // an older sign-in, kept with the switch off (the press that made it never turned it on)
+    settings.linkedinJobs = {on: false, signedIn: true};
+    let reads = 0, live = true;
+    globalThis.window.pilot = {state: async () => ({settings: {}}), linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(), linkedinJobsOn: async () => handlers.get('linkedinJobsOn')(),
+      linkedinJobsState: async () => {
+        const view = await handlers.get('linkedinJobsState')();
+        const step = ++reads > 2 ? 160000 : 2000;   // Chrome never sends a copy: the wait runs out
+        setImmediate(() => { if (live) t.mock.timers.tick(step); });
+        return view;
+      }};
+    await consent.refreshLinkedin();
+    assert.equal(consent.view.extension, true, 'the Chrome way can be picked');
+    assert.equal(await consent.openLinkedinConsent({mode: 'turn-on'}), false);
+    live = false;
+    assert.equal(settings.linkedinJobs.on, false, 'the older sign-in did not turn LinkedIn jobs on');
+  } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
+});
+
 test('the Suggestions entry: one row while off, with the one-click action and Not now, gone when on, answered or not read yet', () => {
   const [entry, ...rest] = linkedinEntries({view: off});
   assert.equal(rest.length, 0);

@@ -28,11 +28,11 @@ test('a POST with nothing usable is refused and the switch stays off', () => {
 
 test('the window\'s view has the state and the ask, never a cookie value', () => {
   const settings = store(), kc = keychain();
-  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, signedIn: false, ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
+  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, signedIn: false, chromeWay: 'closed', ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
   openSignin(settings);
   linkedinRoutes(settings, {keychain: kc}).session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   const view = linkedinView(settings, {keychain: kc});
-  assert.deepEqual(view, {on: false, asked: 0, declined: 0, signedIn: true, ask: true, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
+  assert.deepEqual(view, {on: false, asked: 0, declined: 0, signedIn: true, chromeWay: 'closed', ask: true, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
   assert.equal(JSON.stringify(view).includes(SECRET), false);
 });
 
@@ -182,5 +182,16 @@ test('window cancellation, failed storage and an unknown switch turn nothing on'
     assert.equal(settings.settings().linkedinJobs?.on === true, false);
     assert.equal(kc.items.size, 0);
     if (failure === 'invalid-switch') assert.equal(opened, 0, 'no window opens for a switch this build does not turn on here');
+  }
+});
+
+// Gitar on #4350: a sign-in kept while LinkedIn jobs is off (its press never turned the switch on) is deleted at the next start; one in use stays.
+test('at start a sign-in no switch uses is deleted; one LinkedIn jobs uses stays', () => {
+  for (const on of [false, true]) {
+    const settings = store({linkedinJobs: {on, signedIn: true}}), kc = keychain();
+    kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+    registerLinkedinHandlers({DEMO: false, ipcMain: {handle: () => {}}, server: {setVisitRoute: () => {}}, storage: settings, deps: {keychain: kc}});
+    assert.equal(kc.items.has(SERVICE), on, `LinkedIn jobs ${on ? 'on' : 'off'}`);
+    assert.equal(settings.settings().linkedinJobs.signedIn, on);
   }
 });

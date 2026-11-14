@@ -27,7 +27,7 @@ export function linkedinRoutes(storage, deps = {}) {
 /** What the window needs: the state, whether the ask is due on this Find jobs press, and whether a session is held (never its value). */
 export function linkedinView(storage, deps = {}) {
   const mine = session.state(storage);
-  return {...mine, signedIn: session.signedIn(storage), ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), signin: session.signinView(storage)};   // signin: the one state (#3911)
+  return {...mine, signedIn: session.signedIn(storage), chromeWay: session.chromeWay(storage, deps), ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), signin: session.signinView(storage)};   // signin: the one state (#3911)
 }
 
 /**
@@ -37,10 +37,11 @@ export function linkedinView(storage, deps = {}) {
  */
 export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn, openPage, deps = {}, log = appLog}) {
   const routes = linkedinRoutes(storage, deps);
+  if (!DEMO) session.forgetUnused(storage, deps);   // Gitar on #4350: a sign-in no switch uses is not kept past a start
   server.setVisitRoute('/extension/linkedin-session', payload => routes.session(payload));
   server.setVisitRoute('/extension/linkedin-pending', () => routes.pending());
   server.setVisitRoute('/extension/linkedin-refresh', payload => routes.refresh(payload));
-  ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, signedIn: false, asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}, easyApply: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.(), easyApply: easyApplyOn(storage.settings())}));
+  ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, signedIn: false, chromeWay: 'closed', asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}, easyApply: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.(), easyApply: easyApplyOn(storage.settings())}));
   ipcMain.handle('linkedinJobsAsked', () => { if (!DEMO) session.noteAsked(storage); return {ok: true}; });
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
   ipcMain.handle('linkedinJobsConnect', async () => {
