@@ -234,6 +234,20 @@ class TheLastPass(unittest.TestCase):
         rounds = [line.split(' answered at ')[0] for line in self.said if ' answered at ' in line and line.startswith('Board pass: ')]
         self.assertEqual(rounds, ['Board pass: titles', 'Board pass: places'], 'each round says its second as it ends')
 
+    def test_a_title_call_that_never_returns_ends_the_pass_at_the_runs_end_with_its_board_lines(self):
+        """Gitar on #4300: the pass joined its title thread with no bound; a title call that never returned kept the pass out past the run's end,
+        and its per-board lines never printed. The join ends with the search's clock (time_budget.end less its tail)."""
+        hung = threading.Event()
+        self.addCleanup(hung.set)
+        at(164.9)   # 0.1 s before the pass's end (165): the clock is set, the wait is that tenth of a second
+        result = []
+        with mock.patch.object(board_pass, '_titles', lambda jobs: hung.wait()):
+            judging = threading.Thread(target=lambda: result.append(board_pass.judge(board())), daemon=True)
+            judging.start()
+            judging.join(10)   # a hang guard, not the clock under test
+        self.assertFalse(judging.is_alive(), 'the pass ended at the run\'s end')
+        self.assertTrue(any(line.startswith('Board pass: board.example.test places asked') for line in self.said), self.said)
+
     def test_a_pass_cut_at_the_deadline_lists_what_both_answers_cover(self):
         """Pair 43604153744 (14 Nov 2026, d05): the pass was cut at the deadline and every answer it had was dropped ("not run: it had not ended")."""
         at(100)
