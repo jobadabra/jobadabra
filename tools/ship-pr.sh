@@ -47,7 +47,9 @@ ship_pair_lines() {
   local line why when
   while IFS= read -r line; do
     case "$line" in
-      "PAIR NOT STARTED "*) why="${line#PAIR NOT STARTED }"; when=""; ! _pr_rest_out || when="$(ship_rest_reset_text)"; echo "ship: PAIR NOT STARTED (${why%%|*}${when:+; REST quota 0$when}); start it by hand: ${why#*|}" ;;
+      "PAIR NOT STARTED "*)   # the reset time is best-effort: it is left out when the rate-limit read itself fails, and gh's own words still say why
+        why="${line#PAIR NOT STARTED }"; when=""; ! _pr_rest_out || when="$(ship_rest_reset_text)"
+        echo "ship: PAIR NOT STARTED (${why%%|*}${when:+; REST quota 0$when}); start it by hand: ${why#*|}" ;;
       "") ;;
       *) step "$line" ;;
     esac
