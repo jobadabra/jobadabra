@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {aiProvider} from '../../desktop/e2e/lib/ai-provider.mjs';
-import {aiLine, askBroker, toBrokerCall} from '../../desktop/e2e/lib/broker-client.mjs';
+import {aiLine, askBroker, BROKER_URL, runToken, toBrokerCall} from '../../desktop/e2e/lib/broker-client.mjs';
 import {answerViaBroker} from '../../desktop/e2e/lib/broker-relay.mjs';
 
 /** The answer's output tokens (the model's tier is already on the line as `small`), or null when the call failed: the per-call cost table is measured, not estimated (#2913). */
@@ -63,6 +63,24 @@ export function timedRelay({env = process.env, ask = askBroker, now = Date.now, 
   };
 }
 
+/** How long one call to the broker's board mark may take before the page is skipped. */
+export const BOARD_MARK_MS = 30_000;
+
+/**
+ * The broker's board mark for the child (tools/persona-search/board-mark.mjs): the request body as sent, signed here with this run's token, which never reaches the child.
+ * Why (14 Nov 2026, rb): the child has no run token (runOnCodex drops it), so every refusing board page was skipped as "no shared CI mark"; only POST /board-read passes.
+ * -> {status, body}.
+ */
+export async function boardForward(text, {env = process.env, fetchImpl = fetch} = {}) {
+  // Why (Gitar on #4344): the relay keeps the token, so it signs only the mark's two calls on an http(s) page, nothing else the child or a local caller sends
+  let call; try { call = JSON.parse(text); } catch { call = null; }
+  if (!['reserve', 'report'].includes(call?.op) || !/^https?:\/\//.test(String(call?.page || ''))) return {status: 400, body: JSON.stringify({error: 'only reserve or report of an http(s) page'})};
+  const token = await runToken(env, fetchImpl).catch(() => null);
+  if (!token) return {status: 503, body: JSON.stringify({error: 'no run token in the relay'})};
+  const answer = await fetchImpl(`${BROKER_URL(env)}/board-read`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'jobadabra-ci'}, body: text, signal: AbortSignal.timeout(BOARD_MARK_MS)});   // a silent broker is a refusal (the page is skipped), never a hung search (Gitar on #4344)
+  return {status: answer.status, body: await answer.text()};
+}
+
 /** Run one command on the Codex relay and return its exit code. Invariant: every proxy request uses the broker; no API fallback, even on refusal. */
 export async function runOnCodex(command, args, {env = process.env, ask = askBroker} = {}) {
   if (!env.CI || aiProvider(env).provider !== 'codex' || !env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
@@ -73,6 +91,12 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
+    if (request.method === 'POST' && request.url === '/board-read') {
+      const answer = await boardForward(Buffer.concat(chunks).toString('utf8'), {env}).catch(error => ({status: 502, body: JSON.stringify({error: String(error.message)})}));
+      response.writeHead(answer.status, {'content-type': 'application/json'});
+      response.end(answer.body);
+      return;
+    }
     try {
       const answer = await relay(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'), request.headers['x-jp-action'] || 'unlabelled');
       response.writeHead(answer.status, {'content-type': answer.contentType});
@@ -86,7 +110,7 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
   const url = `http://127.0.0.1:${server.address().port}`;
   try {
     const childEnv = Object.fromEntries(Object.entries(env).filter(([name]) => !name.endsWith('_KEY') && !name.endsWith('_TOKEN') && !name.endsWith('_SECRET') && !name.startsWith('ANTHROPIC_') && !name.startsWith('ACTIONS_ID_TOKEN_')));
-    Object.assign(childEnv, {JOBADABRA_PERSONA_CODEX: '1', ANTHROPIC_BASE_URL: url, JOBADABRA_E2E: '1', JOBADABRA_E2E_AI_BASE_URL: url, JOBADABRA_NO_DOTENV: '1'});
+    Object.assign(childEnv, {JOBADABRA_PERSONA_CODEX: '1', ANTHROPIC_BASE_URL: url, JOBADABRA_E2E: '1', JOBADABRA_E2E_AI_BASE_URL: url, JOBADABRA_NO_DOTENV: '1', JOBADABRA_BOARD_MARK_URL: `${url}/board-read`});
     return await new Promise((resolve, reject) => {
       const child = spawn(command, args, {env: childEnv, stdio: 'inherit'});
       child.once('error', reject);

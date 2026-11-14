@@ -135,9 +135,13 @@ async function readList(list, seams, total, tried) {
 }
 
 // The owned browser, started the first time a board is due. -> null when it runs, else the step's result.
-async function startBrowser(browser, start, tee) {
+async function startBrowser(browser, start, tee, env = process.env) {
   if (!browser.ready()) { tee(WORDS['no-browser']); return {state: 'no-browser', jobs: 0}; }
-  try { await start(); } catch { tee(WORDS.failed); return {state: 'failed', jobs: 0}; }
+  try { await start(); } catch (error) {
+    // Why (14 Nov 2026, rb, night 43633581251): CI's start failed twice and the line could not say why; the reason is shown only under the test harness (JOBADABRA_E2E), never to a person
+    tee(env.JOBADABRA_E2E === '1' ? `${WORDS.failed} (${String(error?.message || error).replace(/\s+/g, ' ').slice(0, 160)})` : WORDS.failed);
+    return {state: 'failed', jobs: 0};
+  }
   return null;
 }
 
@@ -146,11 +150,12 @@ async function startBrowser(browser, start, tee) {
  * changed(signal) -> true once the board memory changed since the last ask, false at Stop or the press's deadline (none: the queue is asked once),
  * begin(item) -> true when the engine spent today's share for it (before its page loads), judge(page) -> page_state or null, outcome(page) -> the engine's answer, openCdp.
  * CI only: ask(item, signal) -> {go} or {go: false, why} or {go: false, cards} (jobs another CI search read there today), told(item, answer) after a read; the app passes neither.
+ * env: read only for the test harness flag (JOBADABRA_E2E=1: a failed start says its reason).
  * A board the press's deadline or Stop did not reach waits for the next press (nothing is spent or kept for it). The engine owns what each verdict means (refused_reads.outcome).
  * Invariants: at most MAX_BOARDS opened a press, an address at most once a press (a skip or a reuse included, neither counted as opened), the browser starts only when a board is due.
  * -> {state: 'off'|'no-browser'|'failed'|'done'|'stopped', jobs, fits?, read?, reused? (CI: pages whose jobs another CI search read), of? (the boards opened)}.
  */
-export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, ask = null, told = null, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
+export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, ask = null, told = null, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap, env = process.env}) {
   if (signal?.aborted) return {state: 'stopped', jobs: 0};
   const total = {jobs: 0, fits: 0, read: 0, reused: 0}, tried = new Set(), skipped = new Set(), seams = {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee, skipped, pace: {last: false}};
   let started = false, going = true;
@@ -159,7 +164,7 @@ export async function boardsStep({browser, start, queue, changed = null, begin, 
   do {
     const list = (await queue().catch(() => [])).filter(item => mayRead(item) && !tried.has(item.url) && !skipped.has(item.url));   // the MAX_BOARDS cap is counted per opened board in readList, so skips ahead of a readable board never cut it
     if (signal?.aborted || !list.length) continue;
-    const failed = started ? null : await startBrowser(browser, start, tee);
+    const failed = started ? null : await startBrowser(browser, start, tee, env);
     if (failed) return failed;
     started = true;
     going = await readList(list, seams, total, tried);

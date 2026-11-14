@@ -38,15 +38,15 @@ function fakeBrowser(pages, {ready = true} = {}) {
   return {browser, openCdp, calls, tabCalls};
 }
 
-function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity, ask = null, told = null, sleep = async () => {}} = {}) {
+function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity, ask = null, told = null, sleep = async () => {}, start = null, env = {}} = {}) {
   const fake = fakeBrowser(pages, {ready});
   const judged = [], outcomes = [], lines = [];
   let started = 0, begun = 0;
   const begin = async () => begun++ < share;
   const judge = async page => { judged.push(page.url); if (!(page.url in judgeStates)) return 'page'; const answer = judgeStates[page.url]; return Array.isArray(answer) ? answer.shift() : answer; };
   const outcome = async page => { outcomes.push(page); return outcomeFor(page); };
-  const done = boardsStep({browser: fake.browser, start: async () => { started++; }, queue: async () => list, begin, judge, outcome, ask, told, openCdp: fake.openCdp,
-    tee: line => lines.push(line), signal, now, sleep});
+  const done = boardsStep({browser: fake.browser, start: start || (async () => { started++; }), queue: async () => list, begin, judge, outcome, ask, told, openCdp: fake.openCdp,
+    tee: line => lines.push(line), signal, now, sleep, env});
   return done.then(result => ({result, judged, outcomes, lines, started: () => started, begun: () => begun, ...fake}));
 }
 
@@ -249,6 +249,14 @@ test('Gitar on #4306: skips spend no board of the press and wait no gap; a reada
   assert.deepEqual(outcomes.map(page => page.url), [last.url]);
   assert.equal(begun(), 1);
   assert.ok(!naps.some(ms => ms >= 2000 && ms <= 4000), `no 2-4 s gap after a skip: ${naps}`);
+});
+
+test('a browser that cannot start says why under the test harness only (night 43633581251 could not tell)', async () => {
+  const start = async () => { throw new Error('Failed to launch the browser process!\nNo usable sandbox!'); };
+  const ci = await run([board(1)], {}, {start, env: {JOBADABRA_E2E: '1'}});
+  assert.equal(ci.result.state, 'failed');
+  assert.match(ci.lines.at(-1), /could not start; the boards wait for the next Find jobs \(Failed to launch the browser process! No usable sandbox!\)$/);
+  assert.match((await run([board(1)], {}, {start, env: {}})).lines.at(-1), /the boards wait for the next Find jobs$/, 'a person sees no error text');
 });
 
 test('CI: a mark that throws is a skip, never a read on a guess', async () => {
