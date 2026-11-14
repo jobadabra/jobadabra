@@ -2,12 +2,13 @@
 read alo.bg from the first-jobs slice (14 s to 79 s) and again from the web search's group as "ALO.bg" (57 s to 85 s): one host, two names, two reads."""
 import os
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from src.ai import board_ideas
-from src.sources import board_claims, careers, found_boards
+from src.sources import careers, found_boards
 from src.time_budget import SEARCH_AT
 
 _READER = careers.READER
@@ -42,7 +43,6 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
-        board_claims._CLAIMED.update(press=None, hosts={})
         found_boards._early.clear()
         self.addCleanup(found_boards._early.clear)
         self.reads, self.said, self.gate = [], [], None
@@ -64,7 +64,7 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         self.assertEqual(self.reads, [('alo.bg', True)], 'one read of the address')
         self.assertEqual(len(first), 1)
         self.assertEqual(second, [])
-        self.assertTrue(any('ALO.bg is already being read in this search (as alo.bg)' in line for line in self.said), self.said)
+        self.assertTrue(any('ALO.bg is already being read in this search; not read twice' in line for line in self.said), self.said)
 
     def test_a_board_still_being_read_is_not_read_a_second_time_beside_it(self):
         """Claimed when the read STARTS: the web lane's read begins at 57 s while the slice's is open until 79 s."""
@@ -102,7 +102,7 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         def read_board(board, search, fetch, route=None, early=False, show=None):
             self.reads.append(board['name'])
             return ([], 'browser', None)
-        board_claims.take(board('lane', 'b.example'))
+        found_boards._claims.take(board('lane', 'b.example'))
         with mock.patch.object(found_boards, 'read_board', read_board), mock.patch('builtins.print', lambda *a, **k: None):
             found_boards.read(SEARCH, [board('refuses', 'a.example')], early=True, web=False, workers=2, spare=[board('spare', 'b.example')],
                               is_relevant=list, dead=set(), fetch=self.fetch)
@@ -116,12 +116,27 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
             self.read([board('ALO.bg')])
         self.assertEqual([name for name, _ in self.reads], ['alo.bg', 'ALO.bg'])
 
-    def test_a_new_press_starts_with_nothing_taken(self):
+    def test_a_past_presss_entry_is_taken_over(self):
+        """The registry is found_boards._early: an entry older than its hand-over time (60 min) is a past press's."""
+        found_boards._early['alo.bg'] = (time.monotonic() - found_boards.EARLY_MINUTES * 60 - 1, {})
         self.read([board('alo.bg')])
-        with mock.patch.dict(os.environ, {SEARCH_AT: '1794613999.0'}):
-            self.read([board('alo.bg')])
-        self.assertEqual([name for name, _ in self.reads], ['alo.bg', 'alo.bg'])
+        self.assertEqual([name for name, _ in self.reads], ['alo.bg'])
 
+    def test_a_board_named_later_and_cut_by_the_places_left_is_not_taken(self):
+        """Gitar on #4145: join's pick took every named board, so one it cut stayed taken and was never read by anyone."""
+        def read_board(board, search, fetch, route=None, early=False, show=None):
+            self.reads.append((board['name'], early))
+            return ([{'title': 'LKW Fahrer', 'url': f"https://{board['host']}/1"}], 'ok', None)
+        with mock.patch.object(found_boards, 'read_board', read_board), mock.patch('builtins.print', lambda *a, **k: None):
+            found_boards.read(SEARCH, [board('alo.bg')], early=True, web=False, workers=1, later=lambda: [board('Named', 'named.example')],
+                              is_relevant=list, dead=set(), fetch=self.fetch)   # no place is left for the named board
+            self.read([board('Named', 'named.example')])
+        self.assertEqual([name for name, _ in self.reads], ['alo.bg', 'Named'], 'the lane read what the first read had no place for')
+
+    def test_an_early_read_leaves_the_registry_to_the_full_read(self):
+        """It took an entry per board and used to pop it: the full read then fetched the first page again (found_boards item)."""
+        self.read([board('alo.bg')])
+        self.assertIn('alo.bg', found_boards._early)
 
 if __name__ == '__main__':
     unittest.main()

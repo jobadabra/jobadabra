@@ -1,49 +1,46 @@
 """One early read per job board per Find jobs press: the board a first read took is not read early again by another lane.
 Why (14 Nov 2026, sa, #4139): a first search read alo.bg twice, once from the first-jobs slice ("alo.bg", 14 s to 79 s) and once from the web search's
-group ("ALO.bg", 57 s to 85 s); the two names have one host, and nothing recorded a read still running: found_boards._early only holds FINISHED reads.
-Design: a board is one host (found_boards keeps every board by it); an early read of it (the slice, the boards lane, the boards named meanwhile) takes
-the host when it starts; a later early read of the same host in this press leaves it out and says so; the full read (not early) is never held back,
-it takes the early read's pages (found_boards._early) as before. Without a press (JOBADABRA_SEARCH_AT unset: a CLI run, a unit test) nothing is held.
+group ("ALO.bg", 57 s to 85 s); the two names have one host, and nothing recorded a read still running: found_boards._early only held FINISHED reads.
+Design: a board is one host (found_boards keeps every board by it). The registry is found_boards._early, the early reads' hand-over, with no second
+state beside it (tests/guards/rules/test_run_state_only_shrinks.py): an early read puts its host there when it STARTS (no pages yet) and fills it when
+it ends; a later early read of a host that is there leaves it out and says so; the full read (not early) is never held back, it takes the pages as
+before. Without a press (JOBADABRA_SEARCH_AT unset: a CLI run, a unit test) nothing is held. An entry older than `lapse` seconds is a past press's.
 Tests: tests/unit/sources/test_board_claims.py."""
 import os
-import threading
+import time
 
 from ..time_budget import SEARCH_AT
 
-_LOCK = threading.Lock()
-_CLAIMED = {'press': None, 'hosts': {}}   # {'press': the press's start, 'hosts': {host: the name it was taken under}}
 
+class Claims:
+    """The early reads' registry `held` ({host: (time taken, pages fetched so far)}) read as claims: no state of its own."""
 
-def _hosts():
-    """The hosts this press took, or None without a press; a new press (another start time) starts empty."""
-    press = os.environ.get(SEARCH_AT) or None
-    if press is None:
-        return None
-    if _CLAIMED['press'] != press:
-        _CLAIMED['press'], _CLAIMED['hosts'] = press, {}
-    return _CLAIMED['hosts']
+    def __init__(self, held, lapse):
+        self.held, self.lapse = held, lapse
 
+    def _live(self, host):
+        entry = self.held.get(host)
+        return entry is not None and time.monotonic() - entry[0] < self.lapse
 
-def take(board, early=True):
-    """True when this read may read `board`: not an early read, no press, or the first early read of its host in this press (which takes it)."""
-    with _LOCK:
-        taken = _hosts() if early else None
-        if taken is None:
+    def take(self, board, early=True):
+        """True when this read may read `board`: not an early read, no press, or the first early read of its host (which takes it, with no pages yet)."""
+        if not early or not os.environ.get(SEARCH_AT):
             return True
-        if board['host'] in taken:
-            print(f"Job boards: {board['name']} is already being read in this search (as {taken[board['host']]}); not read twice", flush=True)
-            return False
-        taken[board['host']] = board['name']
-        return True
+        mine = (time.monotonic(), {})
+        if self.held.setdefault(board['host'], mine) is mine:
+            return True
+        if not self._live(board['host']):   # a past press's entry: this read takes it over
+            self.held[board['host']] = mine
+            return True
+        print(f"Job boards: {board['name']} is already being read in this search; not read twice", flush=True)
+        return False
 
+    def first(self, boards, early=True):
+        """`boards` that this early read takes, in order (a host repeated in the list is read once)."""
+        return [board for board in boards if self.take(board, early)]
 
-def first(boards, early=True):
-    """`boards` that this early read takes, in order (a host repeated in the list is read once)."""
-    return [board for board in boards if take(board, early)]
-
-
-def free(boards, early=True):
-    """`boards` not taken yet, taking none: the spares, which are taken only when one is read in place of a refusing board (take)."""
-    with _LOCK:
-        taken = _hosts() if early else None
-        return list(boards) if taken is None else [board for board in boards if board['host'] not in taken]
+    def free(self, boards, early=True):
+        """`boards` not taken yet, taking none: the spares and the boards named later, taken only when one is read (take)."""
+        if not early or not os.environ.get(SEARCH_AT):
+            return list(boards)
+        return [board for board in boards if not self._live(board['host'])]
