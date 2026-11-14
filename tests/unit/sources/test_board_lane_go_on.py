@@ -16,7 +16,7 @@ from unittest import mock
 
 from src import time_budget
 from src.ai import slots
-from src.sources import board_pages, boards, careers, found_boards, read_budget
+from src.sources import board_pages, boards, careers, found_boards, page_recipes, read_budget
 
 BUDGET = 3   # the app's run, scaled (time_budget.part)
 _READER = careers.READER
@@ -109,10 +109,10 @@ class TheLaneGoesOn(unittest.TestCase):
     def test_a_failure_on_the_way_on_keeps_the_slices_jobs_and_says_so(self):
         real = found_boards._read
 
-        def failing_on(board, search, fetch, route, early, show=None):   # the slice reads as usual; the read that goes on fails
+        def failing_on(board, search, fetch, route, early, *rest):   # the slice reads as usual; the read that goes on fails
             if not early:
                 raise RuntimeError('a page the layout could not read')
-            return real(board, search, fetch, route, early, show)
+            return real(board, search, fetch, route, early, *rest)
         with mock.patch.object(found_boards, '_read', side_effect=failing_on):
             jobs, state, asked, log = self.read(lane=True)
         self.assertEqual((len(jobs), state, len(asked)), (2, 'ok', 2))
@@ -124,6 +124,33 @@ class TheLaneGoesOn(unittest.TestCase):
         with mock.patch.dict(PAGES, pages), redirect_stdout(io.StringIO()) as out:
             found_boards.read_board(BOARD, {**SEARCH, 'jobs_board_search_queries': WORDS[:1]}, fetch=self.fetch)
         self.assertIn("round 'fahrer': 1 job(s) on the page, 1 new, next pages: none linked on the page", out.getvalue())
+
+
+class TheAiReaderOncePerPage(unittest.TestCase):
+    """Gitar on #4180: the read that goes on asks the slice's words again (to page them); the AI page reader must not read the same page twice."""
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.addCleanup(time_budget.start, 0)
+        self.addCleanup(setattr, careers, 'READER', careers.READER)
+        careers.READER, self.asked = 'auto', []
+        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}),
+                      mock.patch.object(board_pages, 'PAUSE_S', 0), mock.patch('src.sources.board_yield.is_relevant', relevant),
+                      mock.patch.object(boards, 'board_queries', return_value=[]), mock.patch.object(careers, 'RENDER', None),
+                      mock.patch.object(careers, 'reader', return_value=lambda url, markup, **kw: self.asked.append(url) or []),
+                      mock.patch.object(page_recipes, 'load', return_value=None), mock.patch.object(page_recipes, 'save'),
+                      mock.patch.object(page_recipes, 'mark_broken')):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_a_page_the_ai_read_in_the_slice_is_not_read_by_the_ai_again(self):
+        prose = '<html><body>' + '<p>Finden Sie Stellen in Ihrer Region und bewerben Sie sich bei den besten Arbeitgebern.</p>' * 20 + '</body></html>'
+        pages = {'https://stellen.example/jobs/fahrer': prose, 'https://stellen.example/jobs/kraftfahrer': _page('kraftfahrer', 1, False)}
+        with redirect_stdout(io.StringIO()) as out, inside_the_lane_with_time_left():
+            jobs, state, _ = found_boards.read_board(BOARD, {**SEARCH, 'jobs_board_search_queries': WORDS[:2]}, fetch=lambda url: pages.get(url, ''), early=True)
+        self.assertEqual((state, len(jobs)), ('ok', 1))
+        self.assertIn('the read goes on', out.getvalue(), 'positive control: the read went on')
+        self.assertEqual(self.asked, ['https://stellen.example/jobs/fahrer'], 'one AI read of that page in the whole board read')
 
 
 if __name__ == '__main__':
