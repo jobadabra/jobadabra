@@ -132,6 +132,14 @@ class LayoutYieldTests(unittest.TestCase):
         self.assertEqual(len(said), 1, said)
         self.assertNotEqual(notes['layout'], ROOT, 'the second page dropped it, whatever the first page said')
 
+    def test_a_layout_that_reads_nothing_on_a_later_page_is_dropped_from_the_fact_too(self):
+        """sa's class check on #4161: the older drop (a kept layout reads nothing where the usual read finds jobs, #3982) wrote through `_note` too: page 1 holds, page 2 names no link: the fact must not keep it."""
+        listing = lambda url: _listing(0, 13) if 'q=developer' in url else _listing(0, 13, folder='/job')
+        jobs, said, notes = self.scout({'layout': ROOT}, listing, words=('developer', 'engineer'))
+        self.assertEqual(len(said), 1, said)
+        self.assertIn('read nothing', said[0])
+        self.assertNotEqual(notes['layout'], ROOT)
+
     def test_a_layout_derived_from_the_ai_readers_jobs_is_checked_through_the_reads_fetch(self):
         """Gitar on #4161: found_boards reads a page with Layout.read, then asks the AI reader and calls learn(page, url, jobs): reading through the derived layout must give those jobs."""
         from src.sources import board_layout

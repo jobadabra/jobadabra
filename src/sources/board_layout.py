@@ -85,9 +85,16 @@ class Layout:
         usual = careers.read_page_from(markup, url, fetch, part)
         if usual:   # Why (#3982, Gitar): an empty results page keeps the layout; jobs the usual read finds where it found none mean it is stale
             print(f"Job board {self.host}: its served layout read nothing on {url} where the usual read found jobs; read the usual way for the rest of this read")
-            self.recipe = None
-            self._note(False)
+            self._drop()
         return self.learn(markup, url, usual)
+
+    def _drop(self):
+        """The layout is stale for the rest of this read and, in board discovery's pass, in the board's fact.
+        Why (14 Nov 2026, Gitar on #4161; sa's class check): `_note` writes only over a falsy value, so a drop on a later page could not undo an earlier page's keep and the read dropped the layout while the
+        fact kept it; both drops (nothing read where the usual read found jobs, fewer jobs than the usual read) go through here. `_note`'s first write wins for a keep (the same recipe) and a learned layout."""
+        self.recipe = None
+        if self.notes is not None:
+            self.notes['layout'] = False
 
     def _compared(self, links, markup, url, part):
         """Board discovery's re-read of a kept layout: the jobs through it, kept while the usual read finds no more on this page (a tie keeps it); else it is dropped from the board's fact and
@@ -98,8 +105,7 @@ class Layout:
             self._note(self.recipe)
             return jobs
         print(f"Job board {self.host}: layout not kept: reading through it gave {len(jobs)} jobs on {url} where the usual read found {len(usual)}")
-        self.recipe = None
-        self.notes['layout'] = False   # Why (Gitar on #4161): a drop beats an earlier page's keep (`_note` writes only over a falsy one): the fact must not publish a layout this read found worse
+        self._drop()
         return self.learn(markup, url, usual)
 
     def _reads(self, recipe, markup, url, found):
