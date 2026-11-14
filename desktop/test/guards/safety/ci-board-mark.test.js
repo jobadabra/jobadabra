@@ -60,3 +60,16 @@ test('after a read the mark is told how it ended: jobs as opened, a stop or a 42
     {op: 'report', page: item.url, outcome: 'waiting', why: 'asked us to slow down'},
   ]);
 });
+
+test('Gitar on #4306: a Stop before the ask sends nothing; a Stop during the wait ends it without a 3 s nap', async () => {
+  const stop = new AbortController(); stop.abort();
+  const {post, sent} = answers([{status: 200, json: {go: true}}]);
+  assert.equal((await markSeams(post).ask(item, stop.signal)).go, false);
+  assert.equal(sent.length, 0);
+  const started = Date.now();
+  await markSeams(post).ask.call(null, item, undefined);   // a plain go still goes
+  const later = new AbortController(), reading = answers([{status: 200, json: {go: false, state: 'reading'}}]);
+  setTimeout(() => later.abort(), 50);
+  const verdict = await markSeams(reading.post).ask(item, later.signal);
+  assert.equal(verdict.go, false); assert.ok(Date.now() - started < 2000, 'ended at the Stop, not after the 3 s step');
+});

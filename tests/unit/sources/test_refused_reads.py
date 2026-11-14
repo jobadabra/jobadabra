@@ -24,7 +24,9 @@ def _posting(n):
 JOBS = '<html><title>Careers</title><body>' + ''.join(f'<script type="application/ld+json">{_posting(n)}</script>' for n in range(1, 5)) + '</body></html>'
 
 
-class RefusedReadsTest(unittest.TestCase):
+class StoreFixture:
+    """A temporary visits store and pace file with two refused sites; no tests of its own, so a class using it collects only its own."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.patches = [mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json'),
@@ -42,6 +44,9 @@ class RefusedReadsTest(unittest.TestCase):
             patch.stop()
         host_pace.reset()
         self.tmp.cleanup()
+
+
+class RefusedReadsTest(StoreFixture, unittest.TestCase):
 
     def test_queue_has_refused_employer_sites_and_boards_but_never_a_login_wall_site(self):
         listed = refused_reads.queue(now=NOW)
@@ -158,11 +163,7 @@ class LongCheckPageTest(unittest.TestCase):
         real = '<html><body>' + 'Offre d emploi ' * 2000 + '</body></html>'
         self.assertEqual(refused_reads._stop_why(200, real, 'https://jobs.coop.ch/'), '')
 
-if __name__ == '__main__':
-    unittest.main()
-
-
-class SharedMarkReuseTest(RefusedReadsTest):
+class SharedMarkReuseTest(StoreFixture, unittest.TestCase):
     """CI's shared mark (owner, 14 Nov 2026: "Once per search page (Recommended)"): a page another CI search read today comes back as cards, read with nothing fetched."""
 
     def test_cards_are_read_as_the_page_s_jobs_and_the_listing_carries_their_public_fields_only(self):
@@ -175,3 +176,15 @@ class SharedMarkReuseTest(RefusedReadsTest):
         self.assertEqual(set(result['listing'][0]), {'title', 'url', 'company', 'place', 'date'})
         first = next(job for job in result['listing'] if job['url'].endswith('/1'))
         self.assertEqual((first['place'], first['company'], first['date']), ('Sofia', 'Acme Logistics', '2026-11-13'), 'Gitar on #4303: the posting date survives the reuse')
+
+    def test_a_reuse_claims_no_browser_read_and_counts_no_read_method(self):
+        cards = [{'title': 'Truck driver C+E', 'url': 'https://www.trans.bg/job/1', 'place': 'Sofia'}]
+        with mock.patch('src.read_methods.note_extension') as note, mock.patch('builtins.print') as said:
+            refused_reads.outcome('https://www.trans.bg/search?q=driver', 200, '', final='https://www.trans.bg/search?q=driver', now=NOW, step='headless', cards=cards)
+        note.assert_not_called()
+        line = ' '.join(str(call.args[0]) for call in said.call_args_list)
+        self.assertIn('another CI search read today', line); self.assertNotIn('in your browser', line)
+
+
+if __name__ == '__main__':
+    unittest.main()

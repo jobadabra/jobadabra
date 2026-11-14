@@ -37,11 +37,12 @@ export async function brokerPost(env = process.env, fetchImpl = fetch) {
  * told(item, answer): the engine's answer after a read (refused_reads.outcome) -> the mark: read/empty = opened with its listing, stopped, waiting; else nothing (the page stays
  * reading for the day: nobody asks again).
  */
-export function markSeams(post, {ci = true, sleep = (ms, signal) => new Promise(resolve => { const t = setTimeout(resolve, ms); signal?.addEventListener('abort', () => { clearTimeout(t); resolve(); }, {once: true}); }), now = Date.now} = {}) {
+export function markSeams(post, {ci = true, sleep = (ms, signal) => new Promise(resolve => { if (signal?.aborted) return resolve(); const t = setTimeout(resolve, ms); signal?.addEventListener('abort', () => { clearTimeout(t); resolve(); }, {once: true}); }), now = Date.now} = {}) {
   const ask = async (item, signal) => {
     if (!post) return ci ? {go: false, why: 'no shared CI mark in this run (no GitHub run token): not opened'} : {go: true};
     const until = now() + WAIT_READING_MS;
     for (;;) {
+      if (signal?.aborted) return {go: false, why: 'stopped before the shared CI mark was asked: not opened'};
       const {status, json} = await post({op: 'reserve', page: item.url}).catch(() => ({status: 0, json: {}}));
       if (status !== 200) return {go: false, why: `the shared CI mark did not answer (HTTP ${status}): not opened`};
       if (json.go === true) return {go: true};

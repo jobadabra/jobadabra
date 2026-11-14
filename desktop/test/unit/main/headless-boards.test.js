@@ -38,7 +38,7 @@ function fakeBrowser(pages, {ready = true} = {}) {
   return {browser, openCdp, calls, tabCalls};
 }
 
-function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity, ask = null, told = null} = {}) {
+function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity, ask = null, told = null, sleep = async () => {}} = {}) {
   const fake = fakeBrowser(pages, {ready});
   const judged = [], outcomes = [], lines = [];
   let started = 0, begun = 0;
@@ -46,7 +46,7 @@ function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = 
   const judge = async page => { judged.push(page.url); if (!(page.url in judgeStates)) return 'page'; const answer = judgeStates[page.url]; return Array.isArray(answer) ? answer.shift() : answer; };
   const outcome = async page => { outcomes.push(page); return outcomeFor(page); };
   const done = boardsStep({browser: fake.browser, start: async () => { started++; }, queue: async () => list, begin, judge, outcome, ask, told, openCdp: fake.openCdp,
-    tee: line => lines.push(line), signal, now, sleep: async () => {}});
+    tee: line => lines.push(line), signal, now, sleep});
   return done.then(result => ({result, judged, outcomes, lines, started: () => started, begun: () => begun, ...fake}));
 }
 
@@ -234,6 +234,15 @@ test('CI: a page the mark refuses is skipped with its reason and the next board 
   assert.equal(begun(), 1);
   assert.deepEqual(told, [[b2.url, 'read']]);
   assert.match(lines.join('\n'), /Board 1: turned CI's browser away before/);
+});
+
+test('Gitar on #4306: skips spend no board of the press and wait no gap; a readable board after them is still read', async () => {
+  const list = [1, 2, 3, 4, 5, 6].map(board), last = list.at(-1), naps = [];
+  const ask = async item => (item.url === last.url ? {go: true} : {go: false, why: 'turned CI\'s browser away before, so no CI search opens it again'});
+  const {outcomes, begun} = await run(list, {[last.url]: {status: 200, html: JOBS}}, {ask, sleep: async ms => { naps.push(ms); }});
+  assert.deepEqual(outcomes.map(page => page.url), [last.url]);
+  assert.equal(begun(), 1);
+  assert.ok(!naps.some(ms => ms >= 2000 && ms <= 4000), `no 2-4 s gap after a skip: ${naps}`);
 });
 
 test('CI: a mark that throws is a skip, never a read on a guess', async () => {
