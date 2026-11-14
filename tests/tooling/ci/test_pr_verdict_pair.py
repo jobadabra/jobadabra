@@ -21,7 +21,8 @@ MOVES = 'Moves: p3 right jobs 0 → pending (1 run a side, same minute, usual di
 class Gh:
     """A stub `gh`: check rows of the head, pair runs, comments and dispatches; `log` keeps the order of writes and dispatches."""
 
-    def __init__(self, rows=(), runs=(), comments='', compare=None, fail_dispatch=False):
+    def __init__(self, rows=(), runs=(), comments='', compare=None, fail_dispatch=False, rival=None):
+        self.rival = rival   # a run another verdict dispatches while this one writes its row
         self.rows, self.runs, self.comments, self.compare, self.fail, self.log, self.dispatched, self.queries = [dict(r) for r in rows], list(runs), comments, compare or {}, fail_dispatch, [], [], []
 
     @staticmethod
@@ -64,6 +65,8 @@ class Gh:
             row = {'id': 100 + len(self.rows), 'completed_at': NOW.isoformat().replace('+00:00', 'Z') if f.get('status') == 'completed' else None, **f}
             self.rows.append(row)
             self.log.append('row written')
+            if self.rival:
+                self.runs.append(self.rival)
             return json.dumps({'id': row['id']})
         return ''
 
@@ -156,6 +159,17 @@ class TheVerdictStartsThePair(unittest.TestCase):
         other = Gh(runs=[run_of(60 * k + 10, number=8) for k in range(4)] + [run_of(26 * 60)])   # another PR's pairs and one over a day old do not count
         self.assertEqual(play(other), 'start')
 
+    def test_a_rival_verdict_that_dispatched_while_this_one_wrote_its_row_is_counted_before_this_dispatches(self):
+        """Gitar on #4228: two verdicts of different heads of one PR can both read 3 starts. The count is read again between the row and the dispatch; a rival already listed makes the 5th a capped row."""
+        gh = Gh(runs=[run_of(60 * k + 10) for k in range(3)], rival=run_of(0, 'queued'))
+        self.assertEqual(play(gh), 'capped')
+        self.assertEqual(gh.dispatched, [], 'no dispatch for the 5th')
+        self.assertIn('pair limit', gh.rows[-1]['output[title]'])
+        self.assertEqual(gh.log, ['row written', 'row updated'])
+        alone = Gh(runs=[run_of(60 * k + 10) for k in range(3)])   # positive control: the same 3 starts and no rival is the 4th, allowed
+        self.assertEqual(play(alone), 'start')
+        self.assertEqual(len(alone.dispatched), 1)
+
     def test_the_run_list_is_read_for_the_24_hour_window_server_side_and_paged(self):
         """Gitar on #4221: the newest 100 runs of every PR can span less than a day, so a PR's own starts fell out of the list and the cap let a 5th through."""
         gh = Gh(runs=[run_of(60 * k + 10) for k in range(4)])
@@ -237,6 +251,17 @@ class TheJobChecksOutWhatTheStarterReads(unittest.TestCase):
         for name in ('tools/pr_verdict_pair.py', 'tools/pr-body-check.py', 'tools/persona-search/pair.py', 'tools/persona-search/pair_row.py', 'tools/persona-search/engine_calls.py'):
             self.assertIn(name, listed, f'{name}: without it the starter fails to load on the runner and no pair ever starts (a standalone copy would be fetched over the API on every write)')
         self.assertRegex(text.split('\n  verdict:\n', 1)[1].split('steps:', 1)[0], r'actions: write', 'the dispatch of search-pair.yml needs actions: write on the one verdict job')
+
+
+class TheStarterAndItsDispatchShareOneRef(unittest.TestCase):
+    def test_the_verdict_runs_in_the_default_branches_context_so_the_dispatch_needs_no_ref(self):
+        """Gitar on #4228: which copy of search-pair.yml and pair_row.py is authoritative? main's: a workflow_run job takes its workflow file and its checkout from the default branch."""
+        workflow = (ROOT / '.github' / 'workflows' / 'pr-verdict.yml').read_text()
+        self.assertRegex(workflow, r'(?m)^  workflow_run:')
+        self.assertNotIn('pull_request_target', workflow)
+        self.assertNotIn('ref:', workflow.split('actions/checkout@v5', 1)[1].split('sparse-checkout', 1)[0], 'the checkout names no ref: it is the default branch')
+        source = (ROOT / 'tools' / 'pr_verdict_pair.py').read_text()
+        self.assertIsNone(re.search(r"gh\('workflow', 'run'[^\n]*'--ref'", source), 'the dispatch names no ref either')
 
 
 class TheNothingLineIsThePrBodyChecksOwn(unittest.TestCase):
