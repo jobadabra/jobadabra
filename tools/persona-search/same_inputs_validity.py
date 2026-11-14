@@ -95,36 +95,48 @@ def against_spread(difference, spread):
 
 
 def read_requests(folder):
-    """The request texts the shared layer kept (<work>/logs/req/<key>.req) -> {key: text}."""
+    """The request texts the shared layer kept (<work>/logs/req/<key>.req) -> {key: text}; a file that cannot be read is skipped, never a failed report."""
     found = {}
     for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
         if name.endswith('.req'):
-            with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as file:
-                found[name[:-4]] = file.read()
+            try:
+                with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as file:
+                    found[name[:-4]] = file.read()
+            except OSError:
+                pass
     return found
 
 
-def request_differences(logs, sides, texts, limit=5, around=40):
-    """AI requests only one side asked live, each with the first place its text differs from the nearest request of the other side for the same step: [line, ...].
-    A request is 'alone' when its key is in no row of the other side. Nearest = the longest shared prefix among that side's requests of the same step.
+ASKED_KINDS = ('ai_live', 'ai_shared', 'ai_live_after_wait', 'ai_own_again')   # a request that was asked and answered; a failed ask (ai_failed) is not the same request on the other side
+
+
+def request_differences(logs, sides, texts, per_side=3, around=40):
+    """AI requests only one side asked live (the keys of the log, each once), per side at most `per_side` lines and a count of the rest: [line, ...].
+    Each says the first place its text differs from the nearest request of the other side for the same step (the longest shared prefix; the layer keeps the first
+    src.same_inputs.KEEP_CHARS of a request, so a difference past it reads as 'at char KEEP_CHARS'), or why that cannot be said (no text kept, no request of that step).
     Why (14 Nov 2026, sa): two same-code sides asked different AI keys and nothing said what differed in the request text."""
-    keys = {side: {row['url'] for row in logs.get(sides[side], []) if str(row.get('kind', '')).startswith('ai_') and row.get('url', '').startswith('ai-')} for side in ('a', 'b')}
-    steps = {side: {row['url']: row.get('step', '') for row in logs.get(sides[side], []) if row.get('url', '').startswith('ai-')} for side in ('a', 'b')}
+    rows = {side: [row for row in logs.get(sides[side], []) if row.get('url', '').startswith('ai-')] for side in ('a', 'b')}
+    keys = {side: {row['url'] for row in rows[side] if row.get('kind') in ASKED_KINDS} for side in ('a', 'b')}
+    steps = {side: {row['url']: row.get('step', '') for row in rows[side]} for side in ('a', 'b')}
     out = []
     for side, other in (('a', 'b'), ('b', 'a')):
-        for row in logs.get(sides[side], []):
-            key = row.get('url', '')
-            if row.get('kind') not in LIVE_ASKS or key in keys[other] or key not in texts:
-                continue
-            near = [k for k in keys[other] if steps[other].get(k) == row.get('step', '') and k in texts]
-            if not near:
-                out.append(f'{side.upper()} asked live alone: step {row.get("step") or "?"} "{row.get("head", "")}": {other.upper()} has no request of that step')
+        alone = list(dict.fromkeys(row['url'] for row in rows[side] if row.get('kind') in LIVE_ASKS and row['url'] not in keys[other]))
+        for key in alone[:per_side]:
+            row = next(r for r in rows[side] if r['url'] == key)
+            what = f'{side.upper()} asked live alone: step {row.get("step") or "?"} "{row.get("head", "")}"'
+            same_step = [k for k in keys[other] if steps[other].get(k) == row.get('step', '')]
+            near = [k for k in same_step if k in texts]
+            if key not in texts:
+                out.append(f'{what}: request text not kept')
+            elif not same_step:
+                out.append(f'{what}: {other.upper()} has no request of that step')
+            elif not near:
+                out.append(f'{what}: {other.upper()} requests of that step have no kept text')
             else:
-                best = max(near, key=lambda k: len(os.path.commonprefix([texts[key], texts[k]])))
-                here, there = texts[key], texts[best]
-                at = len(os.path.commonprefix([here, there]))
-                out.append(f'{side.upper()} asked live alone: step {row.get("step") or "?"} "{row.get("head", "")}": first difference at char {at}: '
-                           f'{side.upper()} ...{here[max(0, at - 10):at + around]!r} | {other.upper()} ...{there[max(0, at - 10):at + around]!r}')
-            if len(out) >= limit:
-                return out
+                lengths = {k: len(os.path.commonprefix([texts[key], texts[k]])) for k in near}
+                best = max(lengths, key=lengths.get)
+                at, here, there = lengths[best], texts[key], texts[best]
+                out.append(f'{what}: first difference at char {at}: {side.upper()} ...{here[max(0, at - 10):at + around]!r} | {other.upper()} ...{there[max(0, at - 10):at + around]!r}')
+        if len(alone) > per_side:
+            out.append(f'{side.upper()}: {len(alone) - per_side} more asked alone, not shown')
     return out

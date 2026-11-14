@@ -175,11 +175,14 @@ def _step(params):
     return str(headers.get('x-jp-action', ''))[:40], ' '.join(str(content).split())[:80]
 
 
+KEEP_CHARS = 6000   # the report compares where requests start to differ (a batch differs near char 700): the first 6000 chars are enough and bound the folder's size
+
+
 def _keep_request(base, text):
     """The request text under its key, once, for the report's first-difference line (local, in the run's shared folder; the tool copies it next to the logs).
     Why (14 Nov 2026, sa): two same-code sides asked different AI keys at +6.5 s and nothing said what differed in the request."""
     if not os.path.exists(base + '.req'):
-        _write(base + '.req', text.encode('utf-8', 'replace'))
+        _write(base + '.req', text[:KEEP_CHARS].encode('utf-8', 'replace'))   # atomic: two searches writing the same key leave the same bytes
 
 
 class _Messages:

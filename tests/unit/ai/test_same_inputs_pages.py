@@ -93,13 +93,51 @@ class RequestDifferences(unittest.TestCase):
         logs = {'A': [{'kind': 'ai_live_after_wait', 'url': 'ai-1', 'step': 's', 'head': 'h'}, {'kind': 'ai_failed', 'url': 'ai-4', 'step': 's', 'head': 'h'}],
                 'B': [{'kind': 'ai_live', 'url': 'ai-2', 'step': 's'}, {'kind': 'ai_live', 'url': 'ai-3', 'step': 's'}]}
         texts = {'ai-1': 'abcdef-xyz', 'ai-2': 'zzzzzzzzzz', 'ai-3': 'abcdef-uvw', 'ai-4': 'qq'}   # ai-2 has the same letters count, ai-3 the longer shared start
-        lines = validity.request_differences(logs, sides, texts, limit=1)
-        self.assertEqual(len(lines), 1)
+        lines = validity.request_differences(logs, sides, texts)
         self.assertIn('first difference at char 7', lines[0])
 
     def test_the_layer_names_the_step_and_head_of_a_request(self):
         step, head = same_inputs._step({'extra_headers': {'x-jp-action': 'titles'}, 'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': 'Rate   these\njobs'}]}]})
         self.assertEqual((step, head), ('titles', 'Rate these jobs'))
+
+
+class RequestDifferencesEdges(unittest.TestCase):
+    SIDES = {'a': 'A', 'b': 'B'}
+
+    def test_a_request_file_that_cannot_be_read_is_skipped_not_a_failed_report(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, 'ai-1.req'), 'w', encoding='utf-8') as file:
+                file.write('text')
+            os.mkdir(os.path.join(folder, 'ai-2.req'))   # a directory where a file should be: open() raises OSError
+            self.assertEqual(validity.read_requests(folder), {'ai-1': 'text'})
+
+    def test_missing_text_is_said_apart_from_no_request_of_the_step(self):
+        logs = {'A': [{'kind': 'ai_live', 'url': 'ai-1', 'step': 's'}, {'kind': 'ai_live', 'url': 'ai-2', 'step': 't'}], 'B': [{'kind': 'ai_live', 'url': 'ai-9', 'step': 's'}]}
+        lines = validity.request_differences(logs, self.SIDES, {'ai-2': 'x'})   # ai-1 has no kept text; B's request of step s has none either
+        self.assertIn('request text not kept', lines[0])
+        self.assertIn('no request of that step', lines[1])
+        logs['A'] = [{'kind': 'ai_live', 'url': 'ai-1', 'step': 's'}]
+        self.assertIn('requests of that step have no kept text', validity.request_differences(logs, self.SIDES, {'ai-1': 'x'})[0])
+
+    def test_each_side_gets_its_own_lines_and_a_cut_says_how_many_more(self):
+        a = [{'kind': 'ai_live', 'url': f'ai-a{i}', 'step': 's'} for i in range(5)]
+        b = [{'kind': 'ai_live', 'url': f'ai-b{i}', 'step': 's'} for i in range(2)]
+        texts = {r['url']: r['url'] for r in a + b}
+        lines = validity.request_differences({'A': a, 'B': b}, self.SIDES, texts)
+        self.assertEqual(sum(1 for line in lines if line.startswith('A asked')), 3)
+        self.assertEqual(sum(1 for line in lines if line.startswith('B asked')), 2)
+        self.assertIn('A: 2 more asked alone, not shown', lines)
+
+    def test_a_key_logged_twice_is_one_line_and_a_failed_ask_of_the_other_side_is_not_the_same_request(self):
+        logs = {'A': [{'kind': 'ai_live', 'url': 'ai-1', 'step': 's'}, {'kind': 'ai_own_again', 'url': 'ai-1', 'step': 's'}], 'B': [{'kind': 'ai_failed', 'url': 'ai-1', 'step': 's'}]}
+        lines = validity.request_differences(logs, self.SIDES, {'ai-1': 'x'})
+        self.assertEqual(len([line for line in lines if line.startswith('A asked')]), 1)
+
+    def test_the_layer_keeps_at_most_the_cap_of_a_request(self):
+        with tempfile.TemporaryDirectory() as folder:
+            same_inputs._keep_request(os.path.join(folder, 'ai-1'), 'x' * (same_inputs.KEEP_CHARS + 500))
+            with open(os.path.join(folder, 'ai-1.req'), encoding='utf-8') as file:
+                self.assertEqual(len(file.read()), same_inputs.KEEP_CHARS)
 
 
 if __name__ == '__main__':
