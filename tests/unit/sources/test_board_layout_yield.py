@@ -148,21 +148,25 @@ class LayoutYieldTests(unittest.TestCase):
             found_boards.read_board({**BOARD, 'layout': ROOT}, SEARCH, fetch=counting)
         self.assertEqual(len(fetched), len(set(fetched)), 'no address fetched twice')
 
-    def test_a_failed_job_page_is_asked_once_for_the_layout_read_and_the_check(self):
-        """Gitar on #4154: a fetch that raises is kept too, so the usual-read check does not ask a failing host again."""
-        fetched = []
+    def test_a_refused_or_timed_out_job_page_is_asked_once_for_the_layout_read_and_the_check(self):
+        """Gitar on #4154 + sa: a 403 is a refusal never asked again and a timeout is not asked a second time by the check: each address is requested once per read, a failed one included."""
+        import collections
+        import urllib.error
+        asked = collections.Counter()
         listing = _listing(36, 38)
 
         def failing(url):
-            fetched.append(url)
-            if url.endswith('/python-developer-3') or url.endswith('/section-2'):
-                raise OSError('timeout')
+            asked[url] += 1
+            if url.endswith('/python-developer-3'):
+                raise urllib.error.HTTPError(url, 403, 'Forbidden', {}, None)
+            if url.endswith('/python-developer-5') or url.endswith('/section-2'):
+                raise OSError('timed out')
             return _page(url, listing)
         with redirect_stdout(io.StringIO()):
             jobs, _, _ = found_boards.read_board({**BOARD, 'layout': ROOT}, SEARCH, fetch=failing)
-        self.assertEqual(len(fetched), len(set(fetched)), 'no address asked twice, a failed one included')
-        self.assertIn('/python-developer-3', ' '.join(fetched))
-        self.assertEqual(len(jobs), 37, 'the page that failed is that job page only')
+        self.assertEqual(max(asked.values()), 1, f'an address asked twice: {[u for u, n in asked.items() if n > 1]}')
+        self.assertTrue(any(u.endswith('/python-developer-3') for u in asked) and any(u.endswith('/python-developer-5') for u in asked), 'both failing pages were asked once')
+        self.assertEqual(len(jobs), 36, 'only those two job pages are lost')
 
     # ---- (a) learn time: board discovery keeps a layout only if it reads what the usual read found
 
