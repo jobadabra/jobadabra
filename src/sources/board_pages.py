@@ -90,16 +90,15 @@ def held(state, route):
     on: only in the boards' lane (it reads to the run's end, read_budget.lane_end), before that end, after a slice that read jobs off the board's
     own search pages. Why (ab, 14 Nov 2026, c12 Graz): the full read was left to src/sources/boards_ahead.py, which starts outside the lane at
     the employer sites' read cut and read nothing in all three baseline searches; the slice itself is unchanged, so no first job comes later.
-    In a first run it waits for the first-jobs step to end (the lane's go_on, boards_first.Beside.step_ended) before it goes on."""
+    The lane reads it (boards_first.Beside.go_on), after the first-jobs step in a first run."""
     from ..ai import slots
     from . import read_budget
-    if read_budget.lane_end() is None:
+    if read_budget.lane_end() is None or slots.go_on() is None:
         return "the first jobs' read, outside the boards' lane"
+    if read_budget.past_cut():
+        return 'time is up'
     if route:
         return 'its jobs came as one list'
     if state != 'ok':
         return 'its first pages gave no job'
-    after = slots.go_on()
-    if after is not None:   # Why (sa, 14 Nov 2026, pair 2 of #4180: c12's first-jobs step closed at 71 s against 46 s): its AI calls took slots the step's title batches needed
-        after(read_budget.seconds_left(read_budget.lane_end()))   # the first-jobs step ends first; never past the lane's end
-    return 'time is up' if read_budget.past_cut() else None
+    return None

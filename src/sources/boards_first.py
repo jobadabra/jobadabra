@@ -62,16 +62,56 @@ class Beside:
         """One group source of the lane in its own thread, to the lane's end; the lane is done when every source has ended."""
         from ..ai import batch_scope, slots
         try:
-            with slots.in_lane(end, self.step_ended.wait), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
+            with slots.in_lane(end, self.go_on), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
                 read(wait)
             if caught:   # the full board read reads them
                 print(f'Warning: job boards first skipped: {caught.reason}: {caught.error}', flush=True)
         finally:
-            with self.count:
-                self.left -= 1
-                if not self.left:
-                    self.done.set()
-            self._notify()
+            self._ended()
+
+    def _ended(self):
+        """One of the lane's reads (a group source, a board's read-on) ended; the lane is done when none is open."""
+        with self.count:
+            self.left -= 1
+            if not self.left:
+                self.done.set()
+        self._notify()
+
+    def go_on(self, read_on, name):
+        """A lane board's read past its first jobs (found_boards.read_board): read_on(on_round) -> its jobs, run in its own thread once the
+        first-jobs step has ended, at most to the lane's end; its jobs are handed as the board's slice's were. The lane stays open until it ends.
+        Why (Gitar, #4200): read inside the board's own read it held one of the boards' workers while it waited for the step (a later board's
+        slice started late) and the board was kept only once it ended (a read-on cut at the lane's end lost the board's record and pages)."""
+        import threading
+        from ..ai import slots
+        with self.count:
+            if self.done.is_set():   # the lane has ended: nobody would take its jobs
+                return
+            self.left += 1
+        threading.Thread(target=slots.carry(self._read_on, slots.NORMAL), args=(read_on, name), name='boards-read-on', daemon=True).start()
+
+    def _read_on(self, read_on, name):
+        # Why (sa, 14 Nov 2026, pairs 1-2 of #4180): at NORMAL, the known boards' level, never the slice's FIRST, and only after the first-jobs
+        # step (its title batches waited 21 s behind read-on calls already in a slot; a level cannot take a slot back)
+        from . import read_budget
+        try:
+            self.step_ended.wait(read_budget.seconds_left(read_budget.lane_end()))
+            if read_budget.past_cut():
+                print(f'Job boards: {name}: next pages and other words not asked (time is up)', flush=True)
+                return
+            with stage.guard('found boards: read on') as caught:   # a failure keeps what its rounds handed
+                self._hand_new(read_on(self._hand_new))
+            if caught:
+                print(f'Warning: {name}: its read did not go on: {caught.reason}: {caught.error}', flush=True)
+        finally:
+            self._ended()
+
+    def _hand_new(self, found):
+        """Of a read-on's jobs, the ones the lane has not handed yet (its slice's, its earlier rounds'), handed (_hand)."""
+        with self.count:
+            new = list({job.get('url'): job for job in found or [] if job.get('url') not in self.urls}.values())
+        if new:
+            self._hand(new)
 
     def _known(self, wait):
         """The boards known for this field, then the web search's, waited for to the lane's end (its declared need, reader_rows LANES)."""

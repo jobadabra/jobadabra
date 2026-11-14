@@ -48,14 +48,14 @@ def lane():
 
 
 def go_on():
-    """The wait a board read in the calling thread's lane calls before it goes on past its first jobs (in_lane's `after`), None: at once."""
+    """Where a board read in the calling thread's lane hands its read past its first jobs (in_lane's `after`), None: nowhere (not read on)."""
     return getattr(_local, 'after', None)
 
 
 @contextlib.contextmanager
 def in_lane(end, after=None):
     """Inside the block, this thread's site reads end at `end` (a monotonic time), not at the employer sites' read cut; None: the cut again.
-    after(seconds): returns when the lane's boards may go on past their first jobs (src/sources/board_pages.py held), at most `seconds`.
+    after(read_on, name): takes a board's read past its first jobs, which the lane runs (src/sources/boards_first.py Beside.go_on).
     Only this thread: a pool thread it starts takes the lane through carry(), as it takes the level.
     Why (lanes 4a, 11 Nov 2026): kept beside the level on the thread's one context, not in a container of its own (contract C1,
     tests/guards/rules/test_run_state_only_shrinks.py): both are the calling thread's, and carry() is their one way into a pool."""
