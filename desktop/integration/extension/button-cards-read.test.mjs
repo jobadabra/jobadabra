@@ -100,6 +100,18 @@ test('a link on the page\'s own path naming another id is still a posting; only 
   } finally { await page.close(); }
 });
 
+test('links on the page\'s own path with letters in their ids are postings; a link to the page\'s own address is not (#3877)', async () => {
+  // #3877: the page's own path read as "the page itself" for every link whose ids had no 5-digit number (/viewjob?jk=abc123), so a list of
+  // same-path postings with letter ids read as none
+  const page = await browser.newPage();   // fixtures/visits/letter-ids.html, opened at the address of its own last link
+  try {
+    await page.goto(`${base}/letter-ids.html?jk=abc123`);
+    const linked = await call(page, 'extractPage');
+    assert.deepEqual(linked.cards.map(card => new URL(card.url).search).filter(search => search.startsWith('?jk=')), ['?jk=def456', '?jk=ghi789', '?jk=jkl012'],
+      'three postings; the link to the page\'s own address (jk=abc123) is the page');
+  } finally { await page.close(); }
+});
+
 test('the next page is the pager\'s next number, never the top menu\'s marked link', async () => {
   const {page} = await open('attribute');
   try {

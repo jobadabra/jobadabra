@@ -12,8 +12,14 @@ export function extractPage() {
   const here = new URL(location.href);
   // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids are all ids the page's own address
   // already holds (the selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
+  // Why (#3877): only a link that names at least one id, all of them the page's own, or the page's own address itself: with no numeric id
+  // (/viewjob?jk=abc123) every same-path posting read as the page.
   const ownIds = new Set([...here.searchParams.values()].filter(value => /^\d{5,}$/.test(value)));
-  const toPage = href => { const at = new URL(href); return at.host === here.host && at.pathname === here.pathname && [...at.searchParams.values()].filter(value => /^\d{5,}$/.test(value)).every(value => ownIds.has(value)); };
+  const toPage = href => {
+    const at = new URL(href);
+    const ids = [...at.searchParams.values()].filter(value => /^\d{5,}$/.test(value));
+    return at.host === here.host && at.pathname === here.pathname && (at.search === here.search || (ids.length > 0 && ids.every(value => ownIds.has(value))));
+  };
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.href.split('#')[0];
     if (!/^https?:/.test(href) || seen.has(href) || !JOB.test(href) || toPage(href)) continue;
