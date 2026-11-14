@@ -17,10 +17,12 @@ export function keyFor(now, queue, label) {
 }
 
 /** After the queue closes: the job's stored check is compared with what was just saved (no browser), and its drawer comes back on Apply readiness unless another screen took over. */
+let latest = '';   // the job whose queue was opened last: only it may bring its drawer back (Gitar on #4394: an earlier job's close must not open its drawer over a newer job's)
+
 async function back(job, {away}) {
   const read = await Promise.resolve().then(() => window.pilot.applyReadinessStored(job)).catch(() => null);
   if (read && typeof read === 'object') setRead(job.url, read);
-  if (away) return;
+  if (away || latest !== job.url) return;
   nextPart.set(job.url, 'readiness');
   openJobPanel(job, 'application');
 }
@@ -31,6 +33,7 @@ async function back(job, {away}) {
  * never asked) is left out; none found = the queue opens as it is.
  */
 export async function openReadinessQueue(job, groups, only = false) {
+  latest = job.url;
   const queued = await Promise.resolve().then(() => window.pilot.queueJobMissing(job)).catch(error => ({ok: false, reason: String(error?.message || error)}));   // written before the queue is read
   if (!queued?.ok) window.pilot?.uiLog?.('readiness: the job\'s questions were not added to the queue', String(queued?.reason || queued?.error || 'refused').slice(0, 200));   // the queue still opens as it is, never claiming the job's items are in it
   await loadQuestions({force: true});

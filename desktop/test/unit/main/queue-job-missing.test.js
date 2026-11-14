@@ -43,3 +43,13 @@ test('a job with no stored check queues nothing and says so (the drawer then off
   assert.deepEqual(await queueMissing(s, JOB, parts(async () => null)), {ok: false, reason: 'no check', items: [], added: 0});
   assert.equal(await store.openStore(s).page('answers').text().then(text => text.includes(ASKED)), false);
 });
+
+test('an item with no full asked question (a check stored before `asked`, or cut) queues nothing and marks nothing, never a guess from its label (Gitar on #4394)', async () => {
+  const s = fresh();
+  s.saveSettings({questionVerdicts: judged});
+  const cut = {questions: [ASKED], match: {missing: [{kind: 'answer', label: ASKED.slice(0, 20)}], unjudged: 0, unnamed: 0}};
+  const got = await queueMissing(s, JOB, parts(async () => cut));
+  assert.equal(got.added, 0);
+  assert.equal(await store.openStore(s).page('answers').text().then(text => text.includes(ASKED.slice(0, 20))), false);
+  assert.equal(verdicts.cached(s)[keyOf(ASKED)].blocked, undefined, 'no job-blocking mark on a question the check cannot name in full');
+});

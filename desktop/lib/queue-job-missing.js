@@ -16,9 +16,12 @@ export async function queueMissing(storage, job, {check, questions, verdicts, fe
   const missing = (read?.match?.missing || []).filter(item => item?.label);
   if (!read) return {ok: false, reason: 'no check', items: [], added: 0};
   const known = verdicts.cached(storage);
-  const asked = [...new Set(missing.map(item => item.asked || item.label))];
+  // Why (14 Nov 2026, Gitar on #4394): only an item that carries the full question the form asked is queued; a stored check from before `asked` existed (or with its label cut) has none, and a guess from the
+  // label would not match the verdict (keyOf) nor the line a fill writes later. storedCheck re-matches such a check from its stored questions first, so this is the rare leftover.
+  const withAsked = missing.filter(item => item.asked);
+  const asked = [...new Set(withAsked.map(item => item.asked))];
   const fresh = asked.filter(label => !(known[keyOf(label)]?.jobs || []).some(each => each.url === url));
-  const trace = missing.filter(item => item.kind === 'answer').map(item => ({label: item.asked || item.label, required: true, reason: questions.NO_ANSWER}));
+  const trace = withAsked.filter(item => item.kind === 'answer').map(item => ({label: item.asked, required: true, reason: questions.NO_ANSWER}));
   const added = trace.length ? await questions.collect(storage, {trace}, company, fetcher, null, null, null) : 0;
   if (fresh.length) verdicts.record(storage, fresh, {url, company});
   return {ok: true, items: missing.map(({kind, label}) => ({kind, label})), added};
