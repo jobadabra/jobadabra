@@ -5,6 +5,7 @@ Job Matches sync, Telegram outcome, warnings) and hands it to `log_run` at the e
 written by code from those numbers, so it costs nothing; a Notion failure never fails the run.
 """
 import atexit
+import faulthandler
 import signal
 import json
 from collections import deque
@@ -237,12 +238,28 @@ def stop_reason():
     return STOPPED_WORDS, True, True
 
 
+def dump_stacks_if_time_up():
+    """At the app's time-up (the marker file of `stop_reason` exists) writes every thread's stack into the log: file, line and function names only, never a value, a local or an environment variable.
+    Why (14 Nov 2026, xb for sa, issue #4181): d01's main thread printed no stage line after ~102 s and the app ended it at 175 s, dropping 101-109 board jobs per search, and nothing in the log says where
+    the main thread waited. The handler runs in the main thread, so the dump shows where it was interrupted. Never raises and never waits: a stop must leave (a closed or replaced stdout is skipped)."""
+    marker = os.environ.get('JOBADABRA_TIME_UP_FILE')
+    if not (marker and os.path.exists(marker)):
+        return
+    try:
+        sys.stdout.flush()
+        print('Stacks of every thread at the search\'s time-up (the main thread is the one that was interrupted):', flush=True)
+        faulthandler.dump_traceback(file=sys.stdout, all_threads=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _on_terminate(signum, frame):
     """The app stops a run with SIGTERM (Stop, quitting the app, its watchdog); GitHub's cancel (Stop on a GitHub run) with SIGINT. The open row is closed as stopped here, then the run
     leaves through sys.exit so `finally` and atexit run; worker threads still busy (the scout checks 6 employers at once, each with a
     Claude call) are not waited for: the process ends EXIT_GRACE_S later whatever they do. 7 Oct 2026: a scout kept running for
     minutes after the app quit, held the run lock, and the restarted run waited for it."""
     import threading
+    dump_stacks_if_time_up()   # first: the log row below may be slow, the stacks are what a time-up leaves to read
     run = _open.get('run')
     words, failed, stopped = stop_reason()
     if run is not None:
