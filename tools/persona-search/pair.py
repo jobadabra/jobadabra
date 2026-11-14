@@ -81,6 +81,15 @@ def board_words(run_log):
     return out[:2]
 
 
+REFUSING_READ = re.compile(r"^\[(\d+)s\] Job boards: (.+?): (?:(?:\d+ jobs? read|no jobs on the page) in Jobadabra's browser|(?P<reused>(?:\d+ job\(s\)|no job) from the read another CI search made today))", re.M)
+
+
+def refusing_boards(run_log):
+    """[{board, s, how}] for each refusing board whose jobs this press got (desktop/lib/headless-boards.js lines): read in Jobadabra's browser, or reused from the pair's other side
+    or another CI search; a skipped or stopped board is not listed."""
+    return [{'board': m.group(2), 's': int(m.group(1)), 'how': 'reused' if m.group('reused') else 'read'} for m in REFUSING_READ.finditer(run_log)]
+
+
 def side(out, name):
     """Write <out>/side.json from the side's run.log, draw/run-1.log, jobs.json and judged.json."""
     out = Path(out)
@@ -92,7 +101,7 @@ def side(out, name):
     right = sum(1 for r in judged.get('rows') or [] if r.get('role') == 'yes' and r.get('place') == 'yes') if judged else None
     first = re.search(r'1st/10th relevant at (\S+?)/', relay)
     row = {'side': name, 'shown_on_both': (judged.get('pooled') or {}).get('shown_on_both'), 'right': right, 'found': len(json.loads(read('jobs.json') or '[]')), 'first_s': first.group(1) if first else None,
-           'words': board_words(press), 'calls': calls, 'failed': failed, 'engines': engines, 'short_call_max_ms': short_ms, 'wait_p50_ms': p50, 'wait_p90_ms': p90,
+           'words': board_words(press), 'refusing': refusing_boards(press), 'calls': calls, 'failed': failed, 'engines': engines, 'short_call_max_ms': short_ms, 'wait_p50_ms': p50, 'wait_p90_ms': p90,
            'shared': not (out / 'boards-not-shared').exists(),   # the workflow marks a side whose draft install had no board proposal (run.mjs --propose failed): it asked for itself
            'valid': bool(calls) and p90 is not None and p90 <= VALID_P90_MS and not failed and len(engines) <= 1 and short_ms <= engine_calls.HUNG_SHORT_MS and right is not None and not (out / 'boards-not-shared').exists()}
     (out / 'side.json').write_text(json.dumps(row) + '\n', encoding='utf-8')
@@ -137,6 +146,11 @@ def _wait(row):
     return f"{secs(row.get('wait_p50_ms'))}/{secs(row.get('wait_p90_ms'))} · {row.get('failed', 0)} refused · short call max {(row.get('short_call_max_ms') or 0) / 1000:.0f} s"
 
 
+def _refusing(rows):
+    """One side's refusing boards as 'TRANS.BG 41 s read, OLX.bg 44 s reused', runs split by '; ', '—' for none."""
+    return '; '.join(', '.join(f"{b['board']} {b['s']} s {b['how']}" for b in r.get('refusing') or []) or '—' for r in rows) or '—'
+
+
 def sides(results):
     """{person: {'main': [rows], 'pr': [rows]}} from <results>/*/side.json."""
     out = {}
@@ -166,17 +180,18 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
     results, lines = Path(results), []
     people_rows = sides(results)
     lines += ['<!-- search-pair -->', f'### Before/after: main `{main_sha[:8]}` (the commit the PR sits on) vs #{pr} `{pr_sha[:8]}`, same minute', '',
-              '| Person | Right jobs main → PR | Found | First relevant (s) | First 2 board words (main · PR) | Broker wait p50/p90 (s) · AI calls refused | Valid |',
-              '|---|---|---|---|---|---|---|']
+              "| Person | Right jobs main → PR | Found | First relevant (s) | First 2 board words (main · PR) | Refusing boards' jobs, second they came (main · PR) | Broker wait p50/p90 (s) · AI calls refused | Valid |",
+              '|---|---|---|---|---|---|---|---|']
     done = measured(people_rows, spread)
     for person, sides_ in sorted(people_rows.items()):
         a, b = sides_['main'], sides_['pr']
         lines.append(f"| {person} | {_cell(a, 'right')} → {_cell(b, 'right')} | {_cell(a, 'found')} → {_cell(b, 'found')} | {_cell(a, 'first_s')} → {_cell(b, 'first_s')} "
                      f"| {'; '.join(', '.join(r['words']) or '—' for r in a)} · {'; '.join(', '.join(r['words']) or '—' for r in b)} "
+                     f"| {_refusing(a)} · {_refusing(b)} "
                      f"| {' / '.join(_wait(r) for r in a + b)} "
                      f"| {'yes' if person in done else '**no**: not counted'} |")
     if not people_rows:
-        lines.append('| — | no side ran (the turn gave up, or a side failed before its search) | | | | | **no** |')
+        lines.append('| — | no side ran (the turn gave up, or a side failed before its search) | | | | | | **no** |')
     lines.append('')
     drafts = {r.get('own_draft') for r in (json.loads(p.read_text()) for p in results.glob('*/person.json'))}
     lines.append('Each side drafted its own search plan and searched twice: this PR changes the plan\'s producer.' if True in drafts

@@ -3,9 +3,12 @@
 // "Once per host per day, all CI (Recommended)", "AI broker's store (Recommended)", "For good (Recommended)", "Once per search page (Recommended)".
 // The app never loads this file: its own limits are src/sources/refused_reads.py. No answer from the broker is a skip: CI never reads a refusing page on a guess.
 import {BROKER_URL, runToken} from '../../desktop/e2e/lib/broker-client.mjs';
+import {nap} from '../../desktop/lib/headless-boards.js';
 
 /** One call to the mark, through the relay (its own 30 s) or straight: past this the call fails and the page is skipped (Gitar on #4344: never a hung search). */
 export const MARK_CALL_MS = 35_000;
+/** How often a pair's side asks again while its other side reads the same page. */
+export const OWN_STEP_MS = 3_000;
 const SKIP = {
   stopped: 'turned CI\'s browser away before, so no CI search opens it again',
   waiting: 'asked CI to slow down today; not opened again until tomorrow (UTC)',
@@ -39,18 +42,24 @@ export async function brokerPost(env = process.env, fetchImpl = fetch) {
  * The boards step's CI seams (desktop/lib/headless-boards.js ask/told). post: brokerPost's function, or null: in CI (`ci`) every refusing page is then skipped;
  * outside CI (a run on the owner's Mac, one install) the app's own per-install limits apply, as in the app ({go: true}, nothing reported).
  * ask(item, signal) -> {go: true} | {go: false, cards} (another CI search read this page today: its jobs, nothing sent) | {go: false, why}.
+ * A page this same run is reading (`own`: a search pair's other side) is asked again every OWN_STEP_MS until it is opened or stopped, or `signal` ends the press.
  * told(item, answer): the engine's answer after a read (refused_reads.outcome) -> the mark: read/empty = opened with its listing, stopped, waiting; else nothing (the page stays
  * reading for the day: nobody asks again).
  */
-export function markSeams(post, {ci = true} = {}) {
+export function markSeams(post, {ci = true, sleep = nap} = {}) {
   const ask = async (item, signal) => {
     if (!post) return ci ? {go: false, why: 'no shared CI mark in this run (no GitHub run token): not opened'} : {go: true};
-    if (signal?.aborted) return {go: false, why: 'stopped before the shared CI mark was asked: not opened'};
-    const {status, json} = await post({op: 'reserve', page: item.url}).catch(() => ({status: 0, json: {}}));
-    if (status !== 200) return {go: false, why: `the shared CI mark did not answer (HTTP ${status}): not opened`};
-    if (json.go === true) return {go: true};
-    if (json.state === 'opened') return {go: false, cards: (json.jobs || []).map(toCard), from: json.read_by};
-    return {go: false, why: SKIP[json.state] || `not opened (${json.state || 'no state'})`};
+    for (;;) {
+      if (signal?.aborted) return {go: false, why: 'stopped before the shared CI mark answered: not opened'};
+      const {status, json} = await post({op: 'reserve', page: item.url}).catch(() => ({status: 0, json: {}}));
+      if (status !== 200) return {go: false, why: `the shared CI mark did not answer (HTTP ${status}): not opened`};
+      if (json.go === true) return {go: true};
+      if (json.state === 'opened') return {go: false, cards: (json.jobs || []).map(toCard), from: json.read_by};
+      // Why (14 Nov 2026, sa for the owner's pairs: "both sides of one pair get the same cards"): a page this run itself is reading (`own`, a pair's other side) is waited for,
+      //   bounded only by the press (its Stop and deadline end `signal`); any other search's read stays an immediate skip (owner, 14 Nov 2026: "No wait, skip").
+      if (!(json.state === 'reading' && json.own)) return {go: false, why: SKIP[json.state] || `not opened (${json.state || 'no state'})`};
+      await sleep(OWN_STEP_MS, signal);
+    }
   };
   const told = async (item, answer) => {
     if (!post) return;
