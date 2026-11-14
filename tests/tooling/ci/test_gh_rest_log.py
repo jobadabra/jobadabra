@@ -5,7 +5,10 @@ import os
 import shutil
 import stat
 import subprocess
+import signal
 import tempfile
+import time
+from datetime import datetime, timedelta, timezone
 import unittest
 from pathlib import Path
 
@@ -23,10 +26,26 @@ class GhRestLogTest(unittest.TestCase):
         fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
         self.log = self.tmp / 'rest.log'
 
-    def gh(self, *args, out='', rc=0, sleep=0, timeout=60):
+    def env(self, out='', rc=0, sleep=0):
         env = {**os.environ, 'PATH': f'{ROOT / "tools" / "bin"}{os.pathsep}{self.tmp / "real"}{os.pathsep}{os.environ["PATH"]}', 'GH_REST_LOG': str(self.log),
                'GH_GRAPHQL_LOG': 'off', 'FAKE_OUT': out, 'FAKE_RC': str(rc), 'FAKE_SLEEP': str(sleep), 'JOBADABRA_SESSION': 'sess-x'}
-        return subprocess.run(['gh', *args], env=env, capture_output=True, timeout=timeout)  # bytes: \r\n must survive
+        return env
+
+    def gh(self, *args, out='', rc=0):
+        return subprocess.run(['gh', *args], env=self.env(out, rc), capture_output=True, timeout=60)  # bytes: \r\n must survive
+
+    def gh_killed_while_running(self, *args):
+        """Starts the shim over a fake gh that takes 5 s, waits for the STATE "its provisional line is in the log" (the 30 s is only a hang guard), then kills it: the same
+        run on a loaded runner cannot kill it before the line exists (flaky before: a 1 s timeout was the clock; xc's #4183, run 43600211382)."""
+        proc = subprocess.Popen(['gh', *args], env=self.env('x', 0, 5), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(lambda: (proc.poll() is None) and os.killpg(proc.pid, signal.SIGKILL))
+        deadline = time.monotonic() + 30  # clock: relative, a hang guard
+        while not self.rows():
+            self.assertLess(time.monotonic(), deadline, 'the shim never wrote its provisional line')  # clock: relative, a hang guard
+            self.assertIsNone(proc.poll(), 'the shim ended before writing its provisional line')
+            time.sleep(0.02)
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
 
     def rows(self):
         return [line.split('\t') for line in self.log.read_text().splitlines()] if self.log.exists() else []
@@ -57,14 +76,19 @@ class GhRestLogTest(unittest.TestCase):
         subprocess.run(['gh', 'api', 'repos/o/r'], env=env2, capture_output=True, timeout=60)
         self.assertFalse(self.log.exists())
 
-    def report(self, *args, pending_s=0):
+    def age_log(self, seconds):
+        """Writes every logged time `seconds` into the past: "a call that did not return in PENDING_S" is a state of the log, not a wait of the test (a 0 s limit compared against a call logged in the same second)."""
+        old = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime('%Y-%m-%dT%H:%M:%SZ')  # clock: relative, the log is aged against the report's own now, whatever it is
+        self.log.write_text(''.join('\t'.join([old, *line.split('\t')[1:]]) + '\n' for line in self.log.read_text().splitlines()))
+
+    def report(self, *args, pending_s=120):
         return subprocess.run(['bash', str(ROOT / 'tools' / 'gh-rest-report.sh'), *args], env={**os.environ, 'GH_REST_LOG': str(self.log), 'PENDING_S': str(pending_s)}, capture_output=True, text=True, timeout=60)
 
     def test_a_held_call_killed_before_gh_returns_is_still_counted_and_a_call_without_a_status_line_logs_a_dash(self):
         """Gitar on #4151: the line was written only after gh returned, so a timed-out call (the slow ones) was missing; an empty status broke the format."""
-        with self.assertRaises(subprocess.TimeoutExpired):
-            self.gh('api', '-i', 'repos/o/r/pulls/7', out='HTTP/2.0 200 OK\r\n', sleep=5, timeout=1)
+        self.gh_killed_while_running('api', '-i', 'repos/o/r/pulls/7')
         self.assertEqual([(r[4], r[5]) for r in self.rows()], [('api repos/o/r/pulls/N', '?')])
+        self.age_log(600)   # it never returned and is far older than PENDING_S (120 s): killed, so spent
         self.assertRegex(self.report('1').stdout, r'1 REST calls spent')
         self.gh('api', '-i', 'repos/o/r/pulls/8', out='partial', rc=4)
         self.assertEqual(self.rows()[-1][5], '-')
@@ -83,10 +107,10 @@ class GhRestLogTest(unittest.TestCase):
 
     def test_a_call_still_running_is_shown_apart_and_not_charged_until_it_is_old(self):
         """Gitar on #4155: a "?" line of a call in flight right now is not spent yet; one that never returned is."""
-        with self.assertRaises(subprocess.TimeoutExpired):
-            self.gh('api', '-i', 'repos/o/r/pulls/7', out='x', sleep=5, timeout=1)
+        self.gh_killed_while_running('api', '-i', 'repos/o/r/pulls/7')
         self.assertRegex(self.report('1', pending_s=3600).stdout, r'0 REST calls spent .*\(\+ 0 free 304 reads, 1 still running\)')
-        self.assertRegex(self.report('1', pending_s=0).stdout, r'1 REST calls spent .*\(\+ 0 free 304 reads, 0 still running\)')
+        self.age_log(600)
+        self.assertRegex(self.report('1', pending_s=120).stdout, r'1 REST calls spent .*\(\+ 0 free 304 reads, 0 still running\)')
 
     def test_a_paginated_read_is_not_held_so_it_still_streams(self):
         self.gh('api', '-i', '--paginate', 'repos/o/r/pulls', out='HTTP/2.0 200 OK\r\n')
