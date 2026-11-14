@@ -13,7 +13,7 @@ export function linkedinRoutes(storage, deps = {}) {
   return {
     // Why (Gitar on #4276, #4283): a copy is kept only while a Chrome way the window opened still waits (WANTED_MS), or while LinkedIn jobs is on (a refresh).
     session: payload => {
-      if (!session.signinOpen(storage) && !session.state(storage).on) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
+      if (!session.signinOpen(storage, deps) && !session.state(storage).on) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
       const saved = session.saveSession(storage, payload?.cookies, deps);
       if (saved.ok) session.closeSignin(storage);
       return saved;
@@ -43,7 +43,13 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
   ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}, easyApply: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.(), easyApply: easyApplyOn(storage.settings())}));
   ipcMain.handle('linkedinJobsAsked', () => { if (!DEMO) session.noteAsked(storage); return {ok: true}; });
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
-  ipcMain.handle('linkedinJobsConnect', () => { if (DEMO) return {opened: true}; session.openSignin(storage); return openPage(); });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
+  ipcMain.handle('linkedinJobsConnect', async () => {
+    if (DEMO) return {opened: true};
+    session.openSignin(storage);
+    const answer = await openPage();
+    if (!answer?.opened) session.closeSignin(storage);   // Gitar on #4337: a page that never opened asks for no copy
+    return answer;
+  });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
   // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain and the switch turns on. One line per press, never a value.
   ipcMain.handle('linkedinJobsSignIn', async () => {
     if (DEMO) return {ok: true};

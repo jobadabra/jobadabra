@@ -129,7 +129,7 @@ function rig(t, {kinds = ['list'], searches = 1} = {}) {
   const seams = linkedinSeams(storage, {browser, runEngine, openCdp: linkedin.openCdp, refresh: {ask: async () => 'no-extension'}});
   setLinkedinStep(seams.step, seams.score);   // what the visits handlers register at the app's start
   const ipc = {}, routes = {};
-  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => { ipc[name] = fn; }}, server: {setVisitRoute: (route, fn) => { routes[route] = fn; }}, storage, openPage: () => ({opened: null})});
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => { ipc[name] = fn; }}, server: {setVisitRoute: (route, fn) => { routes[route] = fn; }}, storage, openPage: () => ({opened: true})});
   t.after(() => { setLinkedinStep(null); fs.rmSync(dir, {recursive: true, force: true}); });
   return {
     dir, storage, browser, linkedin, engineCalls, lines, ipc,

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {linkedinRoutes, linkedinView, registerLinkedinHandlers} from '../../../lib/linkedin-handlers.js';
-import {SERVICE, openSignin, readSession} from '../../../lib/linkedin-session.js';
+import {SERVICE, WANTED_MS, openSignin, readSession} from '../../../lib/linkedin-session.js';
 import {createRefresh} from '../../../lib/linkedin-refresh.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
@@ -91,4 +91,21 @@ test('a Chrome copy nobody asked for is refused; an open Chrome way keeps its gr
   openSignin(other);   // the person first opened the Chrome way, then signed in with the window
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: true});
   assert.equal(other.settings().linkedinJobs.signinOpenAt, undefined, 'the Chrome way is done: its late copy is not taken');
+});
+
+// Gitar on #4337: a copy after the 150 s wait is refused, and a Chrome page that never opened leaves no Chrome way open.
+test('a copy after the Chrome way waited 150 s is refused; a page that never opened opens no Chrome way', async () => {
+  const t0 = Date.parse('2026-11-14T08:00:00Z');
+  let clock = t0;
+  const settings = store(), kc = keychain(), routes = linkedinRoutes(settings, {keychain: kc, now: () => clock});
+  openSignin(settings, {now: () => t0});
+  clock = t0 + WANTED_MS + 1000;
+  assert.equal(routes.pending().revoke, true, 'the wait is over: the grants go back');
+  assert.equal(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}).ok, false, 'too late: nothing kept');
+  assert.equal(kc.items.size, 0);
+  const other = store(), handlers = new Map();
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: other, deps: {keychain: keychain()},
+    openPage: async () => ({opened: null, why: 'no-extension'})});
+  assert.deepEqual(await handlers.get('linkedinJobsConnect')(), {opened: null, why: 'no-extension'});
+  assert.equal(other.settings().linkedinJobs.signinOpenAt, undefined, 'nothing opened: no copy is waited for');
 });
