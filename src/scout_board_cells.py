@@ -84,9 +84,11 @@ def share(again, candidates, places=None):
     return list(again)[:half + max(0, half - len(candidates))], list(candidates)[:half + max(0, half - len(again))]
 
 
-def rule_line(db, today):
-    """One log line: how many of the facts the site still serves (not dropped, MIN_LOCAL+ local jobs) were measured under an older rule than LISTED_RULE, as `Board pass: facts at an older rule: N of M`."""
+def rule_line(db, today=None):
+    """One log line: how many of the facts the site still serves (not dropped, MIN_LOCAL+ local jobs) were measured under an older rule than LISTED_RULE, as `Board pass: facts at an older rule: N of M`.
+    Why (14 Nov 2026, lab run 43535757557): `scout.discover(db)` passes today=None in production and this was the one function of the module that did not default it, so every discovery pass ended in a TypeError after its reads."""
     from . import scout_boards
+    today = today or date.today()
     gone = (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()
     facts, rules = [fact for fact in _facts(db) if fact[4] >= gone], _rules(db)
     return f"Board pass: facts at an older rule: {sum(1 for fact in facts if (rules.get((fact[0], fact[1])) or 0) < scout_board_counts.LISTED_RULE)} of {len(facts)}"
