@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {messages as englishState} from '../../i18n/catalogs/helpers/en-state.js';
 import {FIXTURES} from './cvfixtures.mjs';
-import {DEFAULT_APP_PORT, freePort} from './extension.mjs';
+import {DEFAULT_APP_PORT} from './extension.mjs';
+import {relaunchOnOwnPort} from './relaunch-own-port.mjs';
 import {pollUntil, stepWait, waitForLogLine} from './wait-on-state.mjs';
 
 // Why (2 Nov 2026, a8): the extension's id is its manifest key's (lib/server.js EXTENSION_IDS); importing server.js would load the whole app server into the runner.
@@ -77,12 +78,9 @@ export async function profileDetailStep(ctx) {
   const {value: saved} = await pollUntil(() => ctx.page.evaluate(() => window.pilot.contact()), contact => contact?.phone === NEW_PHONE, {log: () => {}});
   if (saved?.phone !== NEW_PHONE) throw new Error(`the save bar did not save the phone: the Profile holds ${JSON.stringify(saved?.phone)}`);
 
-  // The app is quit as a person quits it and started again on its own free port.
-  const port = await freePort();
+  // The app is quit as a person quits it and started again on its own free port, once it says its extension socket is open there (a port it says is taken is replaced: lib/relaunch-own-port.mjs).
+  const port = await relaunchOnOwnPort(ctx, {how: 'quit', extensionId: EXTENSION_ID});
   if (port === DEFAULT_APP_PORT) throw new Error(`the Profile step must never use the production port ${DEFAULT_APP_PORT}`);
-  await ctx.relaunch({JOBADABRA_PORT: String(port)}, undefined, {how: 'quit'});
-  const {value: setUp} = await pollUntil(() => ctx.page.evaluate(async () => (await window.pilot.state()).settings.setupDone === true), value => value, {log: () => {}});
-  if (!setUp) throw new Error('after the restart the app is not set up again');
   const {value: handed} = await pollUntil(() => handedToExtension(port).then(contact => contact.phone, error => `(not asked yet: ${error.message})`), phone => phone === NEW_PHONE, {log: () => {}});
   try {
     if (handed !== NEW_PHONE) throw new Error(`after the restart the extension is handed the phone ${JSON.stringify(handed)}, not the one saved in Your details`);
