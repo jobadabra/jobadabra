@@ -19,29 +19,38 @@ permissions:
 jobs:
   plan:
     name: Which PRs
-    # Why (13 Nov 2026, cr; 14 Nov: the owner typed "@claude  review" with two spaces on #4144 and nothing started, so the test is a comment that starts with "@claude" and says "review"): the comment path is the owner's alone: only a PR comment by OWNER or MEMBER; a fork PR's code never meets the plan token (the gate refuses it too).
+    # Why (13 Nov 2026, cr): the comment path is the owner's alone: only a PR comment by OWNER or MEMBER; a fork PR's code never meets the plan token (the gate refuses it too).
+    #   Why (14 Nov 2026, cr; the owner typed "@claude  review" with two spaces on #4144 and nothing started; Gitar: a loose "contains review" would spend the plan on "@claude please don't review"): the job starts for a comment that begins with "@claude",
+    #   and its first step starts a review only when the first line is `@claude`, whitespace, `review` and then a word boundary (`go`); GitHub expressions have no regex.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.issue.pull_request && startsWith(github.event.comment.body, '@claude') && contains(github.event.comment.body, 'review') &&
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '@claude') &&
        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER'))
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     outputs:
       prs: ${{ steps.prs.outputs.prs }}
+      go: ${{ steps.prs.outputs.go }}
     steps:
       - id: prs
         env:
           INPUT_PRS: ${{ inputs.prs }}
           COMMENT_PR: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}   # through env, never inlined in the script
         run: |
+          if [ -z "$INPUT_PRS" ] && ! printf '%s\n' "$COMMENT_BODY" | head -n 1 | grep -qiE '^@claude[[:space:]]+review([^[:alnum:]_-]|$)'; then
+            echo "not a review ask: $(printf '%s' "$COMMENT_BODY" | head -c 80)"; echo "go=false" >> "$GITHUB_OUTPUT"; echo "prs=[0]" >> "$GITHUB_OUTPUT"; exit 0   # [0]: an empty matrix is an error; the review job is skipped by `go`
+          fi
           list="${INPUT_PRS:-$COMMENT_PR}"
           json="$(printf '%s' "$list" | tr -s ', ' '\n' | grep -E '^[0-9]+$' | sort -un | jq -R 'tonumber' | jq -cs .)"
           [ -n "$json" ] && [ "$json" != "[]" ] || { echo "no PR number in: $list" >&2; exit 1; }
           echo "prs=$json" >> "$GITHUB_OUTPUT"
+          echo "go=true" >> "$GITHUB_OUTPUT"
 
   review:
     name: Claude review of PR ${{ matrix.pr }}
     needs: plan
+    if: needs.plan.outputs.go == 'true'
     strategy:
       fail-fast: false
       max-parallel: 2

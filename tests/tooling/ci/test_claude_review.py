@@ -140,19 +140,37 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertNotIn('reviews(first:', graphql_view)
 
     def test_all_checks_passed_is_read_from_a_status_or_a_check_run(self):
-        """cr 3b (14 Nov 2026): jobadabra writes "All checks passed" as a commit STATUS, jobadabra-web and -lab have it as a job (CHECK RUN); the gate must see both, and a run still going is not green."""
+        """cr 3b (14 Nov 2026): jobadabra writes "All checks passed" as a commit STATUS, jobadabra-web and -lab have it as a job (CHECK RUN, asked by name); the gate must see both, and a run still going is not green."""
         def run(conclusion, at):
-            return {'__typename': 'CheckRun', 'name': 'All checks passed', 'conclusion': conclusion, 'completedAt': at}
-        def state(commit):
-            return node(f"m.checkState({json.dumps(commit)})")
-        self.assertEqual(state({'status': {'context': {'state': 'SUCCESS'}}}), 'SUCCESS')
-        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('SUCCESS', '2026-11-14T01:00:00Z')]}}}), 'SUCCESS')
-        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('CANCELLED', '2026-11-14T01:00:00Z'), run('SUCCESS', '2026-11-14T01:01:00Z')]}}}), 'SUCCESS', 'the newest finished run decides (a cancelled twin stays on the commit)')
-        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('SUCCESS', '2026-11-14T01:00:00Z'), run(None, None)]}}}), 'PENDING', 'a re-run still going')
-        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [run('FAILURE', '2026-11-14T01:00:00Z')]}}}), 'FAILURE')
-        other = {'__typename': 'CheckRun', 'name': 'Gitar', 'conclusion': 'SUCCESS', 'completedAt': '2026-11-14T01:00:00Z'}
-        self.assertEqual(state({'status': None, 'statusCheckRollup': {'contexts': {'nodes': [other]}}}), '', 'another check is not this one')
-        self.assertEqual(state({}), '')
+            return {'conclusion': conclusion, 'completed_at': at}
+        def state(status, runs):
+            return node(f"m.checkState({json.dumps(status)}, {json.dumps(runs)})")
+        self.assertEqual(state('SUCCESS', []), 'SUCCESS')
+        self.assertEqual(state(None, [run('success', '2026-11-14T01:00:00Z')]), 'SUCCESS')
+        self.assertEqual(state(None, [run('cancelled', '2026-11-14T01:00:00Z'), run('success', '2026-11-14T01:01:00Z')]), 'SUCCESS', 'the newest finished run decides (a cancelled twin stays on the commit)')
+        self.assertEqual(state(None, [run('success', '2026-11-14T01:00:00Z'), run(None, None)]), 'PENDING', 'a re-run still going')
+        self.assertEqual(state(None, [run('failure', '2026-11-14T01:00:00Z')]), 'FAILURE')
+        self.assertEqual(state(None, [run('success', None)]), 'SUCCESS', 'a finished run without a time is not an arbitrary pick')
+        self.assertEqual(state(None, []), '')
+        calls = node("(() => { const seen = []; m.readPr('o/r', 7, (...a) => { seen.push(a.slice(0, 2).join(' ')); return a[1] === 'graphql' ? JSON.stringify({data: {repository: {pullRequest: {number: 7, state: 'OPEN', isDraft: false, title: 't', headRefOid: 'a', baseRefName: 'main', headRepository: {nameWithOwner: 'o/r'}, commits: {nodes: [{commit: {status: null}}]}, reviews: {nodes: []}, comments: {nodes: []}, labels: {nodes: []}}}}}) : JSON.stringify({check_runs: [{conclusion: 'success', completed_at: '2026-11-14T01:00:00Z'}]}); }); return seen; })()")
+        self.assertEqual(calls, ['api graphql', 'api -X'], 'no status: the check runs are asked by name')
+
+    def test_the_comment_ask_is_at_claude_review_and_nothing_looser(self):
+        """Gitar's finding on the cr 3b PR: a loose "contains review" spent the plan on "@claude please don't review"; the owner's "@claude  review" (two spaces, #4144) must start one. Runs the plan job's step script."""
+        text = (ROOT / '.github' / 'workflows' / 'claude-review.yml').read_text(encoding='utf-8')
+        block = text.split('        run: |\n', 1)[1].split('\n\n  review:', 1)[0]   # the plan job's one step; no YAML parser on every machine
+        step = '\n'.join(line[10:] for line in block.split('\n'))
+        def asks(body):
+            with tempfile.TemporaryDirectory() as tmp:
+                out = Path(tmp) / 'out'
+                out.write_text('')
+                env = {**os.environ, 'INPUT_PRS': '', 'COMMENT_PR': '7', 'COMMENT_BODY': body, 'GITHUB_OUTPUT': str(out)}
+                subprocess.run(['bash', '-c', step], env=env, capture_output=True, text=True, timeout=30, check=True)
+                return 'go=true' in out.read_text()
+        for yes in ('@claude review', '@claude  review', '@claude\treview', '@Claude Review please', '@claude review\nmore text'):
+            self.assertTrue(asks(yes), yes)
+        for no in ("@claude please don't review", '@claudette review', '@claude-bot review', '@claude reviewing', 'thanks, @claude review', '@claude', 'review @claude'):
+            self.assertFalse(asks(no), no)
 
 
 if __name__ == '__main__':
