@@ -104,7 +104,8 @@ if (d / 'states').exists() and re.search(r'/commits/[^/]+/check-runs\?per_page=1
     for check_run in gate: check_run['id'] = 2
     for check_run in [one] + gate + twin:
         check_run['head_sha'] = line('heads', n) or 'new1'
-    answer({'check_runs': [one] + gate + twin})
+    gitar = [{'name': 'Gitar', 'status': 'completed', 'conclusion': (d / 'gitar_check').read_text().strip(), 'head_sha': line('heads', n) or 'new1'}] if (d / 'gitar_check').exists() else []   # Gitar's finished check on the head
+    answer({'check_runs': [one] + gate + twin + gitar})
 if (d / 'states').exists() and re.search(r'/commits/[^/]+/status$', path):
     runs = line('runs', look())   # like pr-verdict.yml: no status before the head's runs exist, pending while they run, none for runs older than the status
     verdict = line('verdicts', look()) or {'gate': 'none', 'none': 'none', 'running': 'pending'}.get(runs, 'ok')

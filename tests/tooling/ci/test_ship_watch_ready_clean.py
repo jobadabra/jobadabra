@@ -27,7 +27,7 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads=''):
+    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads='', gitar_check=None):
         """One look per line of mergestates, then the PR closes. Every look: Gitar approved, the gate green (newest row), no draft."""
         self.log.write_text('ship: opened\n')
         looks = len(mergestates)
@@ -35,6 +35,9 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
                  'verdicts': '', 'heads': (heads + '\n') * 12 if heads else '', 'looks': '0', 'mergestates': '\n'.join(mergestates) + '\n', 'twins': twins}
         for name, text in files.items():
             (self.tmp / name).write_text(text)
+        (self.tmp / 'gitar_check').unlink(missing_ok=True)
+        if gitar_check:
+            (self.tmp / 'gitar_check').write_text(gitar_check)
         if reviews is not None:
             (self.tmp / 'reviews.json').write_text(json.dumps(reviews))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
@@ -58,15 +61,21 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
             lines = self.watch(['clean', 'clean'], labels=f'Gitar: approved,{pending}')
             self.assertFalse(any('READY' in line for line in lines), (pending, lines))
 
-    def test_a_pr_with_a_claude_label_is_ready_on_claude_approved_only(self):
+    def test_a_pr_with_a_claude_label_is_ready_on_claude_approved_and_gitar_approved(self):
         """13-14 Nov 2026 (cr 2a, owner: "replace Gitar with Claude Code review"): a PR carrying a "Claude: …" label is READY only on "Claude: approved" AND a newest review of ours that approves THIS head
         (a stale label, or #4115: "Gitar: approved" beside a Claude "Request changes" on one head, is never ready); "· not re-reviewed" is an older head."""
         def review(sha, verdict, at):
             return {'node_id': at, 'user': {'login': 'github-actions[bot]'}, 'state': 'COMMENTED', 'submitted_at': at, 'body': f'**Claude review: {verdict}**\n\n<!-- claude-review sha={sha} findings= -->'}
         ok, no = review(SHA, '✅ Approve', '2026-11-14T10:00:00Z'), review(SHA, '⛔ Request changes', '2026-11-14T11:00:00Z')
-        ready = lambda labels, reviews: any('READY' in line for line in self.watch(['clean', 'clean'], labels=labels, reviews=reviews, heads=SHA))
+        # Gitar's ✅ on the head (14 Nov 2026, owner: "Claude always approves, while Gitar requests changes"): its check-run passed and its label reads "Gitar: approved"
+        ready = lambda labels, reviews, gitar='success': any('READY' in line for line in self.watch(['clean', 'clean'], labels=labels if 'Gitar' in labels else labels + ',Gitar: approved', reviews=reviews, heads=SHA, gitar_check=gitar))
         self.assertTrue(ready('Claude: approved', [ok]))
-        self.assertTrue(ready('Claude: approved,Gitar: reviewing', [ok]), 'Gitar\'s own state no longer matters on a Claude PR')
+        self.assertFalse(ready('Claude: approved,Gitar: changes requested', [ok]), 'Claude approves, Gitar asks for changes: not ready')
+        self.assertFalse(ready('Claude: approved,Gitar: approved with suggestions', [ok]), 'a finding is still open')
+        self.assertFalse(ready('Claude: approved,Gitar: approved,Gitar: reviewing', [ok]), 'Gitar is reviewing the newest push')
+        self.assertFalse(ready('Claude: approved', [ok], gitar=None), 'the label says approved but Gitar has no check-run on this head (a stale label)')
+        self.assertFalse(ready('Claude: approved', [ok], gitar='failure'), 'Gitar\'s check on this head did not pass')
+        self.assertFalse(ready('Claude: not reviewed,Gitar: approved', []), 'Gitar approves, no Claude review at all: not ready')
         filler = [{'node_id': f'f{n}', 'user': {'login': 'github-actions[bot]'}, 'state': 'COMMENTED', 'submitted_at': '2026-11-13T%02d:00:00Z' % (n % 24), 'body': 'x'} for n in range(100)]
         self.assertTrue(ready('Claude: approved', filler + [ok]), 'the newest review is on page 2 of the reviews (Gitar\'s finding on #4124)')
         self.assertFalse(ready('Claude: approved', [ok, no]), 'the newest review asks for changes')
