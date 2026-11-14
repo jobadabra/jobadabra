@@ -7,3 +7,7 @@ import os as _os  # noqa: E402
 if _os.getenv('JOBADABRA_SEARCH_TAPE'):
     from . import search_tape as _search_tape  # noqa: E402
     _search_tape.install()
+# A by-hand pair of searches that share pages and AI answers (src/same_inputs.py, tools/persona-search/same-inputs.mjs): only when JOBADABRA_TAPE_SHARED is set.
+if _os.getenv('JOBADABRA_TAPE_SHARED'):
+    from . import same_inputs as _same_inputs  # noqa: E402
+    _same_inputs.install()

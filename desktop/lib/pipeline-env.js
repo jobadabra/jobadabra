@@ -62,6 +62,11 @@ const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'L
 // The persona search check's tape (src/search_tape.py, src/tape_items.py, tools/persona-search), never set for a user.
 // Why (#3565 review, 7 Nov 2026): a new tape flag, JOBADABRA_TAPE_ITEMS, was set and dropped by the list above (as JOBADABRA_AI_CALL_LOG was, #3535), so every tape flag passes by its prefix.
 const TAPE = /^JOBADABRA_(SEARCH_TAPE|TAPE_)/;
+// Why (14 Nov 2026, owner via sa: "let's commit it open a PR and get this merged"; src/same_inputs.py): the by-hand same-inputs pair shares pages and AI answers through JOBADABRA_TAPE_SHARED*;
+// the installed app never passes them, so no leaked variable can make a search read another run's folder (guard test/unit/main/same-inputs-env.test.js).
+const SHARED = /^JOBADABRA_TAPE_SHARED/;
+/** The tape and same-inputs flags of the parent environment, by prefix; the same-inputs ones not in an installed build. */
+const tapeEnv = parent => Object.fromEntries(Object.entries(parent).filter(([name, value]) => TAPE.test(name) && value && !(installedBuild && SHARED.test(name))));
 
 // Crash reports from the engine: the app sets this (main.js) only for an installed build with Technical reports on; the engine reports
 // unhandled errors to it (src/crash_reporting.py). The install id and version ride along as tags.
@@ -81,7 +86,7 @@ export function pipelineEnv(storage, parent = process.env) {
   const settings = storage.settings();
   const env = {
     ...Object.fromEntries(SYSTEM.filter(name => parent[name]).map(name => [name, parent[name]])),
-    ...Object.fromEntries(Object.entries(parent).filter(([name, value]) => TAPE.test(name) && value)),
+    ...tapeEnv(parent),
     PYTHONUNBUFFERED: '1',
     PYTHONUTF8: '1',  // files and pipes in UTF-8 on Windows too (its default is the ANSI code page)
     JOBADABRA_NO_DOTENV: '1',
