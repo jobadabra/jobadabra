@@ -16,7 +16,7 @@ export const messages = {
   "turnOff": "Turn off",
   "keepOn": "Keep on",
   "linkedinSuggestion": "Also search LinkedIn when you find jobs",
-  "linkedinSuggestionDetail": "In the background, no window. You sign in to LinkedIn once, in a Jobadabra window.",
+  "linkedinSuggestionDetail": "In the background, no window. You sign in to LinkedIn once: with Chrome's sign-in, or in a Jobadabra window.",
   "linkedinSuggestionEvidence": "LinkedIn jobs is off, so Find jobs does not read your LinkedIn searches.",
   "extensionNeeded": "Chrome extension needed",
   "linkedinExtensionHelp": "LinkedIn jobs uses the Jobadabra Chrome extension. Connect it in Settings → Connections → Chrome extension, then try again.",
