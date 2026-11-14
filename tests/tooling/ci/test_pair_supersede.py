@@ -10,20 +10,24 @@ sys.path.insert(0, str(ROOT / 'tools' / 'persona-search'))
 import pair  # noqa: E402
 
 WORKFLOW = (ROOT / '.github' / 'workflows' / 'search-pair.yml').read_text(encoding='utf-8')
+MEASURED, NOW = 'a' * 40, 'b' * 40
+
+
+def cancels(attempt):
+    """Evaluate the workflow's own cancel-in-progress expression for a run of this attempt (the only expression shape it uses)."""
+    expr = re.search(r'(?m)^  cancel-in-progress: (.+)$', WORKFLOW).group(1)
+    hit = re.fullmatch(r"\$\{\{ inputs\.attempt == '(\d)' \}\}", expr)
+    return hit is not None and hit.group(1) == attempt
 
 
 class OnePairPerPrAtATime(unittest.TestCase):
-    def test_a_newer_dispatch_for_the_pr_replaces_the_older_run_by_the_workflows_own_group(self):
-        group = re.search(r'(?m)^concurrency:\n  group: (.+)\n  cancel-in-progress: (.+)$', WORKFLOW)
-        self.assertTrue(group, 'the workflow has one concurrency block')
-        self.assertIn('inputs.pr', group.group(1))
-        self.assertNotIn('inputs.people', group.group(1), 'other people of the same PR replace the pair too: one pair per PR (a by-hand pair names all its people)')
-        self.assertEqual(group.group(2), 'true')
+    def test_a_first_run_replaces_what_runs_for_the_pr_and_the_second_run_never_cancels_its_dispatcher(self):
+        group = re.search(r'(?m)^concurrency:\n  group: (.+)$', WORKFLOW).group(1)
+        self.assertEqual(group, 'search-pair-${{ inputs.pr }}', 'one group per PR for every attempt and every set of people: an older attempt 2 is replaced too (Gitar on #4191)')
+        self.assertTrue(cancels('1'))
+        self.assertFalse(cancels('2'), 'attempt 2 is dispatched by the first run\'s comment job; cancelling would kill the dispatcher mid-comment')
 
-    def test_the_pairs_own_second_run_is_in_another_group_than_the_run_that_dispatches_it(self):
-        self.assertIn('inputs.attempt', re.search(r'(?m)^  group: (.+)$', WORKFLOW).group(1), 'the first run dispatches attempt 2 from its comment job: one shared cancelling group would cancel it')
-
-    def test_a_cancelled_run_gives_its_claims_back_and_its_row_reads_superseded(self):
+    def test_a_cancelled_run_still_runs_the_jobs_that_give_the_claims_back_and_write_the_row(self):   # wiring only: the row's transition is played in test_pair_row (died + newer -> superseded)
         self.assertRegex(WORKFLOW, r"(?m)^  release:\n(?:.*\n)*?    if: \$\{\{ always\(\) && needs\.setup\.outputs\.go == '1' \}\}")
         self.assertRegex(WORKFLOW, r"(?m)^  status:\n(?:.*\n)*?    if: \$\{\{ always\(\) && needs\.setup\.result == 'success'")
 
@@ -32,20 +36,34 @@ class OnePairPerPrAtATime(unittest.TestCase):
 
 
 class AMovedHeadKeepsTheNumbersOnlyWhenTheSearchFilesDidNotChange(unittest.TestCase):
-    def test_search_files_count_as_changed_and_the_rest_does_not(self):
-        self.assertTrue(pair.search_changed(['docs/x.md', 'src/sources/found_boards.py']))
-        self.assertTrue(pair.search_changed(['desktop/lib/strategy-draft.js']))
-        self.assertFalse(pair.search_changed(['docs/x.md', 'tests/unit/sources/test_x.py', 'tools/ship.sh', '.github/workflows/pr-verdict.yml']))
-        self.assertFalse(pair.search_changed([]))
+    def verdict(self, files, status='ahead', state='OPEN', now=NOW):
+        return pair.head_verdict(state, MEASURED, now, {'status': status, 'files': files})
 
-    def test_a_compare_cut_at_300_files_counts_as_changed_never_as_unchanged(self):
-        self.assertTrue(pair.search_changed(['TRUNCATED']))
+    def test_the_head_did_not_move(self):
+        self.assertEqual(self.verdict([], now=MEASURED), (False, False))
 
-    def test_the_comment_job_writes_the_numbers_for_an_unchanged_head_and_says_which_commit_was_measured(self):
-        self.assertIn('pair.py reach delta.txt', WORKFLOW)
+    def test_a_push_of_docs_and_tests_keeps_the_numbers_and_says_the_head_moved(self):
+        self.assertEqual(self.verdict(['docs/x.md', 'tests/unit/sources/test_x.py', '.github/workflows/pr-verdict.yml']), (True, False))
+
+    def test_a_push_that_changes_a_search_file_is_a_newer_head(self):
+        self.assertEqual(self.verdict(['docs/x.md', 'src/sources/found_boards.py']), (True, True))
+        self.assertEqual(self.verdict(['desktop/lib/strategy-draft.js']), (True, True))
+
+    def test_every_doubt_counts_as_newer_never_as_unchanged(self):   # Gitar on #4191: an empty list, a rebase, a force push, an unreadable compare, a cut list
+        self.assertEqual(self.verdict([]), (True, True), 'nothing proves the head is the measured code')
+        self.assertEqual(self.verdict(['docs/x.md'], status='diverged'), (True, True), 'a rebase: the file list is the merge-base side')
+        self.assertEqual(pair.head_verdict('OPEN', MEASURED, NOW, {}), (True, True), 'the compare could not be read')
+        self.assertEqual(self.verdict([f'docs/{n}.md' for n in range(300)]), (True, True), 'a list cut at 300 may hide a search file')
+
+    def test_a_merged_pr_has_no_head_to_follow(self):
+        self.assertEqual(self.verdict(['src/sources/x.py'], state='MERGED'), (False, False))
+
+    def test_the_comment_job_reads_the_decision_from_that_function(self):   # wiring: the shell holds no decision of its own
+        self.assertIn('pair.py head "$STATE" "$HEAD" "$now" compare.json', WORKFLOW)
         self.assertIn('elif [ "$newer" = 1 ]; then', WORKFLOW)
-        self.assertIn('no file the search reads changed since, so these numbers stand for it', WORKFLOW)
-        self.assertRegex(pair.table(str(ROOT / 'tests'), '9', 'a' * 40, 'b' * 40).splitlines()[1], r'#9 `bbbbbbbb`', 'the comment names the commit it measured in its first heading')
+
+    def test_the_comment_names_the_commit_it_measured_in_its_first_heading(self):
+        self.assertRegex(pair.table(str(ROOT / 'tests'), '9', 'a' * 40, 'b' * 40).splitlines()[1], r'#9 `bbbbbbbb`')
 
 
 if __name__ == '__main__':
