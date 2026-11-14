@@ -9,7 +9,7 @@ import {listReady} from './jobs-state.js';
 import {heldAfterList} from '../apply-readiness-read.js';
 import {readsQuestions} from '../apply-triage-mode.js';
 import {shared} from './shared.js';
-import {STEP_KEYS, addStep, endSteps, moveStep, startSteps, stepText} from '../readiness-steps.js';
+import {STEP_KEYS, addStep, beginCheck, endSteps, moveStep, startSteps, stepText} from '../readiness-steps.js';
 
 // The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
 const reads = new Map();
@@ -132,6 +132,7 @@ export async function runTriage(jobs, read, match = null) {
   if (state.running) return {read: 0, failed: 0};
   Object.assign(state, {picking: false, running: true, stopping: false, total: jobs.length, seen: 0, job: null});
   cancelled = false;
+  beginCheck();
   $('triage-results')?.replaceChildren();
   ticker = setInterval(paint, 1000);   // Why (#3519): one read takes about a minute; the seconds are the proof it is alive between its steps
   let done = 0, failed = 0;

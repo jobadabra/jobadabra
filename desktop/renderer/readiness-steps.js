@@ -7,6 +7,10 @@ import {t} from '../i18n/index.js';
 export const STEP_KEYS = {ready: 'triageStepReady', drafting: 'triageStepDrafting', opening: 'triageStepOpening', looking: 'triageStepLooking', pressing: 'triageStepPressing',
   landed: 'triageStepLanded', judging: 'triageStepLooking', planning: 'triageStepLooking', matching: 'triageStepMatching'};
 const kept = new Map();   // job url -> [{step, ms}] of its last check
+const written = new Set();   // the urls whose kept log THIS check wrote: only these take the match's step (Gitar on #4370)
+
+/** A new check begins: no job's kept log is this check's yet. */
+export const beginCheck = () => written.clear();
 
 /** A new log for one job's check, at `now` (ms): it starts on "Getting started". */
 export const startSteps = (url, now) => ({url, steps: [], current: 'ready', at: now});
@@ -27,12 +31,12 @@ export function endSteps(log, now, {keep = true} = {}) {
   if (!log?.current) return;
   log.steps.push({step: log.current, ms: Math.max(0, now - log.at)});
   log.current = null;
-  if (keep) kept.set(log.url, log.steps);
+  if (keep) { kept.set(log.url, log.steps); written.add(log.url); }
 }
 
-/** Adds one finished step to a job's kept log (the check's one question match runs after every read is in). */
+/** Adds one finished step to the log THIS check kept for a job (the check's one question match runs after every read is in); a job answered from the store, or an earlier check's log, is left as it was. */
 export function addStep(url, step, ms) {
-  if (!STEP_KEYS[step]) return;
+  if (!STEP_KEYS[step] || !written.has(url)) return;
   kept.set(url, [...(kept.get(url) || []), {step, ms: Math.max(0, ms)}]);
 }
 

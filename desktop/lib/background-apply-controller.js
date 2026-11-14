@@ -9,7 +9,7 @@ import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
-import {notify as notifyDefault, readStepListeners, stopAsked, tellWindow} from './server-hooks.js';
+import {notify as notifyDefault, readStepHeard, stopAsked, tellWindow} from './server-hooks.js';
 import {log as appLog} from './log.js';
 import {appliedMessageFor} from './applied-message.js';
 import {createCloudSide} from './background-apply-cloud.js';
@@ -86,8 +86,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
  waiting = null,   // the waiting-application message sender, injectable for tests (lib/waiting-message.js)
  applied = null,   // the applied-application mail sender, injectable for tests (lib/applied-message.js)
  log = appLog, started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
-  // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"; 8 Nov 2026, "almost no live updates"): each read's step goes to the Jobs window and to its own app.log line as it starts, and where its time went is one line at its end, so the next real run names the step it stopped at; Apply readiness times its check's steps from the same event (readStepListeners, #4360).
-  reader = createTriageReader({onStep: step => { tellWindow('triageStep', step); readStepListeners.forEach(listen => listen(step)); log('apply', 'triage: read step', {url: String(step.url).split(/[?#]/)[0], step: step.step}); }, onDone: summary => log('apply', 'triage: read finished', summary)}),
+  // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"; 8 Nov 2026, "almost no live updates"): each read's step goes to the Jobs window and to its own app.log line as it starts, and where its time went is one line at its end, so the next real run names the step it stopped at; Apply readiness times its check's steps from the same event (setReadStepListener, #4360).
+  reader = createTriageReader({onStep: step => { tellWindow('triageStep', step); readStepHeard(step); log('apply', 'triage: read step', {url: String(step.url).split(/[?#]/)[0], step: step.step}); }, onDone: summary => log('apply', 'triage: read finished', summary)}),
   port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage), readSession = undefined} = {}) {   // readSession: a test's LinkedIn sign-in reader, never the Keychain
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.

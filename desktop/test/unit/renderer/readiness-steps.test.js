@@ -2,7 +2,7 @@
 // Owner, 14 Nov 2026: "Getting started / Reading the form … Each of them with seconds of how much it took. and then I should see the end result, the outcome".
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {addStep, endSteps, moveStep, startSteps, stepsOf} from '../../../renderer/readiness-steps.js';
+import {addStep, beginCheck, endSteps, moveStep, startSteps, stepsOf} from '../../../renderer/readiness-steps.js';
 
 const URL_A = 'https://jobs.example.test/a';
 
@@ -45,4 +45,17 @@ test('a read Stop cut short leaves the job\'s last check as it was (Gitar on #43
   moveStep(stopped, 'opening', 11_000);
   endSteps(stopped, 12_000, {keep: false});
   assert.deepEqual(stepsOf(url).map(({seconds}) => seconds), [5]);
+});
+
+test('the match\'s step goes only to a log this check wrote, never to an earlier check\'s (Gitar on #4370)', () => {
+  const url = 'https://jobs.example.test/earlier';
+  endSteps(startSteps(url, 0), 4_000);
+  beginCheck();   // a new check: this job's log is from the one before
+  const stored = startSteps(url, 10_000);
+  endSteps(stored, 10_500, {keep: false});   // answered from the store: nothing kept this time
+  addStep(url, 'matching', 6_000);
+  assert.deepEqual(stepsOf(url).map(({seconds}) => seconds), [4], 'the earlier log stays as it was: no Matching mixed in');
+  endSteps(startSteps(url, 20_000), 21_000);   // read again in this check
+  addStep(url, 'matching', 6_000);
+  assert.deepEqual(stepsOf(url).map(({seconds}) => seconds), [1, 6]);
 });
