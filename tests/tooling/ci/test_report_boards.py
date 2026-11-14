@@ -228,6 +228,24 @@ class OneShareForARun(unittest.TestCase):
         self.assertEqual(max(item['local'] for item in shared), 14, 'the highest count over the searches that named it')
         self.assertTrue(any(item.get('url') == template for item in shared), 'the address one search read fine')
 
+    def test_a_one_profile_run_has_no_profile_folder_and_its_person_comes_from_its_row(self):
+        """14 Nov 2026 (rp, run 43600783345): download-artifact puts ONE artifact straight into `results/` (log: "Found 1 artifact(s) ... download of artifact to: .../results"), so the folder name says no person and the
+        share told 0 boards for d01 whose search read 3. The artifact's own row.json (`id`, written by profiles.py row) names the person whatever the folder is called."""
+        root = Path(self.tmp.name) / 'results'
+        run_folder(self.tmp.name, 'results', [board('shared.example', local=4)])
+        (root / 'row.json').write_text(json.dumps({'id': 'b01', 'city': 'Sofia'}), encoding='utf-8')
+        post = Post()
+        main([str(root), '--run', '77'], post, CI)
+        self.assertEqual(len(post.requests), 1)
+        self.assertEqual(json.loads(post.requests[0].data)['ci_boards'], [{'host': 'shared.example', 'countries': ['bg'], 'local': 4}])
+
+    def test_a_row_that_names_no_person_or_a_night_person_adds_nothing(self):
+        for index, content in enumerate(('not json', '[]', '{"id": 5}', '{"id": "17"}', '{"id": "zz9"}', '{"city": "x"}')):
+            root = Path(self.tmp.name) / f'flat{index}'
+            run_folder(self.tmp.name, f'flat{index}', [board('shared.example')])
+            (root / 'row.json').write_text(content, encoding='utf-8')
+            self.assertEqual(report_boards.collect(root), {}, content)
+
     def test_a_429_is_a_line_in_the_summary_and_the_note_never_a_red_run(self):
         root = self.artifacts(['b01', 'b02', 'c04'])
         summary, note = Path(self.tmp.name) / 'summary.md', Path(self.tmp.name) / 'table.md'
