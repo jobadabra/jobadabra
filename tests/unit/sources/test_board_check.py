@@ -214,6 +214,14 @@ class ReadTests(unittest.TestCase):
         self.assertEqual((board_check.kind.call_count, self.data['boards']['b4.example']['site_kind']), (0, 'job board'))
         self.assertEqual([b['host'] for b in board_yield.pick([board(4)], self.data['boards'])], ['b4.example'], 'and stays a board')
 
+    def test_a_gone_day_then_a_read_with_jobs_is_a_board_and_never_adds_up_to_a_drop(self):
+        # Why (#4216): a kept 'gone' day stayed after a read with jobs, so one more dead day dropped a working board
+        from datetime import datetime, timezone
+        self.data['boards']['b4.example'] = {'site_kind': 'gone', 'gone_days': ['2026-11-13'], 'state': 'empty'}
+        self.assertEqual(len(self.read([board(4)], now=datetime(2026, 11, 14, 9, tzinfo=timezone.utc))), 1)
+        kept = self.data['boards']['b4.example']
+        self.assertEqual((board_check.kind.call_count, kept['site_kind'], kept['gone_days']), (0, 'job board', []))
+
     def test_a_not_a_board_verdict_whose_retry_read_is_empty_is_asked_again_and_follows_the_answer(self):
         # Why (14 Nov 2026, owner via sa): a wrong 'other' was read again every 30 days but never judged again, so it never cleared
         from datetime import datetime, timedelta, timezone

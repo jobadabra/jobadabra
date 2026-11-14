@@ -8,8 +8,8 @@ that is not a board, hands 'one employer' to the scout with its website (board_e
 field_kind: the same question for THIS search's field, asked before a board the web search found joins the list (owner's yes, 26 Oct 2026, discovery
 sketch "AI judges the page": a pilot search's web search returned a recruiter, a news site's search page and an empty board as trade boards).
 Tests: tests/unit/sources/test_board_judge.py.
-Both judge the page the board's jobs are listed on: its link filled with the search's first word (its home page only when that page is not
-there), and a list page built by scripts gives no verdict: the read's own state stands (owner via sa, 14 Nov 2026: "let's fix what we learn").
+Both judge the home page and the page the board's jobs are listed on (its link filled with the search's first word, in the board's charset);
+a list page built by scripts gives no verdict: the read's own state stands (owner via sa, 14 Nov 2026: "let's fix what we learn").
 Case set: 'board-kind' in tools/prompt-cases.json (tools/board-kind-cases.py replays it)."""
 import re
 import socket
@@ -161,15 +161,15 @@ def kind(board, fetch, term='', ask=None):
 def checked(board, entry, result, fetch, word, now=None):
     """The read's (jobs, state, route) after the board check, whose verdict is kept in entry['site_kind'] (with 'site_page', 'gone_days').
     Design (owner via sa, 14 Nov 2026; Gitar #4198-#4209), one owner of site_kind, these verdicts only:
-    - the read gave jobs: it is a board; a kept 'one employer'/'other' becomes 'job board', no AI ask, the jobs are kept;
+    - the read gave jobs: it is a board; a kept 'gone', 'one employer' or 'other' becomes 'job board' (no gone days), no AI ask, the jobs are kept;
     - the read gave jobs, or is 'browser', or the AI page reader is off: nothing else changes;
     - the read gave nothing, and nothing, 'gone', 'one employer' or 'other' is kept: the judge is asked (a kept not-a-board verdict is read only
       on its 30-day retry, board_yield.pick) and its answer is kept; a retry with no answer drops the old verdict, so the next empty read asks;
       an answer that is not a board replaces the read; a kept 'job board' is not asked again.
     word: a function giving the search's first word, called only when the judge is asked."""
     kept = entry.get('site_kind')
-    if result[0] and kept in ('one employer', 'other'):   # Why (#4209, Gitar): jobs read are the proof; re-judging could drop them
-        entry['site_kind'], entry['site_page'] = 'job board', ''
+    if result[0] and kept in NOT_A_BOARD:   # Why (#4209, #4216, Gitar): jobs read are the proof; a kept 'gone' day must not add up to a drop
+        entry['site_kind'], entry['site_page'], entry['gone_days'] = 'job board', '', []
     if result[0] or result[1] == 'browser' or careers.READER is None or kept not in (None, 'gone', 'one employer', 'other'):
         return result
     site, page = kind(board, fetch, word())
