@@ -22,7 +22,7 @@ def join(named, pick, hosts, free, start, why=lambda board: None, taken=()):
     Why (14 Nov 2026, sa, c02 Vienna: karriere.at proposed first, never read, no log line): a board named and not started said nothing; the log now says, for each named
     board in the order it came, whether it started or why not (taken: who holds the places)."""
     named = list(named or [])
-    chosen = pick([board for board in named if board['host'] not in hosts])   # a board already being read is not asked: it would use up pick's untried limit (MAX_UNTRIED) of the new ones (14 Nov 2026, c02: boards 7+ of a list were never picked)
+    chosen = pick(named)
     new = [board for board in chosen if board['host'] not in hosts][:max(0, free)]
     started = {board['host'] for board in new}
     chosen_hosts = {board['host'] for board in chosen}

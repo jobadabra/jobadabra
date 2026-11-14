@@ -393,7 +393,7 @@ def _merge(own, shared):
     merged = {board['host']: board for board in shared if board.get('rank')}
     for board in own:
         known = theirs.get(board['host'], {})
-        merged[board['host']] = {**known, **board, 'proposed': True, **({'search_url': known['search_url']} if known.get('search_url') else {})}   # proposed: named for this search (first_jobs._named_meanwhile)
+        merged[board['host']] = {**known, **board, **({'search_url': known['search_url']} if known.get('search_url') else {})}
     for board in shared:
         merged.setdefault(board['host'], board)
     return list(merged.values())[:MAX_BOARDS * 2]

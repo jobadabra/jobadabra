@@ -1,13 +1,9 @@
-"""The boards the AI names beside the measured ones take the places the measured boards left, in the right order, and the log says what became of each
-(src/sources/board_later.py join, src/first_jobs.py _named_meanwhile, src/ai/board_ideas.py _merge; sa, 14 Nov 2026: c02 Vienna, karriere.at proposed first, never read, no log line).
-Why: a local run's log showed 6 places (4 proven boards + steirerjobs.at, a Styria board at install rank 28 with 0 relevant jobs, + booming.jobs); the AI's karriere.at came 9th in ideas() and
-the boards 7+ were cut by pick's untried limit counting the 4 boards already being read."""
+"""The log says what became of every board the AI named beside the measured ones (src/sources/board_later.py join; sa, 14 Nov 2026: c02 Vienna, karriere.at proposed first,
+never read, no log line). Log lines only: which boards are read is unchanged (the order and the untried limit are in the branch eo-named-boards-order, held for a design)."""
 import unittest
 from unittest import mock
 
-from src import first_jobs
-from src.ai import board_ideas
-from src.sources import board_later, board_yield, careers, read_budget
+from src.sources import board_later, board_yield, careers
 
 _READER = careers.READER
 
@@ -35,12 +31,6 @@ class JoinTests(unittest.TestCase):
             started = board_later.join(named, pick(kept), hosts, free, lambda b: b['host'], taken=sorted(hosts))
         return started, said
 
-    def test_boards_already_being_read_do_not_use_up_the_untried_limit(self):
-        """c02: the 4 measured boards were in the list pick cut at MAX_UNTRIED, so a named board 7th in the list was never picked."""
-        named = [board(n) for n in range(1, 11)]
-        started, _ = self.run_join(named, {f'b{n}.example' for n in range(1, 5)}, free=board_yield.MAX_UNTRIED)
-        self.assertEqual(started, [f'b{n}.example' for n in range(5, 11)], 'the 4 boards being read are not asked: the 6 new ones take the places')
-
     def test_every_named_board_not_started_says_why(self):
         """The silence: a board cut by the places or by pick left no line."""
         named = [board(n) for n in range(1, 6)]
@@ -65,23 +55,6 @@ class JoinTests(unittest.TestCase):
         self.assertIn('refuses', board_yield.why_skipped(board(2), {'b2.example': {'state': 'browser'}}))
         self.assertIn('not a job board', board_yield.why_skipped(board(3), {'b3.example': {'site_kind': 'one employer'}}))
         self.assertIsNone(board_yield.why_skipped(board(4), {}))
-
-
-class OrderTests(unittest.TestCase):
-    def test_merge_marks_the_boards_named_for_this_search(self):
-        merged = board_ideas._merge([board(2), board(7)], [{**board(2), 'rank': 4.0}, {**board(1), 'rank': 28.0}])
-        self.assertEqual({b['host']: bool(b.get('proposed')) for b in merged}, {'b1.example': False, 'b2.example': True, 'b7.example': True})
-
-    def test_the_places_left_go_to_the_boards_named_for_this_search_before_a_board_that_only_has_a_rank(self):
-        """c02: steirerjobs.at (rank 28, another region, 0 relevant) came before karriere.at in ideas(); each group keeps its order."""
-        ideas = [board(1, rank=28.0), board(2, proposed=True), board(3, rank=17.0), board(4, proposed=True), board(5)]
-        with mock.patch.object(first_jobs, '_wait_early'), mock.patch.object(first_jobs, '_proposed', return_value=ideas), mock.patch.object(read_budget, 'past_cut', return_value=False):
-            named = first_jobs._named_meanwhile(board_ideas, {})
-        self.assertEqual([b['host'] for b in named], ['b2.example', 'b4.example', 'b1.example', 'b3.example', 'b5.example'])
-
-    def test_nothing_is_named_past_the_cut(self):
-        with mock.patch.object(first_jobs, '_wait_early'), mock.patch.object(read_budget, 'past_cut', return_value=True):
-            self.assertEqual(first_jobs._named_meanwhile(board_ideas, {}), [])
 
 
 if __name__ == '__main__':
