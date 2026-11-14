@@ -1,0 +1,66 @@
+name: CI · Claude replay
+# Replays the Claude reviewer on ONE old head with the prompt of ANY branch, and posts NOTHING: contents: read only, no gh write call, the result goes to the job summary.
+# Why (14 Nov 2026, owner via coordinator mac-95: "Replay on the 4 missed bugs (Recommended)"): a reviewer prompt change is measured on old heads before it ships, never on live PRs; a scratch branch cannot carry this
+#   (the push gate runs the real workflow's guard tests), so it is a registered workflow of its own. By hand only (workflow_dispatch needs write access); it spends the owner's Claude plan, one review per run (~350k cached tokens).
+run-name: Claude replay · ${{ inputs.label }} · ${{ inputs.sha }}
+on:
+  workflow_dispatch:
+    inputs:
+      sha: {description: 'the full head sha to review', required: true, type: string}
+      label: {description: 'the PR number the prompt names', required: true, type: string}
+      prompt_ref: {description: 'the branch whose tools/claude-review-prompt.md is used', required: false, default: 'main', type: string}
+permissions:
+  contents: read
+jobs:
+  replay:
+    name: Replay ${{ inputs.label }} on ${{ inputs.sha }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40   # a hang guard: a review takes 1-9 min
+    steps:
+      - uses: actions/checkout@v5   # main: its CLAUDE.md, AGENTS.md and .gitar/review
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.sha }}
+          path: pr-head
+          fetch-depth: 0
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.prompt_ref }}   # the prompt under test (a branch of this repo); only read by node, never given the plan token
+          path: cr-tools
+          sparse-checkout: |
+            tools/claude-review.mjs
+            tools/claude-review-prompt.md
+            tools/gh_retry.py
+          sparse-checkout-cone-mode: false
+      - name: Prompt
+        env:
+          LABEL: ${{ inputs.label }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          node --input-type=module -e "
+          import fs from 'node:fs';
+          import {promptFor, rulesFrom} from './cr-tools/tools/claude-review.mjs';
+          const p = promptFor({number: process.env.LABEL, head: process.env.SHA, base: 'main', from: '', prior: [], rules: rulesFrom('.gitar/review')}, fs.readFileSync('cr-tools/tools/claude-review-prompt.md', 'utf8'));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'prompt<<CR_EOF\\n' + p + '\\nCR_EOF\\n');"
+        id: prompt
+      - name: Review
+        id: claude
+        uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 40
+            --permission-mode default
+            --allowedTools "Read,Grep,Glob,Bash(git -C pr-head diff:*),Bash(git -C pr-head log:*),Bash(git -C pr-head show:*),Bash(git -C pr-head grep:*),Bash(git -C pr-head blame:*)"
+            --add-dir pr-head
+            --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"findings":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"severity":{"type":"string","enum":["high","medium","low"]},"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"body":{"type":"string"}},"required":["severity","path","line","title","body"]}}},"required":["summary","findings"]}'
+      - name: The result (nothing is posted)
+        if: ${{ always() }}
+        env:
+          STRUCTURED: ${{ steps.claude.outputs.structured_output }}
+        run: |
+          echo "REPLAY ${{ inputs.label }} ${{ inputs.sha }}"
+          printf '%s\n' "$STRUCTURED" | tee -a "$GITHUB_STEP_SUMMARY"

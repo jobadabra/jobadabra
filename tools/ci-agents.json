@@ -11,6 +11,7 @@
   ],
   "steps": [
     {"repo": "jobadabra", "file": "claude-review-shared.yml", "name": "Claude PR review", "engine": "plan"},
+    {"repo": "jobadabra", "file": "claude-replay.yml", "name": "Claude review replay", "engine": "plan"},
     {"repo": "jobadabra", "file": "ai-judge-set.yml", "name": "AI user agent judge exam", "engine": "broker"},
     {"repo": "jobadabra", "file": "ui-findings.yml", "name": "UI findings", "engine": "broker"},
     {"repo": "jobadabra", "file": "e2e.yml", "name": "E2E judges and screenshot review", "engine": "broker"},
