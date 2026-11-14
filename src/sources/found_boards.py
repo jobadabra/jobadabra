@@ -74,7 +74,8 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
             print(f"Job boards: {board.get('name') or board.get('host')}: next pages and other words not asked ({why})", flush=True)
         elif early:
             print(f"Job boards: {board.get('name') or board.get('host')}: first jobs handed; the read goes on with its other words and next pages", flush=True)
-            with stage.guard('found boards: read on') as caught:   # a failure here keeps the slice's jobs and verdict
+            with stage.guard('found boards: read on') as caught, slots.priority(slots.NORMAL):   # a failure here keeps the slice's jobs and verdict
+                # Why (sa, 14 Nov 2026, pair 1 of #4180: d01's first-jobs step closed at 129 s against 81 s): background reading, so its AI calls queue at the lane's later level (NORMAL, as the known boards' read), never at the slice's FIRST
                 more, after, _ = _read(board, search, fetch, None, False, show, ai)
                 jobs, state = jobs + more, after if after == 'browser' else state   # a refusal on the way on is kept as one (never asked again)
             if caught:
