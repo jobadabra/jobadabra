@@ -23,7 +23,7 @@ test('the ⋯ menu item follows the stored check: Check, then Fix what\'s missin
 });
 
 test('Apply readiness says what the check found and lists what is missing, from the same read', () => {
-  assert.deepEqual(readinessOf(READS.notChecked), {checked: false, chip: {label: 'Not checked', tone: 'neutral'}, found: '', missing: [], button: 'Check apply readiness'});
+  assert.deepEqual(readinessOf(READS.notChecked), {checked: false, chip: {label: 'Not checked', tone: 'neutral'}, found: '', todo: [], missing: [], counts: {questions: null, answered: null, unjudged: null}, blocked: false, button: 'Check apply readiness'});
   const login = readinessOf(READS.login);
   assert.equal(login.chip.label, 'Needs you');
   assert.deepEqual(login.missing, ['Sign in on the employer\'s site']);
@@ -45,4 +45,24 @@ test('Account / Credentials: what the site asks, and the saved sign-in by the jo
   assert.deepEqual(accountOf({url: 'https://careers.example/1', company: 'migros '}, READS.ready, rows).saved?.host, 'career2.successfactors.eu', 'by company, any case');
   assert.deepEqual(accountOf({url: 'https://nowhere.example/1', company: 'Nobody'}, READS.ready, rows), {need: 'none', saved: null});
   assert.deepEqual(accountOf(job, READS.notChecked, []), {need: 'unknown', saved: null});
+});
+
+test("the form's required questions as counts: answered = asked − missing − not judged; a check that read no questions says so, never a zero", () => {
+  // Why (14 Nov 2026, #4325, owner: "On the main content, we should show more details. How many fields...").
+  const read = {...clean, simple: true, questions: Array.from({length: 19}, (_, i) => `Question ${i}`), match: {missing: [{kind: 'detail', label: 'Nationality'}, {kind: 'detail', label: 'Native language'}, {kind: 'answer', label: 'Why us?'}], unjudged: 1}};
+  assert.deepEqual(readinessOf(read).counts, {questions: 19, answered: 15, unjudged: 1});
+  assert.deepEqual(readinessOf(READS.login).counts, {questions: null, answered: null, unjudged: null}, 'a sign-in page: its questions were not read');
+  assert.deepEqual(readinessOf({...clean, simple: true, questions: ['Phone']}).counts, {questions: 1, answered: null, unjudged: null}, 'read but not matched yet: answered is not known');
+  assert.deepEqual(readinessOf(READS.login).todo, [{kind: 'sign-in', words: "Sign in on the employer's site"}]);
+  assert.equal(readinessOf(READS.login).blocked, true);
+  assert.equal(readinessOf(READS.details).blocked, false, "saved details are the person's to add, not a site that blocks");
+});
+
+test('"it can be filled" only when every question was read, matched and found good; otherwise the check\'s own words (Gitar on #4379)', () => {
+  assert.equal(readinessOf(READS.ready).ready, true);
+  for (const read of [{unreadable: true}, {...clean, simple: true, questions: ['Phone']}, {...clean, simple: false, why: 'many pages'}, {...clean, simple: true, questions: ['A'], match: {missing: [], unjudged: 1}}]) {
+    const view = readinessOf(read);
+    assert.equal(view.ready, false, JSON.stringify(read));
+    assert.ok(view.found, 'the drawer has words of its own to say instead');
+  }
 });
