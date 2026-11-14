@@ -188,7 +188,8 @@ def _refused_outcome(db, args):
     from .sources import refused_reads, refused_state
     page = json.loads(Path(args.file).read_text())
     result = refused_reads.outcome(str(page.get('url') or ''), page.get('status'), str(page.get('html') or ''), str(page.get('title') or ''), str(page.get('final') or ''), step=page.get('step') if page.get('step') in refused_reads.KEPT_STEPS else 'download', captcha=page.get('captcha') is True,
-                                   judged=page.get('judged') if page.get('judged') in refused_state.STATES else None)
+                                   judged=page.get('judged') if page.get('judged') in refused_state.STATES else None,
+                                   cards=[card for card in page.get('cards') or [] if isinstance(card, dict)][:200] if isinstance(page.get('cards'), list) else None)
     if result.get('feed'):   # like a page the person opened: the next jobs check reads, filters and scores it
         with store.connect(JOBS_DB) as db:
             from . import scout

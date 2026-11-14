@@ -242,9 +242,11 @@ def _stop_why(status, html, final):
 JUDGED_STOPS = {'login': 'a login page', 'refused': 'refused in the browser', 'passive_check': 'a bot check'}
 
 
-def outcome(url, status, html, title='', final='', now=None, step='download', captcha=False, judged=None):
+def outcome(url, status, html, title='', final='', now=None, step='download', captcha=False, judged=None, cards=None):
     """What a browser's read of `url` brought: {ok, state: 'read'|'empty'|'stopped'|'skipped', jobs, why, name, feed}. Every answer is kept so the site is not asked again for READ_DAYS.
-    `judged`: the page's state the browser's caller had the AI say (refused_state.page_state): 'captcha' is a captcha, a verdict in JUDGED_STOPS a stop like the floors below."""
+    `judged`: the page's state the browser's caller had the AI say (refused_state.page_state): 'captcha' is a captcha, a verdict in JUDGED_STOPS a stop like the floors below.
+    `cards`: the jobs another CI search read on this same page today (CI's shared mark, tools/persona-search/beside.mjs), read as the extension's cards: nothing is fetched.
+    A read with jobs also answers `listing`: their public fields (title, link, employer, place, date), what CI's shared mark keeps for the next search."""
     now = now or _now()
     captcha = captcha or judged == 'captcha'   # words-ok: the engine AI's fixed page_state answer, not a page's words
     host = visits.host_of(url)
@@ -269,7 +271,7 @@ def outcome(url, status, html, title='', final='', now=None, step='download', ca
         _keep(host, url, 'waiting', 'the page did not load', now)
         print(f'Refused sites: {host} did not load (HTTP {int(status or 0)}); asked again in {WAIT_DAYS} day(s)')
         return {'ok': True, 'state': 'waiting', 'why': 'the page did not load', 'name': host}
-    result = visits.read(url, html or '', None, title or '', now=now)
+    result = visits.read(url, html or '', cards or None, title or '', now=now)
     state = 'read' if result['jobs'] else 'empty'
     from .. import role_kinds
     titles = [job.get('title') for job in result['jobs'] if isinstance(job, dict)]
@@ -278,4 +280,6 @@ def outcome(url, status, html, title='', final='', now=None, step='download', ca
         from .. import read_methods
         read_methods.note_extension(host, read_methods.in_places(result['jobs']))   # counted in the next search report (no host leaves the machine)
     print(f"Refused sites: read {host} in your browser: {len(result['jobs'])} job(s), {result.get('fits', 0)} matching your search")
-    return {'ok': True, 'state': state, 'jobs': len(result['jobs']), 'fits': result.get('fits', 0), 'name': result['name'], 'feed': result['feed']}
+    listing = [{'title': job.get('title', ''), 'url': job.get('url', ''), 'company': job.get('employer', ''), 'place': job.get('location', ''), 'date': job.get('date_posted', '')}
+               for job in result['jobs'] if isinstance(job, dict)]
+    return {'ok': True, 'state': state, 'jobs': len(result['jobs']), 'fits': result.get('fits', 0), 'name': result['name'], 'feed': result['feed'], 'listing': listing}
