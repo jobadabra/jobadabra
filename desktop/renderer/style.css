@@ -2659,6 +2659,9 @@ details.qa-section { margin-top: var(--sp-3); }
 .triage-now { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .triage-results { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); max-height: 9.5rem; overflow-y: auto; font-size: var(--fs-sm); }
 .triage-results:empty { display: none; }
+/* The finished steps of the job in flight ("✓ Reading the form · 5 s"), #4325. */
+.triage-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); font-variant-numeric: tabular-nums; }
+.triage-steps:empty { display: none; }
 .triage-results li { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .triage-results li > .chip-tag { flex: none; }
 .triage-results .triage-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

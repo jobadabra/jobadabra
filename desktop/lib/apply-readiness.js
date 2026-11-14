@@ -50,9 +50,9 @@ export function rowCheck(job) {
 
 /**
  * Builds the step. `prepareKit(code, name, {notices})` drafts a kit ({ok, error?}; `notices`: which of its notices show); `readForm(job)` reads the form in the hidden browser (the L1 read, null when nothing was read);
- * `match(asked)` is the one question match of a check; `call` is the store call (lib/store/engine.js).
+ * `match(asked)` is the one question match of a check; `call` is the store call (lib/store/engine.js); `onStep({url, step})` tells the window a step started ('drafting' before a kit draft).
  */
-export function createReadiness({storage, prepareKit, readForm, match = asked => matchReads(storage, asked), call = engine.call, clock = () => new Date(), log = () => {}}) {
+export function createReadiness({storage, prepareKit, readForm, match = asked => matchReads(storage, asked), call = engine.call, clock = () => new Date(), log = () => {}, onStep = () => {}}) {
   let cancels = 0;   // counts Stops, so a check that was drafting a kit can tell one arrived before it opens the browser
   const waiting = new Map();   // url → {job, read}: fresh simple forms whose questions the check's one match has not judged yet
   const recordOf = url => call(storage, 'applications', 'get', {url}).catch(error => { log('apply', 'readiness: the record was not read', {error: String(error?.message || error).slice(0, 200)}); return null; });
@@ -88,6 +88,8 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
    */
   async function applyReadiness(job, {notices = 'none'} = {}) {
     const asked = cancels;
+    // Why (14 Nov 2026, #4325, owner: "40s just to get ready?"): the kit draft is its own step with its own seconds, never hidden inside "Getting started".
+    if (!job.kit && job.code) onStep({url: job.url, step: 'drafting'});
     const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job', {notices}).catch(error => ({ok: false, error: String(error?.message || error)}));
     // Why (8 Nov 2026, red main after #3573): a kit draft that ran and failed no longer blocks the form read; the read is still worth showing (kept only once a row exists), and the kit's reason travels with the result.
     if (kit.ok === false) log('apply', 'readiness: the kit was not drafted', {error: String(kit.error || kit.reason || '').slice(0, 200), refused: kit.refused === true});
