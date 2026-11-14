@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from src import scout, scout_core, scout_need, source_yield
+from src import scout_candidates, scout, scout_core, scout_need, source_yield
 from src import store as job_store
 from src.scout_cells import FLOOR
 from tests.unit.engine.test_budget_tape import contextlib_quiet
@@ -66,7 +66,8 @@ class RunTest(unittest.TestCase):
             return []
         with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, contextlib_quiet(), \
                 mock.patch.object(scout_core, 'CENTRAL', False), mock.patch.object(scout_need, 'covered', lambda *a, **k: covered), \
-                mock.patch.object(scout, 'harvest', mock.Mock(side_effect=lambda *a, **k: steps.append('harvest') or 0)), \
+                mock.patch.object(scout, 'harvest', mock.Mock(side_effect=lambda db, seeds, sources=None, *a, **k: steps.append(
+                    'LinkedIn employers' if sources == [scout_candidates.linkedin_employer_candidates] else 'harvest') or 0)), \
                 mock.patch.object(scout, 'ai_ideas', lambda *a: steps.append('ideas')), \
                 mock.patch.object(scout.scout_role_search, 'guarded', lambda *a: steps.append('role search')), \
                 mock.patch.object(scout, 'load_search_config', lambda: DRIVER):
@@ -80,7 +81,8 @@ class RunTest(unittest.TestCase):
 
     def test_a_covered_search_finds_no_new_names_and_checks_only_the_persons_own(self):
         steps, checked, summary = self.run_scout(covered=FLOOR + 5)
-        self.assertEqual(steps, [])
+        # Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Both"): the employers of the person's own LinkedIn search are their own names too, harvested every day.
+        self.assertEqual(steps, ['LinkedIn employers'])
         self.assertEqual(checked, ['My Own Co'])
         self.assertEqual(summary.get('covered'), FLOOR + 5)
 
