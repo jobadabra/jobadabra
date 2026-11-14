@@ -24,10 +24,10 @@ class LinkedInEmployers(unittest.TestCase):
         board_employers.note(JOBS, 'LinkedIn')
         board_employers.note([{'company': 'Example Hotels'}], 'Job boards found')
         origins = {c['name']: c['origin'] for c in board_employers.candidates()}
-        self.assertEqual(origins, {'Adcubum AG': scout_candidates.LINKEDIN_ORIGIN, 'Julius Baer': scout_candidates.LINKEDIN_ORIGIN, 'Example Hotels': 'Board employer'})
+        self.assertEqual(origins, {'Adcubum AG': board_employers.LINKEDIN_ORIGIN, 'Julius Baer': board_employers.LINKEDIN_ORIGIN, 'Example Hotels': 'Board employer'})
 
     def test_a_linkedin_employer_is_checked_on_a_covered_day_and_a_board_employer_still_is_not(self):
-        self.assertTrue(scout_candidates.counts_when_covered({'status': 'pending', 'origin': scout_candidates.LINKEDIN_ORIGIN}))
+        self.assertTrue(scout_candidates.counts_when_covered({'status': 'pending', 'origin': board_employers.LINKEDIN_ORIGIN}))
         self.assertFalse(scout_candidates.counts_when_covered({'status': 'pending', 'origin': 'Board employer'}))
 
     def test_a_covered_day_still_queues_linkedins_employers(self):
@@ -36,7 +36,23 @@ class LinkedInEmployers(unittest.TestCase):
             scout_core.ensure_tables(db)
             added, _ = scout_run.harvest_names(scout, db, SEEDS, None, None, (), 0, None, lambda: False, have=68)
             names = {row['name']: row['origin'] for row in db.execute('SELECT name, origin FROM scout_candidates')}
-        self.assertEqual((added, names), (2, {'Adcubum AG': scout_candidates.LINKEDIN_ORIGIN, 'Julius Baer': scout_candidates.LINKEDIN_ORIGIN}))
+        self.assertEqual((added, names), (2, {'Adcubum AG': board_employers.LINKEDIN_ORIGIN, 'Julius Baer': board_employers.LINKEDIN_ORIGIN}))
+
+    def test_a_press_that_sees_a_feed_clears_the_linkedin_flag(self):
+        board_employers.note(JOBS, 'LinkedIn')
+        board_employers.note([], 'LinkedIn', resolved=['Adcubum AG'])
+        origins = {c['name']: c['origin'] for c in board_employers.candidates()}
+        self.assertEqual(origins, {'Adcubum AG': board_employers.BOARD_ORIGIN, 'Julius Baer': board_employers.LINKEDIN_ORIGIN})
+
+    def test_a_waiting_board_name_seen_later_on_linkedin_takes_the_linkedin_origin(self):
+        board_employers.note([{'company': 'Julius Baer'}], 'Job boards found')
+        with job_store.connect(self.dir / 'jobs.sqlite') as db:
+            scout_core.ensure_tables(db)
+            scout.harvest(db, SEEDS, [scout_candidates.board_employer_candidates])
+            board_employers.note([{'company': 'Julius Baer'}], 'LinkedIn')
+            scout_run.harvest_names(scout, db, SEEDS, None, None, (), 0, None, lambda: False, have=68)
+            [row] = db.execute('SELECT origin, priority FROM scout_candidates').fetchall()
+        self.assertEqual((row['origin'], row['priority']), (board_employers.LINKEDIN_ORIGIN, board_employers.LINKEDIN_PRIORITY))
 
 
 if __name__ == '__main__':

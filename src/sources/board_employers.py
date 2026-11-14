@@ -13,6 +13,8 @@ from ..press import resume
 PLACEHOLDERS = ('Unknown employer', 'via ')   # what the readers put when the page names nobody
 MAX_LOOKUPS = 20      # job pages fetched per run for jobs without an employer
 MAX_KEPT = 2000       # employer names kept
+BOARD_ORIGIN, LINKEDIN_ORIGIN = 'Board employer', 'LinkedIn employer'   # the Scout's origins of these names (src/scout_candidates.py reads both from here)
+LINKEDIN_PRIORITY = 80   # seen on the person's own LinkedIn search with no feed: before a board's names (65), after the seeds and met employers (90+)
 
 
 def fetch(url):
@@ -36,8 +38,9 @@ def _load():
         return {}
 
 
-def note(jobs, source):
-    """Keep the employer names of these jobs (the ones with a real company), counting their jobs per name."""
+def note(jobs, source, resolved=()):
+    """Keep the employer names of these jobs (the ones with a real company), counting their jobs per name. From LinkedIn (src/sources/employer_copy.py), `jobs` are
+    those whose employer has no feed (flag `linkedin`) and `resolved` the names a feed was seen for this press (flag cleared): the flag is the last press's verdict."""
     names = _load()
     stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
     for job in jobs:
@@ -46,6 +49,8 @@ def note(jobs, source):
             continue
         entry = names.setdefault(name, {'source': source, 'jobs': 0})
         entry.update(jobs=entry['jobs'] + 1, last_seen=stamp, **({'linkedin': True} if source == 'LinkedIn' else {}))
+    for name in resolved:
+        names.get(name, {}).pop('linkedin', None)
     if len(names) > MAX_KEPT:
         names = dict(sorted(names.items(), key=lambda item: item[1].get('last_seen', ''))[-MAX_KEPT:])
     if names:
@@ -67,8 +72,8 @@ def note_site(name, website, source):
 def candidates():
     """The scout's candidates: every kept employer name, most jobs first (the scout's own queue does the real ranking)."""
     for name, entry in sorted(_load().items(), key=lambda item: -item[1].get('jobs', 0)):
-        linkedin = entry.get('linkedin')   # seen on the person's own LinkedIn search: checked even on a covered day (src/scout_candidates.py counts_when_covered)
-        yield dict(name=name, origin='LinkedIn employer' if linkedin else 'Board employer', priority=80 if linkedin else 65,
+        linkedin = entry.get('linkedin')   # seen on the person's own LinkedIn search with no feed: checked even on a covered day (src/scout_candidates.py counts_when_covered)
+        yield dict(name=name, origin=LINKEDIN_ORIGIN if linkedin else BOARD_ORIGIN, priority=LINKEDIN_PRIORITY if linkedin else 65,
                    **({'website': entry['website']} if entry.get('website') else {}))
 
 

@@ -5,7 +5,11 @@ page names no employer address (a sign-in box only). Known feeds first (the down
 at most MAX_EMPLOYERS; then, for at most MAX_GUESSES employers with no known feed, the employer's whole name on the common job systems (ats.name_slugs x ats.GUESSABLE,
 owner, 14 Nov 2026, asked via AskUserQuestion: "Both": look up in the press and teach the Scout). A job matches only when exactly one feed job has its identity
 (src/store.py identity) and the places agree, so a guessed feed of another company of that name never takes it; a guessed feed that held the job is registered for every
-later press, and every employer left unresolved is handed to the Scout (src/sources/board_employers.py note). Anything else keeps LinkedIn's copy.
+later press. Anything else keeps LinkedIn's copy.
+Design (lg, 14 Nov 2026, after 5 Gitar rounds on this file): an employer of a LinkedIn job is in one of three states, decided here and nowhere else:
+moved (a feed listed the job), has a feed (a known or guessed feed is live but lacked the job or was not read: the feed exists, nothing to find), or no feed
+(none known and no guess found one, or the guess was not run). Only "no feed" employers go to the Scout (board_employers.note, flag `linkedin`), and every press that
+sees a feed for an employer clears its flag (`resolved`), so the flag always says the last press's verdict.
 Tests: tests/unit/sources/test_employer_copy.py."""
 import re
 import sqlite3
@@ -63,14 +67,15 @@ def _past_cut():
     return cut is not None and time_budget.now() >= cut
 
 
-def guess_feed(company, probe=None):
-    """[(ats, slug, jobs)] of the live feeds named after this employer's whole name on the common job systems (ats.name_slugs x ats.GUESSABLE), in that order, read at once."""
+def guess_feed(company, probe=None, past_cut=lambda: False):
+    """[(ats, slug, jobs)] of the live feeds named after this employer's whole name on the common job systems (ats.name_slugs x ats.GUESSABLE), in that order, read at once.
+    A try that would start after the read cut is skipped (Gitar on #4274: up to 18 tries, 9 at a time, must not run past the cut)."""
     probe = probe or ats.probe
     tries = [(system, slug) for slug in ats.name_slugs(company or '')[:2] for system in ats.GUESSABLE]
     if not tries:
         return []
     with ThreadPoolExecutor(max_workers=min(9, len(tries))) as pool:
-        found = list(pool.map(slots.carry(lambda each: probe(*each)), tries))   # the caller's level rides into the pool (src/ai/slots.py carry)
+        found = list(pool.map(slots.carry(lambda each: None if past_cut() else probe(*each)), tries))   # the caller's level rides into the pool (src/ai/slots.py carry)
     return [(system, slug, list(jobs)) for (system, slug), jobs in zip(tries, found) if jobs]
 
 
@@ -81,12 +86,13 @@ def _moved(job, hit):
 
 
 def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, past_cut=_past_cut, guess=guess_feed, register=lambda company, system, slug: None,
-                    note=lambda jobs: None, guesses=MAX_GUESSES):
+                    note=lambda jobs, resolved: None, guesses=MAX_GUESSES):
     """`jobs` (LinkedIn's, as read) with each one its employer's feed lists under the employer's address (_moved). `fetch(ats, slug)` -> jobs or None (src/sources/ats.py
-    probe); `guess(company)` -> [(ats, slug, jobs)] (guess_feed); `register(company, ats, slug)` keeps a guessed feed that held a job; `note(jobs)` hands the jobs still
-    on LinkedIn to the Scout. No feed starts after the read cut or past `limit` known feeds and `guesses` employers. -> a new list."""
+    probe); `guess(company, past_cut)` -> [(ats, slug, jobs)] (guess_feed); `register(company, ats, slug)` keeps a guessed feed that held a job; `note(jobs, resolved)`
+    hands the Scout the jobs whose employer has no feed and the names that have one (the module's Design). No feed starts after the read cut or past `limit` known
+    feeds and `guesses` employers. -> a new list."""
     fetch = fetch or ats.probe   # looked up at call time, so a test's stand-in is the one read; None for a feed that is down, empty or changed shape
-    feeds, out, moved, guessed = {}, [], 0, {}
+    feeds, out, moved, guessed, unfed, resolved = {}, [], 0, {}, [], set()
     for job in jobs:
         known, hit = feeds_of(job.get('company'), index), None
         for where in known:
@@ -98,7 +104,7 @@ def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, pas
         name = _company(job.get('company'))
         # Why (Gitar on #4270): a known feed that lacked the job (a stale index entry) or was not read (past the limit or the cut) is no answer: the name is tried too.
         if not hit and name and name not in guessed and len(guessed) < guesses and not past_cut():
-            guessed[name] = guess(job.get('company'))
+            guessed[name] = guess(job.get('company'), past_cut=past_cut)
         for system, slug, feed in [] if hit else guessed.get(name) or ():
             if (system, slug) in known:
                 continue   # already read above
@@ -106,13 +112,16 @@ def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, pas
             if hit:
                 register(job.get('company'), system, slug)
                 break
+        if known or guessed.get(name):
+            resolved.add(job.get('company'))
+        elif not hit:
+            unfed.append(job)
         if hit:
             moved += 1
             job = _moved(job, hit)
         out.append(job)
-    left = [job for job in out if job.get('notes') != 'also on LinkedIn']
-    if left:
-        note(left)
+    if unfed or resolved:
+        note(unfed, sorted(resolved))
     if moved:
         log(f"LinkedIn: {moved} job(s) open on the employer's own site")
     return out
@@ -161,9 +170,9 @@ def from_row(jobs):
                 return
             print(f'LinkedIn: {company} runs on {system} ({slug}): read by every search from now on', flush=True)
 
-        def note(left):
+        def note(unfed, resolved):
             try:
-                board_employers.note(left, 'LinkedIn')
+                board_employers.note(unfed, 'LinkedIn', resolved=resolved)
             except OSError as problem:
                 print(f'LinkedIn: employers not handed to the Scout ({type(problem).__name__})', flush=True)
         return prefer_employer(jobs, index, register=register, note=note)

@@ -312,7 +312,7 @@ def default_sources(db, seeds, countries, skip=()):
 
 
 MET_ORIGIN = 'Met by you'
-LINKEDIN_ORIGIN = 'LinkedIn employer'   # an employer of a job the person's own LinkedIn search listed (src/sources/employer_copy.py from_row)
+from .sources.board_employers import BOARD_ORIGIN, LINKEDIN_ORIGIN   # one copy (Gitar on #4274): the origins of src/sources/board_employers.py candidates
 MET_PRIORITY = 96      # a company the person met comes before every list (seeds are 90-100, boards 65)
 MET_PER_RUN = 200
 
@@ -385,6 +385,10 @@ def _harvest(db, seeds, sources, skip, until):
             key = key_for(c['name'])
             if key in known and c.get('website'):   # a name first seen without an address (Hacker News) learns it from a catalog
                 db.execute('UPDATE scout_candidates SET website = COALESCE(website, ?) WHERE key = ?', (c['website'], key))
+            if key in known and c['origin'] in (BOARD_ORIGIN, LINKEDIN_ORIGIN):
+                # Why (Gitar on #4274): a waiting board name takes the newest board/LinkedIn verdict (board_employers.note), whichever list saw it first.
+                db.execute('UPDATE scout_candidates SET origin = ?, priority = MAX(priority, ?) WHERE key = ? AND status = ? AND origin IN (?, ?)',
+                           (c['origin'], c['priority'], key, 'pending', BOARD_ORIGIN, LINKEDIN_ORIGIN))
             if not key or key in excluded or key in known or c['origin'].startswith(skip):
                 continue
             known.add(key)

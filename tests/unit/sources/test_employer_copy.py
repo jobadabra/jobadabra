@@ -18,7 +18,7 @@ class EmployerCopy(unittest.TestCase):
     def setUp(self):
         self.reads, self.guessed, self.guesses = [], [], []
 
-    def guess(self, company):
+    def guess(self, company, past_cut=lambda: False):
         self.guesses.append(company)
         return self.guessed
 
@@ -38,9 +38,31 @@ class EmployerCopy(unittest.TestCase):
     def test_no_feed_known_or_guessed_keeps_linkedin_and_hands_it_to_the_scout(self):
         noted = []
         [job] = employer_copy.prefer_employer([{**LINKEDIN, 'company': 'Somebody Else'}], INDEX, fetch=self.fetch(FEED), log=lambda line: None, guess=self.guess,
-                                              note=noted.extend)
+                                              note=lambda jobs, resolved: noted.append(([each['company'] for each in jobs], resolved)))
         self.assertEqual((job['url'], self.reads, self.guesses), (LINKEDIN['url'], [], ['Somebody Else']))
-        self.assertEqual([each['company'] for each in noted], ['Somebody Else'])
+        self.assertEqual(noted, [(['Somebody Else'], [])])
+
+    def test_an_employer_with_a_known_feed_that_lacks_the_job_is_resolved_never_handed_to_the_scout(self):
+        noted = []
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([FEED[1]]), log=lambda line: None, guess=self.guess,
+                                              note=lambda jobs, resolved: noted.append(([each['company'] for each in jobs], resolved)))
+        self.assertEqual((job['url'], noted), (LINKEDIN['url'], [([], ['Canonical'])]))
+
+    def test_an_employer_whose_guessed_feed_lacks_the_job_is_resolved_too(self):
+        noted, self.guessed = [], [('greenhouse', 'canonical', [FEED[1]])]
+        employer_copy.prefer_employer([LINKEDIN], [], fetch=self.fetch([]), log=lambda line: None, guess=self.guess,
+                                      note=lambda jobs, resolved: noted.append(([each['company'] for each in jobs], resolved)))
+        self.assertEqual(noted, [([], ['Canonical'])])
+
+    def test_no_guess_try_starts_after_the_read_cut(self):
+        tried, cut = [], [False]
+
+        def probe(system, slug):
+            tried.append(slug)
+            cut[0] = True   # the cut passes while the first tries run
+            return None
+        employer_copy.guess_feed('Canonical Ltd', probe=probe, past_cut=lambda: cut[0])
+        self.assertLess(len(tried), 2 * len(employer_copy.ats.GUESSABLE))
 
     def test_a_feed_guessed_by_name_that_holds_the_job_moves_it_and_is_registered(self):
         kept = []
@@ -161,7 +183,7 @@ class LinkedInRow(unittest.TestCase):
 
     def test_linkedins_reader_row_hands_out_the_employers_address(self):
         got = self.read()
-        self.assertEqual((got['job']['url'], got['reads'], got['feeds'], got['notes']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1, [], 0))
+        self.assertEqual((got['job']['url'], got['reads'], got['feeds'], got['notes']), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1, [], 1))   # one call: Canonical resolved (its flag cleared)
 
     def test_with_the_index_off_the_row_finds_the_feed_by_name_and_keeps_it(self):
         got = self.read(disable='index')
