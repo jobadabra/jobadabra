@@ -11,7 +11,7 @@ import uuid
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # the sibling module, whether run as a script or loaded by path
 from pr_events_cursor import deliver_pending  # noqa: E402
 
-EVENT = re.compile(r'^ship: (?:GITAR STALE|PAIR NOT STARTED|DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|CONFLICT|COMMENT)\b')   # Why (13 Nov 2026, ra; 14 Nov 2026, rb): GITAR STALE = no Gitar review of the head, reopen fresh (never ask Gitar); PAIR NOT STARTED = a held PR's pair did not start, run its command (neither ends the run)
+EVENT = re.compile(r'^ship: (?:GITAR STALE|DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|CONFLICT|COMMENT)\b')   # Why (13 Nov 2026, ra; 14 Nov 2026, rb): GITAR STALE = no Gitar review of the head, reopen fresh (never ask Gitar) (does not end the run; 14 Nov 2026, plan 3/5: no line for a pair that did not start any more, the PR's verdict starts the pair)
 
 
 def deliver(log, thread, codex, *, run=subprocess.run, cmux=None, surface=None):
