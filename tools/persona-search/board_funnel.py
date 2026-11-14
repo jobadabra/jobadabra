@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from urllib.parse import urlparse
 
+from inout import LINE as STAGE   # the one parser of a Stage line (its `rest` is what follows the link)
 
 SEC = re.compile(r'^\[(\d+)s\] (.*)$')
 ROUND = re.compile(r"^Job boards: (?P<name>.+?) round '(?P<word>[^']*)'(?: in [^:]+)?: (?:(?P<jobs>\d+) job\(s\) on the page, (?P<new>\d+) new|page not read \((?P<why>[^)]*)\)), (?P<d>\d+) s.* · (?P<url>\S+)$")
@@ -20,13 +21,10 @@ LATER = re.compile(r'^Job boards named later: (?P<pos>\d+)\. (?P<name>.+?) \((?P
 LATER_FREE = re.compile(r'^Job boards named later: places left (\d+), held by (.+)$')
 NAMED = (('pack', re.compile(r'^First jobs: reading (.+?), the job boards that gave people like you')), ('AI', re.compile(r'^Job boards proposed for [^:]+: (.+)$')),
          ('AI', re.compile(r'^Job boards of your field: (.+)$')), ('web search', re.compile(r'^Job boards: a web search found (.+)$')))
-# Why (14 Nov 2026): inout.LINE keeps only the first word after the stage, and boards without a link per job name a job by its title after `#`: this one keeps the rest (the guard test shows none of it leaves).
-STAGE = re.compile(r'Stage: (?P<reader>.+?) (?P<stage>read|kept|ai_no|never_asked|placed_out|no_link) (?P<rest>\S.*)$')   # the rest keeps a title after `#`: boards without per-job links name a job by it
 EMPLOYERS = re.compile(r'^Employers: read (\d+) of (\d+) sites')
 EMPLOYER_JOBS = re.compile(r'Reading employer job sites: (\d+) of (\d+)(?: · (\d+) jobs listed)?')
 RELAY = re.compile(r'^relay: .* kind (\w+) start (\d+) ')
 NEEDS = (('pages per round', '#4180'), ('how many link-less jobs the save merged', 'a line from the save; xc counts it by replay'), ('place asked, title judged, read-but-never-staged per board', "xb's 1/2"))   # TODO(AI): drop each when its PR is merged and parsed (14 Nov 2026)
-STAGES = ('kept', 'never_asked', 'ai_no', 'placed_out', 'no_link')
 
 
 def norm(text):
@@ -59,9 +57,9 @@ def board_round(rows, host_of_name, hit, sec):
 
 def job_stage(rows, stage):
     """One per-job Stage line: a board's job goes to its host's row, any other reader's to the reader's; a job is told by its address (and title after `#`), whatever place a later pass added after ` | `."""
-    link = stage['rest'].split(' ')[0]
+    link, rest = stage['url'], stage['rest']
     key = host_of(link) if stage['reader'] == 'Job boards found' else stage['reader']
-    job = stage['rest'] if '#' in link else stage['rest'].rsplit(' | ', 1)[0]
+    job = link + rest if '#' in link else link
     rows[key]['urls'].setdefault(job, []).append(stage['stage'])
     rows[key]['feed'] = stage['reader'] != 'Job boards found'
 
@@ -114,11 +112,12 @@ def read(folder):
                 last[tag] = sec
     clock.update({'titles': last['sorted'], 'places': last['placed']})
     named_rows(rows, host_of_name, named_at)
-    return {'rows': rows, 'clock': clock}   # still a defaultdict: judged() adds a source the log never named
+    return {'rows': rows, 'clock': clock, 'names': host_of_name}   # rows still a defaultdict: judged() adds a source the log never named
 
 
-def judged(folder, rows):
-    """Adds each judged job to its source's row: a board's by `via <host>` in the company, an employer site's by kind, a feed's by provider; -> jobs no host could be told for."""
+def judged(folder, rows, names):
+    """Adds each judged job to its source's row: a board's by its `host` (gate.board_host), else by the board name after `via ` matched to a host the log named (an older artifact),
+    an employer site's by kind, a feed's by provider; -> the number of jobs no source could be told for, None when judged.json is missing or unreadable."""
     try:
         data = json.loads((Path(folder) / 'judged.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -126,7 +125,10 @@ def judged(folder, rows):
     unknown = 0
     for job in data.get('rows', []):
         company, kind = job.get('company') or '', job.get('kind') or ''
-        key = company[4:] if company.startswith('via ') else 'employer sites' if kind == 'employer feed' else job.get('provider') if kind != 'job board' else None
+        if kind == 'job board':
+            key = job.get('host') or (names.get(norm(company[4:])) if company.startswith('via ') else None)
+        else:
+            key = 'employer sites' if kind == 'employer feed' else job.get('provider') or None
         if key is None:
             unknown += 1
             continue
@@ -165,7 +167,7 @@ def table(folder):
     """The markdown of one search's table, clocks and AI calls."""
     data = read(folder)
     rows, clock = data['rows'], data['clock']
-    unknown = judged(folder, rows)
+    unknown = judged(folder, rows, data['names'])
     if not rows and not clock.get('end'):
         return 'No search log in this folder.\n'
     out = ['| source | named by | got a place | read at (s) | words asked | jobs on pages | kept | kept, then dropped | never judged (waiting) | judged no | place out | no link of its own | shown | right |', '|' + '---|' * 14]
@@ -176,7 +178,7 @@ def table(folder):
         place = row['place'] or ('free feed, always read' if row['feed'] else 'read' if row['rounds'] else 'no reason logged')
         refused = f", {row['refused']} page(s) refused" if row['refused'] else ''
         out.append(f"| {key} | {', '.join(sorted(set(row['named']))) or '-'} | {place} | {'-' if row['first'] is None else row['first']} | {row['rounds'] or '-'}{refused} | "
-                   f"{row['jobs'] or len(row['urls']) or '-'} | " + ' | '.join(str(count[s] or '-') for s in ('kept', 'dropped', 'never_asked', 'ai_no', 'placed_out')) + f" | {linkless(row['urls'])} | {row['shown'] or '-'} | {row['right'] or '-'} |")
+                   f"{row['jobs'] or '-'} | " + ' | '.join(str(count[s] or '-') for s in ('kept', 'dropped', 'never_asked', 'ai_no', 'placed_out')) + f" | {linkless(row['urls'])} | {row['shown'] or '-'} | {row['right'] or '-'} |")
     out += ['', f"Clocks: list arrived {seen(clock.get('list'))} · board read cut {seen(clock.get('cut'))} · last title pass {seen(clock.get('titles'))} · "
                 f"last place pass {seen(clock.get('places'))} · run end {seen(clock.get('end'))}"]
     if clock.get('later_free'):
@@ -188,7 +190,7 @@ def table(folder):
     if unknown is None:
         out.append('shown / right: n/a, judged.json is missing or unreadable (the blind judge did not finish).')
     elif unknown:
-        out.append(f'{unknown} judged job(s) had no host (a board job with its employer named): in no row above.')
+        out.append(f'{unknown} judged job(s) had no host (judged before the host was kept): in no row above.')
     out.append('Logs in this artifact: draw/run-1.log is every line the engine printed (rounds, Stages, Board pass, Waiting, stacks at time-up); run.log is only the AI relay.')
     out.append('Not shown yet: ' + '; '.join(f'{name} (needs {pr})' for name, pr in NEEDS))
     return '\n'.join(out) + '\n'
