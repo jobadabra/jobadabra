@@ -159,6 +159,14 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         self.assertIsNotNone(found_boards._early['alo.bg'][1], 'finished: its pages are the full read\'s')
 
 
+    def test_a_full_read_does_not_take_the_claim_of_an_early_read_still_open(self):
+        """Gitar on #4145: the full read popped the (time, None) entry of a running early read, and a second early read then read the board too."""
+        found_boards._early['alo.bg'] = (time.monotonic(), None)
+        self.read([board('alo.bg')], early=False)
+        self.assertEqual(found_boards._early.get('alo.bg', (0, 0))[1], None, 'still being read: the claim stays')
+        self.read([board('ALO.bg')])
+        self.assertEqual(self.reads, [('alo.bg', False)], 'the second early read leaves it out')
+
 class NamedLaterTests(unittest.TestCase):
     def test_only_the_boards_that_started_are_said_and_read(self):
         """Gitar on #4145: "also reading X" named a board another read took between pick and start."""

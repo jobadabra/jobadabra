@@ -342,7 +342,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         if entry.get('rendered'):   # its lists are built by scripts: read in the headless browser from now on (_rendered)
             board = {**board, 'rendered': True}
         board = {**board, **({'charset': entry['charset']} if entry.get('charset') else {})}   # its search words in its own charset (board_paths.read)
-        handed = None if early else _early.pop(board['host'], None)   # Why (14 Nov 2026, #4145): an early read leaves the registry to the full read, and to the claims it holds
+        handed = _claims.hand_over(board['host'], early)   # Why (14 Nov 2026, #4145): only a full read takes an entry, and only a finished early read's: a read still open keeps its claim
         return (board, entry, (handed[1] or {}) if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 else {}, {}, proposed)
     reads = [item(board) for board in todo]
     late_pages = {} if early else {board['host']: page for board in todo if (page := late_reads.take('board', board['host'])) is not None}
