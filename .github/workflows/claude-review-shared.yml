@@ -10,8 +10,8 @@ on:
   workflow_call:
     inputs:
       pr: {type: string, required: true}              # the PR number
-      mode: {type: string, required: true}            # auto: a green head (needs `sha`), manual: the owner's ask
-      sha: {type: string, default: ''}                # auto: the head that went green; a moved head is skipped
+      mode: {type: string, required: true}            # auto: a pushed head (needs `sha`), manual: the owner's ask
+      sha: {type: string, default: ''}                # auto: the head that was pushed; a moved head is skipped
       asked_by: {type: string, default: ''}           # manual: OWNER | MEMBER (comment) or DISPATCH
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: {required: false}      # the owner's plan token; missing = skipped with a clear line
