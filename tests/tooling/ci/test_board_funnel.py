@@ -67,6 +67,7 @@ class BoardFunnel(unittest.TestCase):
     def test_unmerged_columns_are_named_not_guessed(self):
         text = board_funnel.table(folder(['[1s] Finding your first jobs…']))
         self.assertIn('n/a, this search logged no per-job stage', text)
+        self.assertIn('draw/run-1.log is every line the engine printed', text)
         for need in ('#4180', "xb's 1/2"):
             self.assertIn(f'(needs {need})', text)
 
