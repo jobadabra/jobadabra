@@ -101,7 +101,7 @@ def _read(board, search, fetch, route, early, show=None):
             except (urllib.error.URLError, OSError, ValueError) as error:
                 if type(error).__name__ == 'Refused':
                     return jobs, board_yield.refused(error), None
-                board_round_log.said(board, term, place, started, jobs, error='the name does not resolve' if isinstance(error, careers.NameNotResolved) else type(error).__name__, parts=parts, link=url)
+                board_round_log.said(board, term, place, started, jobs, error='the name does not resolve' if isinstance(error, careers.NameNotResolved) else board_round_log.why(error), parts=parts, link=url)
                 continue
             _told(board, term)   # Why (13 Nov 2026, bp): the Scout counts a family only on a board asked its own word (src/scout_board_counts.py)
             found = layout.read(page, url, fetch, parts.part)
@@ -192,7 +192,7 @@ def _until_cut(fetch):
     """The page reader of a board's follow-up ways (_another_way, _fuller_section): past the search's read cut it reads no page (the way's own error handling ends it at once)."""
     def until(url, *args, **kwargs):
         if read_budget.past_cut():
-            raise TimeoutError('past the search\'s read cut')
+            raise board_round_log.Stalled('past the search\'s read cut')   # Why (14 Nov 2026, sa): told apart from a site that stalled (board_round_log.why)
         return fetch(url, *args, **kwargs)
     return until
 

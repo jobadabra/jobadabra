@@ -163,12 +163,16 @@ def answer(url, status, wait=None, burst=True):
     return slow
 
 
-def open(request, timeout=15, opener=None, burst=True):  # noqa: A001 — the readers' urlopen
+def open(request, timeout=15, opener=None, burst=True, on_attempt=None):  # noqa: A001 — the readers' urlopen
     """urllib.request.urlopen at the site's pace: waits its turn, retries a slow-down, raises Busy when the site needs longer.
-    burst=False: a 403 right after a fast burst is raised at once, never asked again (answer)."""
+    burst=False: a 403 right after a fast burst is raised at once, never asked again (answer).
+    on_attempt: called right before each real attempt, after the turn-taking wait (a caller that times the site's silence starts its clock there).
+    Why (14 Nov 2026, Gitar on #4177): a stall's printed wait must not count this sleep or an earlier slow-down retry."""
     url = request.full_url if isinstance(request, urllib.request.Request) else str(request)
     for attempt in range(RETRIES + 1):
         turn(url)
+        if on_attempt:
+            on_attempt()
         try:
             response = (opener or urllib.request.urlopen)(request, timeout=timeout)
         except urllib.error.HTTPError as error:
