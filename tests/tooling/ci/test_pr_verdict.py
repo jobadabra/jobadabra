@@ -177,7 +177,7 @@ class Workflows(unittest.TestCase):
         name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / 'e2e-windows.yml').read_text()).group(1).strip('\'"')
         self.assertNotIn(name, listed, 'e2e-windows.yml: no PR starts it')
         checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
-        for name in ('main_e2e_state', 'pr_ai_number', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_rows', 'pr_verdict_greys', 'pr_flaky'):
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_rows', 'pr_verdict_pair', 'pr_verdict_greys', 'pr_flaky'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_verdicts_queue_per_commit_and_skipped_events_have_unique_groups(self):
@@ -399,7 +399,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         env.pop('GITHUB_EVENT_PATH', None)
         script = os.path.join(d, 'pr-verdict.py'); Path(script).write_text((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
         Path(d, 'pr_verdict_sweep.py').write_text((ROOT / 'tools/pr_verdict_sweep.py').read_text() if (ROOT / 'tools/pr_verdict_sweep.py').exists() else ''); Path(d, 'github_limit.py').write_text((ROOT / 'tools/github_limit.py').read_text())   # its sibling, as the job's sparse checkout has it
-        Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text()); Path(d, 'pr_verdict_rows.py').write_text((ROOT / 'tools/pr_verdict_rows.py').read_text())
+        Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text()); Path(d, 'pr_verdict_rows.py').write_text((ROOT / 'tools/pr_verdict_rows.py').read_text()); Path(d, 'pr_verdict_pair.py').write_text((ROOT / 'tools/pr_verdict_pair.py').read_text())
         mode = ['--sweep-heads'] if sweep_heads is not None else ['--sha', 'abc1234']
         done = subprocess.run([sys.executable, script, '--repo', 'o/r', *mode, *(['--revalidate-head'] if revalidate_head else []), *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
         read = lambda name: Path(d, name).read_text() if Path(d, name).exists() else ''

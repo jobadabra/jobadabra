@@ -11,7 +11,8 @@ name: CI · Search pair (a PR's before/after, by hand)
 # count after its one automatic re-run, grey when a newer head superseded it. Never a night, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
 #   gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'
 # Broker lane: by-hand (jobadabra-web workers/ai-broker/lib/lanes.mjs lists search-pair.yml).
-run-name: 'Search pair · #${{ inputs.pr }} · ${{ inputs.people }} · ${{ inputs.tiers }} tier'
+# Why (14 Nov 2026, plan 3/5): the PR's verdict caps starts per PR (tools/pr_verdict_pair.py) by reading these names; the pair's own second run ends ` · again` so it is not counted as a start.
+run-name: "Search pair · #${{ inputs.pr }} · ${{ inputs.people }} · ${{ inputs.tiers }} tier${{ inputs.attempt == '2' && ' · again' || '' }}"
 
 on:
   workflow_dispatch:

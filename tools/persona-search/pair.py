@@ -189,6 +189,8 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
         lines += ['', 'Minutes per part: ' + '; '.join(timed)]
     if done:
         lines += ['', 'Paste into the PR body (the PR check reads it):', '```', *(m['line'] for m in done.values()), '```']
+    # Why (14 Nov 2026, plan 3/5): the verdict starts the next pair from this line (tools/pr_verdict_pair.py): the head this pair measured (a later head whose search files did not change keeps its numbers) and its people (a head with no pending Moves line measures the same people again).
+    lines += ['', f'<!-- search-pair-meta {json.dumps({"sha": pr_sha, "people": sorted(people_rows)})} -->']
     return '\n'.join(lines)
 
 

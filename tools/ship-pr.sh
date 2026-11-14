@@ -40,19 +40,13 @@ ship_pr_lookup() {
   when="$(ship_rest_reset_text)"
   ship_pr_fail "GitHub could not say whether $2 already has an open pull request (REST quota 0$when, or unreachable): nothing was pushed and no pull request was created; run tools/ship.sh again"
 }
-# ship_pair_lines <pr> <repo>: runs tools/ship-search-hold.sh and writes each line it prints as a step; its `PAIR NOT STARTED <why>|<command>` becomes
-# `ship: PAIR NOT STARTED (<why>[; REST quota 0 until hh:mm]); start it by hand: <command>`, a line the watchers wake on. The run goes on: the PR stays held for its pair, so the line is never `FAILED` (that marker ends a session's wait: tools/ship-wait.sh, Gitar on #4125).
-# Why (14 Nov 2026, rb; owner via mac-95: #4091 and #4100 sat ~25 min with no pair, REST quota 0 at ~22:50Z): a failed dispatch was one plain step line, so no session heard that its pair never started.
+# ship_pair_lines <pr> <repo>: runs tools/ship-search-hold.sh (the hold only) and writes each line it prints as a step.
+# Why (14 Nov 2026, plan 3/5; owner via sa: "to start the pair by themselves"): the pair is no longer started here but by the PR's verdict (tools/pr_verdict_pair.py), so the watcher line this function made for a failed start is gone:
+#   a start that fails is said on the PR's own check row ("pair not started"), and the verdict tries again.
 ship_pair_lines() {
-  local line why when
+  local line
   while IFS= read -r line; do
-    case "$line" in
-      "PAIR NOT STARTED "*)   # the reset time is best-effort: it is left out when the rate-limit read itself fails, and gh's own words still say why
-        why="${line#PAIR NOT STARTED }"; when=""; ! _pr_rest_out || when="$(ship_rest_reset_text)"
-        echo "ship: PAIR NOT STARTED (${why%%|*}${when:+; REST quota 0$when}); start it by hand: ${why#*|}" ;;
-      "") ;;
-      *) step "$line" ;;
-    esac
+    [ -z "$line" ] || step "$line"
   done < <(bash "$tools/ship-search-hold.sh" "$1" "$2")
 }
 ship_pr_push() { local now; now="$(git ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)"; git push -q "--force-with-lease=refs/heads/$branch:$now" origin "HEAD:refs/heads/$branch" 2>&1 || ship_pr_fail "could not push the branch $branch to origin"; }
@@ -118,7 +112,7 @@ ship_pr_land() {
     fi
     if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until it is READY on its new head" || true; fi   # --draft: a new push is not yet checked or approved
   fi
-  if ship_review && [ -z "${external:-}" ]; then   # a pending "Moves:" number: ship holds the PR and starts its pair (tools/ship-search-hold.sh, 13 Nov 2026)
+  if ship_review && [ -z "${external:-}" ]; then   # a pending "Moves:" number: ship holds the PR; its pair is started by the PR's verdict (tools/ship-search-hold.sh, 13 Nov 2026; 14 Nov plan 3/5)
     ship_pair_lines "$n" "$repo"
   fi
   [ -z "${external:-}" ] || bash "$tools/lab-ci-dispatch.sh" "$n"   # a lab PR has no Actions of its own: the public repo runs its tests (tools/lab_ci.py)
