@@ -51,7 +51,7 @@ class PrGraphqlFallbackTest(unittest.TestCase):
         if rest_out is not None:
             (self.tmp / 'refuse_rest').write_text('')
             (self.tmp / 'rate_core').write_text(str(rest_out))
-        env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / ('cache-out' if rest_out is not None else 'cache')),
+        env = {**os.environ, 'GH_REST_LOG': 'off', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / ('cache-out' if rest_out is not None else 'cache')),
                'GH_GRAPHQL_LOG': str(self.gql_log), 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': ''}
         done = subprocess.run(['bash', '-c', f'. "{ROOT / "tools" / "pr-rest-lib.sh"}" && {call}'], env=env, capture_output=True, text=True, timeout=60)
         return done.returncode, done.stdout

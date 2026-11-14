@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.fake_gh_env import NO_GH_LOGS
 from tests.ship_watch_guard import WATCH_HANG_GUARD_S
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -33,7 +34,7 @@ class ShipWatchDraftTest(unittest.TestCase):
         for name, text in (('states', states + '\n'), ('drafts', drafts + '\n'), ('labels', labels + '\n'), ('mergeables', ''), ('fixes', ''), ('checks', checks), ('runs', ''), ('verdicts', ''),
                            ('heads', heads), ('titles', titles), ('looks', '0'), ('calls', '')):
             (self.tmp / name).write_text(text)
-        env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
+        env = {**os.environ, **NO_GH_LOGS, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
         env.pop('SHIP_WATCH_DRAFT_OK', None)
         if draft_ok:

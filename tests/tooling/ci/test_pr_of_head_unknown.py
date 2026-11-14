@@ -12,6 +12,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.fake_gh_env import NO_GH_LOGS
+
 ROOT = Path(__file__).resolve().parents[3]
 HEAD_PATH = 'repos/o/r/pulls?state=open&head=o:topic&per_page=1'
 
@@ -42,7 +44,7 @@ class PrOfHeadUnknownTest(unittest.TestCase):
         (self.tmp / 'rate_reset').write_text('1794610000')
 
     def run_shell(self, code):
-        env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'cache'),
+        env = {**os.environ, **NO_GH_LOGS, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'cache'),
                'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': ''}
         return subprocess.run(['bash', '-c', f'. "{ROOT / "tools" / "pr-rest-lib.sh"}"; . "{ROOT / "tools" / "ship-pr.sh"}"; {code}'], env=env, capture_output=True, text=True, timeout=60)
 
