@@ -133,8 +133,8 @@ function rig(t, {kinds = ['list'], searches = 1} = {}) {
   t.after(() => { setLinkedinStep(null); fs.rmSync(dir, {recursive: true, force: true}); });
   return {
     dir, storage, browser, linkedin, engineCalls, lines, ipc,
-    /** The person picks the Chrome way (the app notes LinkedIn jobs asked), then the extension delivers the session it copied (the consent page's yes): the switch turns on. */
-    connect: async () => { await ipc.linkedinJobsConnect({}, {for: 'jobs'}); assert.deepEqual(routes['/extension/linkedin-session']({cookies: COPIED}), {ok: true}); },
+    /** The person picks the Chrome way, the extension delivers the session it copied (the consent page's yes), then the window turns the switch that asked on (linkedin-consent.js). */
+    connect: async () => { await ipc.linkedinJobsConnect({}); assert.deepEqual(routes['/extension/linkedin-session']({cookies: COPIED}), {ok: true}); assert.deepEqual(await ipc.linkedinJobsOn(), {ok: true}); },
     /** The person's Find jobs press: the search task with the LinkedIn step beside the engine's steps, as pipeline-tasks.js searchOnce runs it. -> {ok, run}. */
     press: () => tracked(storage, 'search', 'you', line => lines.push(line), async (tee, signal) => {
       const {code} = await besideSteps(storage, tee, signal, {mode: 'run', trigger: 'you'}, async () => ({code: 0, result: null}));
