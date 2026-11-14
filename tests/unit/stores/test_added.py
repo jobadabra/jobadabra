@@ -85,7 +85,7 @@ class AddedTests(unittest.TestCase):
     def test_a_job_you_add_gets_facts_and_a_fit_score_on_its_application_but_no_job_matches_row(self):
         tracker, client, stores = Tracker(), Client(FACTS, FIT), self.stores_with_job()
         line, stats = self.process(tracker, client, row={'id': 'app-1'}, stores=stores)
-        self.assertEqual(line, 'fit 81/100, tier A')
+        self.assertEqual(line, 'fit 81/100')   # owner, 14 Nov 2026: no tier letter in the result line
         self.assertEqual(client.calls, ['claude-haiku-5-5', 'claude-sonnet-5-5'])
         self.assertEqual((tracker.matches, stores.matches.list()), ([], []))  # Job Matches = what a search found (owner, 30 Sep 2026)
         self.assertEqual(tracker.updates, [])   # the job is filled through the store
@@ -132,7 +132,7 @@ class DailyAddTests(unittest.TestCase):
 
         def process(db, url, meta, stats=None, stores=None):
             order.append('ai'); seen.update(meta)
-            return 'fit 81/100, tier A'
+            return 'fit 81/100'
 
         def add_application(stores, url, **kwargs):
             order.append('record')
@@ -149,7 +149,7 @@ class DailyAddTests(unittest.TestCase):
             self.assertEqual(daily.main(), 0)
         self.assertEqual(order, ['ai', 'record'])
         self.assertEqual((seen['title'], seen['company'], seen['description']), ('Senior SRE', 'Acme', POSTING.strip()))
-        self.assertIn('fit 81/100, tier A', printed.call_args_list[-1].args[0])
+        self.assertIn('fit 81/100', printed.call_args_list[-1].args[0]); self.assertNotIn('tier', printed.call_args_list[-1].args[0])
 
     def test_a_page_whose_text_was_not_read_says_it_is_not_scored_instead_of_staying_silent(self):
         from src import daily, daily_modes, ledger_store
@@ -254,10 +254,10 @@ class HookTests(unittest.TestCase):
         stores, seen = memory.open_store(), {}
         def process(db, url, job, *, row=None, stats=None, stores=None, **_):
             seen.update(stores=stores, url=url, row=row)
-            return 'fit 80/100, tier A'
+            return 'fit 80/100'
         with tempfile.TemporaryDirectory() as folder, mock.patch.object(added, 'process', process):
             on_new = added.hook(stores, str(Path(folder) / 'jobs.sqlite'), {})
-            self.assertEqual(on_new('https://x.test/1', {'title': 'SRE'}, {'id': 'r1'}), 'fit 80/100, tier A')
+            self.assertEqual(on_new('https://x.test/1', {'title': 'SRE'}, {'id': 'r1'}), 'fit 80/100')
         self.assertIs(seen['stores'], stores)
         self.assertEqual(seen['row'], {'id': 'r1'})
 

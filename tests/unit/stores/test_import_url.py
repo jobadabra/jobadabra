@@ -66,7 +66,7 @@ class ImportUrlTests(unittest.TestCase):
         outcome = self.run_import(stores, client)
         self.assertTrue(outcome['ok'])
         self.assertTrue(outcome['created'])
-        self.assertIn('fit 81/100, tier A', outcome['line'])
+        self.assertIn('fit 81/100', outcome['line']); self.assertNotIn('tier', outcome['line'])   # owner, 14 Nov 2026: no tier letter
         self.assertEqual(client.calls, ['claude-haiku-5-5', 'claude-sonnet-5-5'])
         self.assertEqual(stores.applications.list(), [])
         [match] = stores.matches.list()
@@ -167,7 +167,7 @@ class ImportUrlOnThisMacsStoreTests(unittest.TestCase):
         stores.texts.set('profile', 'Profile: SRE in Zurich')
         outcome = self.run_on_store(stores, Client(FACTS, FIT))
         self.assertTrue(outcome['created'], outcome)
-        self.assertIn('fit 81/100, tier A', outcome['line'])
+        self.assertIn('fit 81/100', outcome['line']); self.assertNotIn('tier', outcome['line'])   # owner, 14 Nov 2026: no tier letter
         self.assertEqual([(m['url'], m['status'], m['fit']) for m in stores.matches.list()], [(URL, 'Open', 81)])
         self.assertEqual(stores.applications.list(), [])            # not an application
         self.assertFalse(self.run_on_store(stores, Client(FACTS, FIT))['created'])
