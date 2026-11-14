@@ -146,4 +146,13 @@ test('the window and the Chrome way turn LinkedIn jobs on as the press that aske
   openSignin(settings);
   assert.deepEqual(routes.session({cookies}), {ok: true});
   assert.equal(settings.settings().linkedinJobs.on, true, 'the Chrome way that waited turned its switch on with its copy');
+  // Gitar on #4374: a Chrome copy whose turn-on is refused answers like the window does; a window renewal while on is never a failure.
+  const unread = store(), noRead = keychain();
+  noRead.read = () => null;
+  openSignin(unread);
+  assert.deepEqual(linkedinRoutes(unread, {keychain: noRead}).session({cookies}), {ok: false, kept: true, reason: 'needs-signin', error: 'LinkedIn jobs could not turn on'});
+  const renewal = store({linkedinJobs: {on: true}}), handlers = new Map(), blind = keychain();
+  blind.read = () => null;
+  registerLinkedinHandlers({DEMO: false, storage: renewal, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, deps: {keychain: blind, isolated: true}, log: () => {}, signIn: async () => ({ok: true, cookies})});
+  assert.deepEqual(await handlers.get('linkedinJobsSignIn')({}), {ok: true}, 'LinkedIn jobs is on: a renewal turns nothing on and cannot fail');
 });

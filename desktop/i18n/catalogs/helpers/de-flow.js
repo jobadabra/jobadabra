@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra speichert die LinkedIn-Anmeldung im Systemschlüsselbund. Dieser Computer hat dafür noch keinen Speicher. Nichts wurde geöffnet.",
   "linkedinStayedOff": "LinkedIn-Stellensuche blieb aus",
   "linkedinNotKept": "Sie haben sich angemeldet, aber Jobadabra konnte die Anmeldung nicht speichern.",
+  "linkedinKeptNotOn": "Sie sind angemeldet und die Anmeldung ist gespeichert, aber LinkedIn-Jobs ließ sich nicht einschalten. Drücken Sie noch einmal auf Einschalten.",
   "linkedinPopupEnded": "Google oder Apple erlauben die Anmeldung in diesem Fenster möglicherweise nicht.",
   "linkedinChromeWay": "Melden Sie sich stattdessen über Chrome an: Öffnen Sie die LinkedIn-Anmeldung erneut und wählen Sie Meine LinkedIn-Anmeldung aus Chrome verwenden.",
   "linkedinChromeMissing": "Melden Sie sich stattdessen über Chrome an: Verbinden Sie die Chrome-Erweiterung unter Einstellungen → Verbindungen → Chrome-Erweiterung und wählen Sie dann Meine LinkedIn-Anmeldung aus Chrome verwenden.",

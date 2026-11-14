@@ -33,6 +33,7 @@ export const messages = {
   "linkedinNoKeychain": "Jobadabra keeps your LinkedIn sign-in in the system keychain, and this computer has no store for it yet. Nothing was opened.",
   "linkedinStayedOff": "LinkedIn jobs stayed off",
   "linkedinNotKept": "You signed in, but Jobadabra could not keep the sign-in.",
+  "linkedinKeptNotOn": "You signed in and the sign-in is kept, but LinkedIn jobs could not turn on. Press Turn on again.",
   "linkedinPopupEnded": "Google or Apple may not allow sign-in in this window.",
   "linkedinChromeWay": "Sign in with Chrome instead: open the LinkedIn sign-in again and pick Use my LinkedIn sign-in from Chrome.",
   "linkedinChromeMissing": "Sign in with Chrome instead: connect the Chrome extension in Settings → Connections → Chrome extension, then pick Use my LinkedIn sign-in from Chrome.",

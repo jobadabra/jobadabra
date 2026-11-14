@@ -17,8 +17,8 @@ export function linkedinRoutes(storage, deps = {}) {
       const waited = session.signinOpen(storage, deps);   // the Chrome way the press opened: its copy turns LinkedIn jobs on; a refresh while on changes no switch
       const saved = session.saveSession(storage, payload?.cookies, deps);
       if (saved.ok) session.closeSignin(storage);
-      if (saved.ok && waited && !session.state(storage).on && !session.turnOn(storage, deps).ok) return {ok: false, error: 'LinkedIn jobs could not turn on'};
-      return saved;
+      const turned = saved.ok && waited && !session.state(storage).on ? session.turnOn(storage, deps) : {ok: true};
+      return turned.ok ? saved : {ok: false, kept: true, reason: turned.reason, error: 'LinkedIn jobs could not turn on'};   // Gitar on #4374: the same answer shape as the window's
     },
     // Why (#4312): an open Chrome consent keeps the extension's grants, so an unfinished consent can deliver its copy before any revoke; a Find jobs press asks for a fresh copy.
     pending: () => { const on = session.state(storage).on; return {revoke: !on && !session.signinOpen(storage, deps), refresh: on && note.look()}; },
@@ -64,7 +64,7 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
     const saved = got.ok ? session.saveSession(storage, got.cookies, deps) : got;
     if (saved.ok) session.closeSignin(storage);   // Gitar on #4328: a Chrome way left open before this window is done too, so its late copy is not taken
     // Gitar on #4317: the answer is this press's own turn-on, so a refused turn-on never reads as "on" (the sign-in stays kept either way)
-    const on = saved.ok ? session.turnOn(storage, deps) : {ok: false};
+    const on = saved.ok ? (session.state(storage).on ? {ok: true} : session.turnOn(storage, deps)) : {ok: false};   // Gitar on #4374: a renewal while on changes no switch
     log('linkedin-jobs', 'press', {path: 'window', outcome: saved.ok ? (on.ok ? 'signed-in' : `signed-in, ${on.reason}`) : (got.ok ? 'not-kept' : got.reason)});
     if (!saved.ok) return {ok: false, reason: got.ok ? 'not-kept' : got.reason, error: saved.error};
     return on.ok ? {ok: true} : {ok: false, kept: true, reason: on.reason};
