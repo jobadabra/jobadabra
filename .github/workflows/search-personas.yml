@@ -199,14 +199,16 @@ jobs:
       # Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Yes, night reads like the app (Recommended)"): the app reads a page built by scripts in its own Chromium
       # (desktop/lib/page-render.js); without a renderer the night's engine offered such a board as a visit (p3 Brussels, night 43313523472). Same renderer as daily.yml.
       # A failure never stops the night (as daily.yml): the presses then run without --beside and the night reads 'as_app: no', the old series.
+      # Why-changed (14 Nov 2026, rb, probe run 43623784345): an unset variable reads as null and `null != '0'` is false (both cast to 0), so every night since #3949 skipped
+      # these two steps and ran without --beside; `(vars.X || 'on')` keeps JOBADABRA_RENDER=0 as the only way to turn the renderer off.
       - name: The engine's page renderer, as the app has (honest, no stealth; src/sources/render.py)
         id: render
-        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && vars.JOBADABRA_RENDER != '0'
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && (vars.JOBADABRA_RENDER || 'on') != '0'
         continue-on-error: true
         run: pip install --quiet -r requirements-render.txt
       - name: Chromium for the renderer (cached)
         id: render_browser
-        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && vars.JOBADABRA_RENDER != '0'
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && (vars.JOBADABRA_RENDER || 'on') != '0'
         continue-on-error: true
         uses: ./.github/actions/playwright-browser
         with: {runtime: python, mode: both}
