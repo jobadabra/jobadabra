@@ -3,6 +3,7 @@ export const messages = {
   "linkedinWarning": "LinkedIn puede limitar las cuentas que considere automatizadas; leemos despacio y solo tus búsquedas de empleo.",
   "linkedinWhere": "Ajustes → Conexiones → LinkedIn",
   "linkedinLead": "Jobadabra puede leer tus búsquedas de LinkedIn cada vez que pulsas Buscar empleo, en segundo plano sin ventanas. Inicias sesión una vez, de la forma que elijas abajo: Jobadabra nunca ve tu contraseña. La sesión queda en este Mac. Puedes desactivarla cuando quieras en {where}.",
+  "linkedinLeadKept": "Jobadabra puede leer tus búsquedas de LinkedIn cada vez que pulsas Buscar empleo, en segundo plano sin ventanas, con la sesión de LinkedIn que ya guarda para Easy Apply. Puedes desactivarla cuando quieras en {where}.",
   "linkedinAsk": "¿Buscar también en LinkedIn en cada búsqueda?",
   "linkedinSignin": "Iniciar sesión en LinkedIn",
   "linkedinWayWindowNote": "Inicia sesión en la propia página de LinkedIn. Una sesión aparte que puedes cerrar por separado en LinkedIn.",

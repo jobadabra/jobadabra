@@ -3,6 +3,7 @@ export const messages = {
   "linkedinWarning": "LinkedIn poate limita conturile considerate automatizate; citim lent și doar căutările tale de locuri de muncă.",
   "linkedinWhere": "Setări → Conexiuni → LinkedIn",
   "linkedinLead": "Jobadabra poate citi căutările LinkedIn la fiecare apăsare pe Caută locuri de muncă, în fundal fără fereastră. Te autentifici o dată, în felul ales mai jos: Jobadabra nu îți vede niciodată parola. Autentificarea rămâne pe acest Mac. O poți dezactiva oricând în {where}.",
+  "linkedinLeadKept": "Jobadabra poate citi căutările LinkedIn la fiecare apăsare pe Caută locuri de muncă, în fundal fără fereastră, cu autentificarea LinkedIn pe care o păstrează deja pentru Easy Apply. O poți dezactiva oricând în {where}.",
   "linkedinAsk": "Cauți și pe LinkedIn la fiecare căutare?",
   "linkedinSignin": "Autentifică-te în LinkedIn",
   "linkedinWayWindowNote": "Autentifică-te pe pagina LinkedIn. O autentificare separată, pe care o poți închide singură în LinkedIn.",

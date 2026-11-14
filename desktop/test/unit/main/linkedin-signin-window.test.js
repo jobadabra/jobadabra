@@ -121,9 +121,9 @@ function app({signIn, seen = null, platform = 'darwin'}) {
   return {handlers, lines, items, keychain};
 }
 
-test('the handler: a sign-in keeps the session in the Keychain, turns the switch on, logs the press without a value', async () => {
+test('the handler: a sign-in for LinkedIn jobs keeps the session in the Keychain, turns its switch on, logs the press without a value', async () => {
   const {handlers, lines, items, keychain} = app({signIn: async () => ({ok: true, cookies: [li(), {name: 'bcookie', value: 'track', domain: '.linkedin.com'}]})});
-  assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: true});
+  assert.deepEqual(await handlers.get('linkedinJobsSignIn')({}, {for: 'jobs'}), {ok: true});
   assert.equal((await handlers.get('linkedinJobsState')()).on, true);
   assert.equal(readSession({keychain}).li_at, SECRET);
   assert.equal(items.get(SERVICE).includes('track'), false, 'only the allow-listed cookies are kept');
