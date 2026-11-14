@@ -189,6 +189,7 @@ def table(folder):
         out.append('shown / right: n/a, judged.json is missing or unreadable (the blind judge did not finish).')
     elif unknown:
         out.append(f'{unknown} judged job(s) had no host (a board job with its employer named): in no row above.')
+    out.append('Logs in this artifact: draw/run-1.log is every line the engine printed (rounds, Stages, Board pass, Waiting, stacks at time-up); run.log is only the AI relay.')
     out.append('Not shown yet: ' + '; '.join(f'{name} (needs {pr})' for name, pr in NEEDS))
     return '\n'.join(out) + '\n'
 
