@@ -47,7 +47,7 @@ const entries = trace.map((row) => ({ required: row.required, filled: row.outcom
 const panelCount = () => window.__jobadabraRequiredCount(entries.map((entry) => ({ required: entry.required, filled: entry.filled, type: entry.el.type, blocks: entry.ai })));
 
 test('the panel counts every required question the page marks, consents and own-words included, the upload slot aside', () => {
-  assert.deepEqual(panelCount(), { required: 18, filled: 9, pending: 0, total: 18, left: 9 });
+  assert.deepEqual(panelCount(), { required: 18, filled: 9, pending: 0, slots: 0, total: 18, left: 9 });
 });
 
 test('optional fields Claude filled are never counted as required', () => {
@@ -66,6 +66,20 @@ test('the panel loads the shared count before review.js and review.js reads it',
 
 test('one count owns total and left: an empty optional answer Claude wrote joins both, a filled one and a plain optional never do', () => {
   const rows = [{ required: true, filled: true, type: 'text' }, { required: false, blocks: true, filled: false, type: 'text' }, { required: false, blocks: true, filled: true, type: 'text' }, { required: false, filled: false, type: 'text' }];
-  assert.deepEqual(window.__jobadabraRequiredCount(rows), { required: 1, filled: 1, pending: 1, total: 2, left: 1 });
-  assert.deepEqual(window.__jobadabraRequiredCount([{ required: false, blocks: true, filled: false, type: 'text' }]), { required: 0, filled: 0, pending: 1, total: 1, left: 1 }, 'optional-only: not "No required fields" while Ready waits');
+  assert.deepEqual(window.__jobadabraRequiredCount(rows), { required: 1, filled: 1, pending: 1, slots: 0, total: 2, left: 1 });
+  assert.deepEqual(window.__jobadabraRequiredCount([{ required: false, blocks: true, filled: false, type: 'text' }]), { required: 0, filled: 0, pending: 1, slots: 0, total: 1, left: 1 }, 'optional-only: not "No required fields" while Ready waits');
+});
+
+// Why (14 Nov 2026): the pill, ring and bar must never read "0 left" while Ready waits (the same hole came back as a pending answer, then an upload slot): every combination of up to three rows is checked against review.js's own rule for what Ready waits on (required, or an answer Claude wrote or the person changed, and empty).
+test('left is 0 exactly when nothing blocks Ready, and total is never 0 while something does', () => {
+  const kinds = [];
+  for (const required of [true, false]) for (const type of ['text', 'file']) for (const blocks of [true, false]) for (const filled of [true, false]) kinds.push({ required, type, blocks, filled });
+  const sets = [[]];
+  for (const a of kinds) { sets.push([a]); for (const b of kinds) { sets.push([a, b]); for (const c of kinds.slice(0, 8)) sets.push([a, b, c]); } }
+  for (const rows of sets) {
+    const waits = rows.filter((row) => (row.required || row.blocks) && !row.filled).length;
+    const tally = window.__jobadabraRequiredCount(rows);
+    assert.equal(tally.left === 0, waits === 0, JSON.stringify(rows));
+    if (waits) assert.ok(tally.total >= tally.left && tally.total > 0, JSON.stringify(rows));
+  }
 });

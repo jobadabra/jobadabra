@@ -167,7 +167,7 @@
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
     const letterMissing = renderLetter(list, account);
-    // Why (14 Nov 2026): one count (required-count.js) owns the pill's total and left, so the pill, ring and bar agree with Ready: `ready` waits for exactly the entries it counts, plus an empty required upload slot.
+    // Why (14 Nov 2026): one count (required-count.js) owns the pill's total and left, so the pill, ring and bar agree with Ready: `ready` waits for exactly the entries it counts, an empty required upload slot included.
     const tally = window.__jobadabraRequiredCount(list.map(f => ({required: f.required, filled: f.filled, type: f.el?.type, blocks: !!(f.ai || f.changed || f.draft)})));
     const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
     counts = {total: tally.total, left: tally.left};   // Why: the stopped note reads total − left as the answers held, which the filled required ones still are

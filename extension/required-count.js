@@ -4,13 +4,14 @@
 (() => {
   /**
    * @param {{required?: boolean, filled?: boolean, type?: string, blocks?: boolean}[]} rows the panel's entries; `blocks` = an answer Claude wrote or the person changed that Ready waits for
-   * @returns {{required: number, filled: number, pending: number, total: number, left: number}} the page's required questions (an upload slot aside, it has its own state), the empty optional answers that still block Ready, and their sum
+   * @returns {{required: number, filled: number, pending: number, slots: number, total: number, left: number}} the page's required questions, the empty optional answers that block Ready, the empty required upload slots (Ready waits for them too, so they count only while empty), and the sums: `left` is 0 exactly when nothing blocks Ready
    */
   window.__jobadabraRequiredCount = rows => {
     const list = (Array.isArray(rows) ? rows : []).filter(Boolean);
     const need = list.filter(row => row.required === true && row.type !== 'file');
     const filled = need.filter(row => row.filled === true).length;
     const pending = list.filter(row => row.required !== true && row.blocks === true && row.filled !== true).length;
-    return {required: need.length, filled, pending, total: need.length + pending, left: need.length - filled + pending};
+    const slots = list.filter(row => row.required === true && row.type === 'file' && row.filled !== true).length;
+    return {required: need.length, filled, pending, slots, total: need.length + pending + slots, left: need.length - filled + pending + slots};
   };
 })();
