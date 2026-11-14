@@ -269,16 +269,22 @@ import src.desktop
         state.assert_called_once_with(None, '<p>é</p>', 'Jobs', '')
         outcome = self.patch('src.sources.refused_reads.outcome', return_value={'ok': True, **VALUE})
         self.call('refused-outcome', {'ok': True, **VALUE}, str(self.page))
-        outcome.assert_called_once_with(URL, None, '<p>é</p>', 'Jobs', '', step='download', captcha=False, judged=None)
+        outcome.assert_called_once_with(URL, None, '<p>é</p>', 'Jobs', '', step='download', captcha=False, judged=None, cards=None)
         ensure = self.patch('src.scout.ensure_tables')
         self.patch('src.desktop.datetime').now.return_value.isoformat.return_value = 'now'
         outcome.return_value = {'feed': 'feed', 'name': 'Zürich', 'ok': True}
         for step, judged in (('engine', None), ('download', 'login'), ('tab', 'captcha'), ('headless', 'page'), ('invalid', 'bogus')):
             self.page.write_text(json.dumps({'url': URL, 'step': step, 'captcha': True, 'judged': judged}))
             self.call('refused-outcome', {'name': 'Zürich', 'ok': True}, str(self.page))
-            outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True, judged=judged if judged != 'bogus' else None)
+            outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True, judged=judged if judged != 'bogus' else None, cards=None)
         ensure.assert_called_with(self.db)
         self.assertEqual(self.db.commit.call_count, 5)
+        # Gitar on #4303: CI's reused cards cross this boundary: only objects, at most 200; anything but a list is no cards
+        many = [{'title': f'T{i}', 'url': f'{URL}/j/{i}'} for i in range(205)]
+        for cards, expect in (([1, 'x', None, *many], many[:200]), ('not a list', None)):
+            self.page.write_text(json.dumps({'url': URL, 'step': 'headless', 'cards': cards}))
+            self.call('refused-outcome', {'name': 'Zürich', 'ok': True}, str(self.page))
+            self.assertEqual(outcome.call_args.kwargs['cards'], expect)
         self.assertEqual(self.db.execute.call_args.args[1], ('feed', 'Zürich', 'now'))
 
     # Pin browser-read inputs and sequential feed registration effects.

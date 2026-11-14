@@ -38,16 +38,16 @@ function fakeBrowser(pages, {ready = true} = {}) {
   return {browser, openCdp, calls, tabCalls};
 }
 
-function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity} = {}) {
+function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity, ask = null, told = null, sleep = async () => {}} = {}) {
   const fake = fakeBrowser(pages, {ready});
   const judged = [], outcomes = [], lines = [];
   let started = 0, begun = 0;
   const begin = async () => begun++ < share;
   const judge = async page => { judged.push(page.url); if (!(page.url in judgeStates)) return 'page'; const answer = judgeStates[page.url]; return Array.isArray(answer) ? answer.shift() : answer; };
   const outcome = async page => { outcomes.push(page); return outcomeFor(page); };
-  const done = boardsStep({browser: fake.browser, start: async () => { started++; }, queue: async () => list, begin, judge, outcome, openCdp: fake.openCdp,
-    tee: line => lines.push(line), signal, now, sleep: async () => {}});
-  return done.then(result => ({result, judged, outcomes, lines, started: () => started, ...fake}));
+  const done = boardsStep({browser: fake.browser, start: async () => { started++; }, queue: async () => list, begin, judge, outcome, ask, told, openCdp: fake.openCdp,
+    tee: line => lines.push(line), signal, now, sleep});
+  return done.then(result => ({result, judged, outcomes, lines, started: () => started, begun: () => begun, ...fake}));
 }
 
 test('a board judged a page is read once with the headless step and its jobs are counted and listed', async () => {
@@ -206,4 +206,54 @@ test('Gitar on #3944: with today\'s share already used, no board is said to be r
   assert.deepEqual(result, {state: 'done', jobs: 0, fits: 0, read: 0, of: 0});
   assert.ok(!lines.some(text => /reading \d/.test(text)), lines.join('\n'));
   assert.match(lines.at(-1), /today's reads in Jobadabra's browser are used/);
+});
+
+// CI's shared mark (tools/persona-search/board-mark.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)"): `ask` decides before anything is spent or loaded.
+test('CI: a page another CI search read today is reused from its jobs (cards): no share spent, no page loaded, its jobs counted', async () => {
+  const b = board(1), cards = [{title: 'Nurse', url: 'https://board1.example.net/job/1', lines: ['Exampletown']}];
+  const {result, outcomes, lines, tabCalls, begun} = await run([b], {[b.url]: {status: 200, html: JOBS}}, {ask: async () => ({go: false, cards}), outcomeFor: () => ({ok: true, state: 'read', jobs: 1, fits: 1})});
+  assert.equal(begun(), 0, 'the day share is not spent');
+  assert.ok(!tabCalls.includes('Page.navigate'), 'no request to the board');
+  assert.deepEqual(outcomes.map(page => [page.url, page.html, page.cards]), [[b.url, '', cards]]);
+  assert.deepEqual([result.jobs, result.reused, result.of], [1, 1, 0], 'counted as reused, not as a board opened');
+  assert.match(lines.join('\n'), /Board 1: 1 job\(s\) from the read another CI search made today, nothing sent/);
+});
+
+test('Gitar on #4307: a reuse that keeps no job says so and names whose read it was', async () => {
+  const b = board(1), cards = [{title: 'Nurse', url: 'https://board1.example.net/job/1'}];
+  const {lines} = await run([b], {}, {ask: async () => ({go: false, cards, from: 'pair#7'}), outcomeFor: () => ({ok: true, state: 'empty', jobs: 0})});
+  assert.match(lines.join('\n'), /Board 1: no job from the read another CI search made today \(pair#7\), nothing sent/);
+});
+
+test('Gitar on #4303: shared jobs the engine gave no answer for are said as such, never as a plain skip, and nothing is counted', async () => {
+  const b = board(1), cards = [{title: 'Nurse', url: 'https://board1.example.net/job/1'}];
+  const {result, lines} = await run([b], {}, {ask: async () => ({go: false, cards}), outcomeFor: () => null});
+  assert.equal(result.jobs, 0);
+  assert.match(lines.join('\n'), /Board 1: not read \(no answer from the engine for the jobs another CI search read\)/);
+});
+
+test('CI: a page the mark refuses is skipped with its reason and the next board is still read; a read tells the mark how it ended', async () => {
+  const [b1, b2] = [board(1), board(2)], told = [];
+  const ask = async item => (item.url === b1.url ? {go: false, why: 'turned CI\'s browser away before, so no CI search opens it again'} : {go: true});
+  const {outcomes, lines, begun} = await run([b1, b2], {[b1.url]: {status: 200, html: JOBS}, [b2.url]: {status: 200, html: JOBS}}, {ask, told: async (item, answer) => { told.push([item.url, answer.state]); }});
+  assert.deepEqual(outcomes.map(page => page.url), [b2.url], 'b1 never loaded nor sent to the engine');
+  assert.equal(begun(), 1);
+  assert.deepEqual(told, [[b2.url, 'read']]);
+  assert.match(lines.join('\n'), /Board 1: turned CI's browser away before/);
+});
+
+test('Gitar on #4306: skips spend no board of the press and wait no gap; a readable board after them is still read', async () => {
+  const list = [1, 2, 3, 4, 5, 6].map(board), last = list.at(-1), naps = [];
+  const ask = async item => (item.url === last.url ? {go: true} : {go: false, why: 'turned CI\'s browser away before, so no CI search opens it again'});
+  const {outcomes, begun} = await run(list, {[last.url]: {status: 200, html: JOBS}}, {ask, sleep: async ms => { naps.push(ms); }});
+  assert.deepEqual(outcomes.map(page => page.url), [last.url]);
+  assert.equal(begun(), 1);
+  assert.ok(!naps.some(ms => ms >= 2000 && ms <= 4000), `no 2-4 s gap after a skip: ${naps}`);
+});
+
+test('CI: a mark that throws is a skip, never a read on a guess', async () => {
+  const b = board(1);
+  const {outcomes, tabCalls, lines} = await run([b], {[b.url]: {status: 200, html: JOBS}}, {ask: async () => { throw new Error('HTTP 503'); }});
+  assert.equal(outcomes.length, 0); assert.ok(!tabCalls.includes('Page.navigate'));
+  assert.match(lines.join('\n'), /shared CI mark did not answer/);
 });

@@ -84,16 +84,36 @@ const line = (name, answer) => {
   return `Job boards: ${name}: ${answer?.why || 'not read'}`;
 };
 
+// CI only: a page the shared mark did not let this search open: skipped with its reason, or its jobs another CI search read today reused (nothing sent). -> true (the step goes on).
+async function skipTurn(item, name, verdict, {outcome, tee, skipped, pace}, total) {
+  // Why (Gitar on #4306, #4307): a skip or a reuse sends nothing: it neither spends MAX_BOARDS (pages opened) nor waits the gap, and is asked once a press
+  skipped.add(item.url);
+  pace.last = false;
+  const reused = verdict.cards ? await outcome({url: item.url, status: 200, html: '', title: '', final: item.url, step: 'headless', cards: verdict.cards}).catch(() => null) : null;
+  if (reused) { total.jobs += reused.jobs || 0; total.fits += reused.fits || 0; total.reused += 1; }
+  const by = verdict.from ? ` (${verdict.from})` : '';
+  tee(reused ? `Job boards: ${name}: ${reused.jobs ? `${reused.jobs} job(s)` : 'no job'} from the read another CI search made today${by}, nothing sent`
+    : verdict.cards ? `Job boards: ${name}: not read (no answer from the engine for the jobs another CI search read${by})` : `Job boards: ${name}: ${verdict.why || 'not read'}`);
+  return true;
+}
+
 // One board in its turn: today's share spent for it first, its page loaded, the engine's answer counted and said. -> false when the share is used (the step ends).
-async function readTurn(item, {browser, openCdp, begin, judge, outcome, signal, now, sleep, tee}, total, tried, begun) {
+async function readTurn(item, seams, total, tried, begun) {
+  const {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee, pace} = seams;
+  const name = item.name || new URL(item.url).hostname;
+  // CI only (tools/persona-search/beside.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)"): `ask` says whether this search may send the request or
+  // reuses the jobs another CI search read on this page today (cards, nothing fetched); no answer is a skip. The app passes no `ask`: its path is unchanged.
+  const verdict = ask ? await ask(item, signal).catch(() => ({go: false, why: 'the shared CI mark did not answer: not read'})) : {go: true};
+  if (!verdict.go) return skipTurn(item, name, verdict, seams, total);
   if (!(await begin(item).catch(() => false))) { tee(WORDS.spent); return false; }   // spent before the page loads: a read killed mid-way is not repeated today
   tried.add(item.url);
+  pace.last = true;
   begun();
   const got = await readOne({browser, openCdp, url: item.url, judge, signal, now, sleep}).catch(() => null);
   if (signal?.aborted) return true;
   const page = got?.page || {url: item.url, status: 0, html: '', title: '', final: item.url};
   const answer = await outcome({...page, step: 'headless', ...(got?.state ? {judged: got.state} : {})}).catch(() => null);   // not judged (a busy AI): no verdict is made up
-  const name = item.name || new URL(item.url).hostname;
+  if (told && answer) await told(item, answer).catch(() => {});   // CI only: the shared mark keeps how the read ended
   if (!answer) { tee(`Job boards: ${name}: not read (no answer from the engine)`); return true; }
   total.read += 1; total.jobs += answer.jobs || 0; total.fits += answer.fits || 0;
   tee(line(name, answer));
@@ -105,9 +125,10 @@ async function readTurn(item, {browser, openCdp, begin, judge, outcome, signal, 
 async function readList(list, seams, total, tried) {
   let said = false;
   for (const [index, item] of list.entries()) {
-    if (tried.size) await seams.sleep(2000 + Math.random() * 2000, seams.signal);
+    if (tried.size >= MAX_BOARDS) return true;
+    if (seams.pace.last) await seams.sleep(2000 + Math.random() * 2000, seams.signal);   // the gap follows a page this press loaded, never a skip
     if (seams.signal?.aborted) return true;
-    const begun = () => { if (!said) seams.tee(`Job boards: reading ${list.length - index} that refuse plain reading in Jobadabra's browser, 1 at a time`); said = true; };
+    const begun = () => { if (!said) seams.tee(`Job boards: reading ${Math.min(list.length - index, MAX_BOARDS - tried.size)} that refuse plain reading in Jobadabra's browser, 1 at a time`); said = true; };
     if (!(await readTurn(item, seams, total, tried, begun))) return false;
   }
   return true;
@@ -124,18 +145,19 @@ async function startBrowser(browser, start, tee) {
  * Read the refused boards the engine queued, one at a time, in the owned browser. Every seam is injected: browser {ready, send, targetSocket}, start(), queue() -> [{url, name, kind}],
  * changed(signal) -> true once the board memory changed since the last ask, false at Stop or the press's deadline (none: the queue is asked once),
  * begin(item) -> true when the engine spent today's share for it (before its page loads), judge(page) -> page_state or null, outcome(page) -> the engine's answer, openCdp.
+ * CI only: ask(item, signal) -> {go} or {go: false, why} or {go: false, cards} (jobs another CI search read there today), told(item, answer) after a read; the app passes neither.
  * A board the press's deadline or Stop did not reach waits for the next press (nothing is spent or kept for it). The engine owns what each verdict means (refused_reads.outcome).
- * Invariants: at most MAX_BOARDS opened a press, an address at most once a press, the browser starts only when a board is due.
- * -> {state: 'off'|'no-browser'|'failed'|'done'|'stopped', jobs, fits?, read?, of? (the boards opened)}.
+ * Invariants: at most MAX_BOARDS opened a press, an address at most once a press (a skip or a reuse included, neither counted as opened), the browser starts only when a board is due.
+ * -> {state: 'off'|'no-browser'|'failed'|'done'|'stopped', jobs, fits?, read?, reused? (CI: pages whose jobs another CI search read), of? (the boards opened)}.
  */
-export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
+export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, ask = null, told = null, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
   if (signal?.aborted) return {state: 'stopped', jobs: 0};
-  const total = {jobs: 0, fits: 0, read: 0}, tried = new Set(), seams = {browser, openCdp, begin, judge, outcome, signal, now, sleep, tee};
+  const total = {jobs: 0, fits: 0, read: 0, reused: 0}, tried = new Set(), skipped = new Set(), seams = {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee, skipped, pace: {last: false}};
   let started = false, going = true;
   // Why (13 Nov 2026, night 43313523472): asked once at second 0, a person's first press had nothing queued: its boards refuse the plain reader
   // at ~30 s (p1 Jobs.bg at 28 s, p3 Jobat at 33 s); the engine keeps each refusal as it happens (board_ideas.keep_board), so the queue is asked again then
   do {
-    const list = (await queue().catch(() => [])).filter(item => mayRead(item) && !tried.has(item.url)).slice(0, MAX_BOARDS - tried.size);
+    const list = (await queue().catch(() => [])).filter(item => mayRead(item) && !tried.has(item.url) && !skipped.has(item.url));   // the MAX_BOARDS cap is counted per opened board in readList, so skips ahead of a readable board never cut it
     if (signal?.aborted || !list.length) continue;
     const failed = started ? null : await startBrowser(browser, start, tee);
     if (failed) return failed;
@@ -143,5 +165,6 @@ export async function boardsStep({browser, start, queue, changed = null, begin, 
     going = await readList(list, seams, total, tried);
   } while (changed && going && tried.size < MAX_BOARDS && !signal?.aborted && await changed(signal).catch(() => false));
   if (!started) return {state: signal?.aborted ? 'stopped' : 'off', jobs: 0};
-  return {state: signal?.aborted ? 'stopped' : 'done', ...total, of: tried.size};
+  const {reused, ...counts} = total;   // `reused` only in CI and only when a page was reused: the app's answer keeps its shape
+  return {state: signal?.aborted ? 'stopped' : 'done', ...counts, ...(reused ? {reused} : {}), of: tried.size};
 }
