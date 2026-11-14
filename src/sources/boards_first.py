@@ -283,9 +283,9 @@ class Beside:
         # Why (#4199 try 3, pair 43604153744, d05): a pass still out at the deadline listed nothing; what its answers cover by then is listed
         done = self.done_pass if self.passed.is_set() else board_pass.cut(self.track) if self.track is not None else None
         listed = 0
-        if done is not None and done.answered:
+        if done is not None and board_pass.listable(done):
             before = len(self.matched)
-            self._queue(done.answered)
+            self._queue(board_pass.listable(done))
             self.deliver(feed_db, on_jobs)
             listed = len(self.matched) - before
             # Why (Gitar on #4187): a job the pass refused (title no, place outside) kept its waiting row and the queue asked about it again

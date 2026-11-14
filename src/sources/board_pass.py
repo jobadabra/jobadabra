@@ -93,6 +93,14 @@ def cut(track):
     return Done([job for job, place, title in answers if place or title is not None], at, places, titles, None, got)
 
 
+def listable(done):
+    """The jobs of `done.answered` the last hand-over may keep again: never one whose place names no town and whose posting is not read yet
+    ('vague': feeds.wanted_location keeps it open until then); it waits for the queue, which reads its posting.
+    Why (xc, 14 Nov 2026, ot's c15 Valencia pair on 01870a59): the pass listed 28 more jobs, 0 right by the blind judge; all 28 said only "Spain"."""
+    from . import feeds
+    return [job for job in done.answered if feeds.place_of(job) != 'vague']
+
+
 def settled(done, listed):
     """The urls of `done.answered` the queue owes nothing (their waiting rows leave, waiting_jobs.listed): listed (`listed`: their urls), or
     refused by an answer: a title the AI said no to, or a place outside when the pass ended (a cut pass's "out" may still turn "vague",
@@ -163,7 +171,7 @@ def _say(unplaced, titled):
     places, titles = defaultdict(Counter), defaultdict(Counter)
     for job in unplaced:
         verdict = feeds.place_of(job)
-        places[_host(job)][('no answer' if verdict is None else 'outside' if verdict == 'out' else 'inside')] += 1
+        places[_host(job)][('no answer' if verdict in (None, 'vague') else 'outside' if verdict == 'out' else 'inside')] += 1   # vague: its posting not read (listable)
     for job in titled:
         verdict = feeds.judged_title(job.get('title') or '')
         titles[_host(job)][('no answer' if verdict is None else 'fit' if verdict else 'not')] += 1
