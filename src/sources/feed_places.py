@@ -132,8 +132,8 @@ def _place(jobs, pick, land=False):
     ordered = rank.titles(list(count), rank.in_your_places(lambda location: feeds.mentions(feeds.PLACE, location)), lambda location: -count[location])
     # Only what nobody placed yet: a place the map's cache gave (known_now) is never answered again after its jobs were handed (code review of sf place PR a)
     placed = feeds.placed()   # this reader's view, read in its own thread: the batches land from the call's worker threads
-    feeds.placed().update(place_triage.decide([where for where in ordered if feeds.placed().get(where) is None], feeds._SEARCH, **({'land': placed.update} if land else {})))
-    feeds.placed().update(place_triage.vague(ordered, feeds._SEARCH))   # of the ones outside: which name no town of their own
+    placed.update(place_triage.decide([where for where in ordered if placed.get(where) is None], feeds._SEARCH, **({'land': placed.update} if land else {})))
+    placed.update(place_triage.vague(ordered, feeds._SEARCH))   # of the ones outside: which name no town of their own
 
 
 def _guarded(work, said):

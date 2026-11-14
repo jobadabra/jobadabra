@@ -240,7 +240,7 @@ class Beside:
             self.deliver(feed_db, on_jobs)
             listed = len(self.matched) - before
             # Why (Gitar on #4187): a job the pass refused (title no, place outside) kept its waiting row and the queue asked about it again
-            waiting_jobs.listed(feed_db, [job.get('url') for job in done.answered if not board_pass.owed([job])])   # listed or refused: settled
+            waiting_jobs.listed(feed_db, board_pass.settled(done, {item.get('url') for item in self.matched[before:]}))
         print(done.said(listed) if done is not None else 'Board pass: not run: ' + ('the search has no time budget' if at is None
               else 'it had not begun by the deadline'), flush=True)
         if end is not None and not self.done.is_set() and read_budget.seconds_left(end):

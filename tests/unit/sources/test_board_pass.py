@@ -248,6 +248,23 @@ class TheLastPass(unittest.TestCase):
         self.model.slow.set()
         self.assertTrue(lane.passed.wait(timeout=30), 'the pass ends once its last call answers (no thread left for the next test)')
 
+    def test_a_cut_pass_counts_a_vague_place_as_unanswered_and_keeps_its_waiting_row(self):
+        """Gitar on #4219: 'vague' (a location naming no town, its posting not read yet) counted as answered: the cut line said more places than
+        came, and the job's waiting row was dropped though it was never listed. Only best/in/out answer; a row leaves only when listed or refused."""
+        at(150)
+        job = board()[1]
+        track = board_pass.Track()
+        track.plan = ([job], [job], 150)
+        feeds.placed()['late town'] = 'out:vague'
+        feeds._triaged()['late role 0'] = True
+        done = board_pass.cut(track)
+        self.assertEqual(done.got, (0, 1), 'the title came; the place did not')
+        self.assertEqual(board_pass.settled(done, set()), [], 'never listed, never refused: it waits for the queue')
+        feeds.placed()['late town'] = 'out'
+        self.assertEqual(board_pass.settled(board_pass.cut(track), set()), [], 'a cut pass: "out" may still turn vague, the queue asks it')
+        ended = board_pass.Done(done.answered, 150, 1, 1, None)
+        self.assertEqual(board_pass.settled(ended, set()), [job['url']], 'an ended pass: "out" is its last word, refused')
+
     def test_a_board_read_after_the_pass_waits_and_the_queue_lists_its_jobs(self):
         at(100)
         passed, late = threading.Event(), board()[1:]

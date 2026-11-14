@@ -164,6 +164,7 @@ def decide(locations, search, client=None, land=None):
     countries = {}
 
     def one(batch):
+        got = {}
         if budget.over('place_rounds', key=batch[0]):
             return
         listed = '\n'.join(f'{n}. {location}' for n, location in enumerate(batch, 1))

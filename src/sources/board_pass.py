@@ -38,7 +38,7 @@ class Track:
     still out (cut). Written by the lane's pass thread once, before its first AI call; read by the main thread after it."""
 
     def __init__(self):
-        self.waiting, self.unplaced, self.at, self.why = [], [], None, None
+        self.plan, self.why = None, None   # plan: (owed jobs, the ones whose place is asked, the second it began), set in one assignment
 
 
 def judge(jobs, track=None):
@@ -65,8 +65,8 @@ def judge(jobs, track=None):
         return Done([], at, 0, 0, why)
     # only the places still open: a job the place words put in your places waits for its title alone (job_stage.of)
     unplaced = [job for job in waiting if feeds.place_of(job) is None and not feeds.wanted_location(job) and (job.get('location') or '').strip()]
-    track.waiting, track.unplaced, track.at = waiting, unplaced, at
-    places, titles = _counts(track)
+    track.plan = (waiting, unplaced, at)   # one assignment: the main thread reads all three or none (Gitar on #4219)
+    places, titles = _counts(waiting, unplaced)
     end = time_budget.end() - time_budget.part(time_budget.TAIL)
     print(f"Board pass: at {at}s of {int(end - began)}s: {places} location(s) and {titles} title(s) to ask", flush=True)
     said = lambda round_: print(f'Board pass: {round_} answered at {int(time_budget.now() - began)}s', flush=True)
@@ -77,16 +77,29 @@ def judge(jobs, track=None):
         said('places')
         sorting.join()
     _say(unplaced, [job for job in waiting if job.get('title')])
-    return Done(_answered(waiting), at, places, titles, None)
+    return Done([job for job, place, title in _answers(waiting) if place or title is not None], at, places, titles, None)
 
 
 def cut(track):
-    """The pass still out at the deadline -> Done with what its answers cover now (Beside.last_pass), or None when it had not begun."""
-    if track.at is None or track.why:
+    """The pass still out at the deadline -> Done with what its answers cover now (Beside.last_pass), or None when it had not begun.
+    Each job's answers are read once and the counts come from that one read (Gitar on #4219: the pass's threads are still writing)."""
+    if track.plan is None or track.why:
         return None
-    places, titles = _counts(track)
-    got = (len({_where(job) for job in track.unplaced if _placed(job)}), len({job.get('title') for job in track.waiting if _titled(job)}))
-    return Done(_answered(track.waiting), track.at, places, titles, None, got)
+    waiting, unplaced, at = track.plan
+    places, titles = _counts(waiting, unplaced)
+    answers = _answers(waiting)
+    asked = {id(job) for job in unplaced}
+    got = (len({_where(job) for job, place, _ in answers if place and id(job) in asked}), len({job.get('title') for job, _, title in answers if title is not None}))
+    return Done([job for job, place, title in answers if place or title is not None], at, places, titles, None, got)
+
+
+def settled(done, listed):
+    """The urls of `done.answered` the queue owes nothing (their waiting rows leave, waiting_jobs.listed): listed (`listed`: their urls), or
+    refused by an answer: a title the AI said no to, or a place outside when the pass ended (a cut pass's "out" may still turn "vague",
+    a posting to read, in the vague-location round). Why (Gitar on #4219): a row left for any answer, though its job was never listed."""
+    from . import feeds
+    return [job['url'] for job in done.answered if job.get('url') in listed or feeds.judged_title(job.get('title') or '') is False
+            or (done.got is None and feeds.place_of(job) == 'out')]
 
 
 def _titles(waiting):
@@ -112,22 +125,14 @@ def _where(job):
     return (job.get('location') or '').strip()
 
 
-def _placed(job):
+def _answers(waiting):
+    """[(job, placed, title answer)] read once each: placed is True only for best/in/out ('vague' is a posting not read yet: no answer)."""
     from . import feeds
-    return feeds.place_of(job) is not None
+    return [(job, feeds.place_of(job) in ('best', 'in', 'out'), feeds.judged_title(job.get('title') or '')) for job in waiting]
 
 
-def _titled(job):
-    from . import feeds
-    return feeds.judged_title(job.get('title') or '') is not None
-
-
-def _counts(track):
-    return len({_where(job) for job in track.unplaced}), len({job.get('title') for job in track.waiting})
-
-
-def _answered(waiting):
-    return [job for job in waiting if _placed(job) or _titled(job)]
+def _counts(waiting, unplaced):
+    return len({_where(job) for job in unplaced}), len({job.get('title') for job in waiting})
 
 
 class Done:
