@@ -54,6 +54,17 @@ class WhatTheRowMakesOfAGreenPr(unittest.TestCase):
             if want[1]:
                 self.assertIn(want[1], why, name)
 
+    def test_a_verdict_the_row_decides_names_the_pairs_run_and_no_other(self):
+        link = '[Open the search run](https://github.com/o/r/actions/runs/4242)\n\nrest'
+        waits = {**row('rerunning', 'in_progress', None, 'running once more'), 'summary': link}
+        self.assertEqual(gate.said('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub(waits)), ('pending', 'search pair: running once more', '4242'))
+        self.assertEqual(gate.said('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub({**waits, 'conclusion': 'failure', 'status': 'completed', 'external_id': 'search-pair:counted:3:9'}))[2], '4242', 'a red row links its pair too')
+        yes = {**row('counted', 'completed', 'success', 'p3 15 → 17'), 'summary': link}
+        self.assertEqual(gate.said('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub(yes)), ('success', 'g', ''), 'a yes changes nothing: the verdict keeps its own link')
+        self.assertEqual(gate.said('o/r', SHA, PULLS, SEARCH, 'failure', 'x', stub(waits)), ('failure', 'x', ''), 'a verdict red for another reason keeps its own link')
+        for summary in ('', 'no link', 'text first\n\n' + link, '[Open the search run](https://evil.example/x)', '[Open the search run](javascript:1/actions/runs/7)'):
+            self.assertEqual(gate.said('o/r', SHA, PULLS, SEARCH, 'success', 'g', stub({**waits, 'summary': summary}))[2], '', summary)
+
     def test_apply_changes_only_a_green_verdict_of_a_search_pr_on_its_current_open_head(self):
         red = row('counted', 'completed', 'failure', 'no proven gain: p3 15 → 17')
         self.assertEqual(gate.apply('o/r', SHA, PULLS, SEARCH, 'success', 'all green', stub(red))[0], 'failure')

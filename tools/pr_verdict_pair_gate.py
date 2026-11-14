@@ -40,9 +40,9 @@ def search_files():
 
 
 def row_of(repo, sha, gh):
-    """The head's "Search before/after" check run ({external_id, status, conclusion, title}), or {}: asked by exact name, the latest of it."""
+    """The head's "Search before/after" check run ({external_id, status, conclusion, title, summary}), or {}: asked by exact name, the latest of it."""
     got = json.loads(gh('api', f'repos/{repo}/commits/{sha}/check-runs?per_page=100&check_name={quote(ROW)}', '--jq',
-                        '[.check_runs[] | {external_id: (.external_id // ""), status, conclusion, title: (.output.title // "")}]') or '[]')
+                        '[.check_runs[] | {external_id: (.external_id // ""), status, conclusion, title: (.output.title // ""), summary: (.output.summary // "")}]') or '[]')
     return got[0] if got else {}
 
 
@@ -61,17 +61,35 @@ def decide(row, starter_present):
     return 'failure', f'search pair: {title}'
 
 
-def apply(repo, sha, pulls, files, state, why, gh):
-    """-> (state, why) after the row's word. Only for the PR's current open head in this repository whose files match SEARCH_FILES, and only when `state` is success."""
+RUN = re.compile(r'\[Open the search run\]\(https://[^)\s]*/actions/runs/(\d+)\)')   # the first line pair_row.py next_row writes into the row's summary
+
+
+def run_of(row):
+    """The id of the pair's run the row links to, or '': read from the row's own summary, digits only."""
+    found = RUN.match(row.get('summary') or '')
+    return found.group(1) if found else ''
+
+
+def said(repo, sha, pulls, files, state, why, gh):
+    """-> (state, why, run) after the row's word; `run` is the pair's run id when the row changed the verdict and names its run, else ''.
+    Only for the PR's current open head in this repository whose files match SEARCH_FILES, and only when `state` is success.
+    Why (14 Nov 2026, owner on #4347: "shows pending, but when I click, shows finished" · "why I don't see the search pair running when I click" · "can we fix it?"): a verdict the pair holds linked to
+    the verdict's own finished run; with `run` its "Details" opens the pair it waits on, or the pair that made it red."""
     mine = next((p for p in pulls if p.get('state') == 'open' and not p.get('merged_at') and p.get('head_sha') == sha and not p.get('cross_repo')), None)
     if state != 'success' or not mine or files is None:
-        return state, why
+        return state, why, ''
     match = search_files()
     if match is None or not any(match.match(name) for name in files):
-        return state, why
+        return state, why, ''
     try:
-        said = decide(row_of(repo, sha, gh), os.path.exists(os.path.join(HERE, STARTER)))
+        row = row_of(repo, sha, gh)
+        word = decide(row, os.path.exists(os.path.join(HERE, STARTER)))
     except Exception as error:   # fail open, said: the status above stands
         print(f'search pair row not read ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
-        return state, why
-    return (said[0], said[1][:140]) if said else (state, why)
+        return state, why, ''
+    return (word[0], word[1][:140], run_of(row)) if word else (state, why, '')
+
+
+def apply(repo, sha, pulls, files, state, why, gh):
+    """-> (state, why): said() without the run."""
+    return said(repo, sha, pulls, files, state, why, gh)[:2]
