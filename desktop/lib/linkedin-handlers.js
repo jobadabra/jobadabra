@@ -19,7 +19,8 @@ export function linkedinRoutes(storage, deps = {}) {
       if (saved.ok) session.closeSignin(storage);
       return saved;
     },
-    pending: () => ({revoke: !session.signedIn(storage), refresh: (session.state(storage).on && note.look()) || session.copyIsOld(storage)}),   // a Find jobs press, or a kept copy 12 h old (Easy Apply alone); the permissions stay while a sign-in is kept
+    // Why (#4312): a saved switch, kept credential or open Chrome consent retains its grants; an inactive switch can recover, and an unfinished consent can deliver its copy before any revoke.
+    pending: () => ({revoke: !session.signedIn(storage) && !session.usesSignin(storage) && !session.signinOpen(storage, deps), refresh: (session.state(storage).on && note.look()) || session.copyIsOld(storage, deps)}),
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
 }

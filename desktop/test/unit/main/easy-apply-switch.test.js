@@ -59,8 +59,9 @@ test('a Chrome sign-out leaves each switch as saved; any new sign-in makes the o
   assert.equal(viewOf(storage, {packaged: false}).on, true, 'still on, drawn inactive');
   linkedin.saveSession(storage, LI, {keychain: kc});   // signed in again from LinkedIn jobs' Turn on
   assert.equal(state(storage).on, true, 'the sign-in is back: Easy Apply is active again');
-  assert.equal(linkedin.state(storage).on, false, 'the sign-in itself turns LinkedIn jobs on? no: its press does');
+  assert.equal(linkedin.state(storage).on, false, 'renewal leaves LinkedIn jobs off');
   assert.deepEqual(linkedin.turnOn(storage), {ok: true});
+  assert.equal(linkedin.state(storage).on, true, 'its own press enables LinkedIn jobs');
   const off = store({linkedinJobs: {on: true, signedIn: true}, easyApply: {on: false}}), kc2 = keychain();
   linkedin.saveSession(off, LI, {keychain: kc2});
   linkedin.refreshSession(off, [], {keychain: kc2});

@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import {linkedinRoutes, linkedinView, registerLinkedinHandlers} from '../../../lib/linkedin-handlers.js';
 import {SERVICE, openSignin, readSession} from '../../../lib/linkedin-session.js';
 import {createRefresh} from '../../../lib/linkedin-refresh.js';
+import {revokeIfOff} from '../../../../extension/linkedin-session.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
 function store(settings = {}) { const mine = {...settings}; return {settings: () => mine, saveSettings: patch => Object.assign(mine, patch)}; }
@@ -110,6 +111,7 @@ test('an unasked copy with nothing kept is refused; a refused copy leaves the Ch
   assert.equal(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}).ok, false, 'nobody asked: nothing kept, nothing on');
   assert.equal(kc.items.size, 0);
   openSignin(settings);
+  assert.equal(routes.pending().revoke, false, 'an open Chrome consent must not lose its grants before its copy arrives');
   assert.equal(routes.session({cookies: [{name: 'bcookie', value: 'x', domain: '.linkedin.com'}]}).ok, false, 'an unusable copy');
   assert.equal(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}).ok, true, 'the next copy is still taken');
   assert.equal(settings.settings().linkedinJobs.on, false, 'LinkedIn jobs never turned on');
@@ -160,4 +162,29 @@ test('window cancellation, failed storage and a packaged Easy Apply press enable
     assert.equal(kc.items.size, 0);
     if (failure === 'not-offered') assert.equal(opened, 0);
   }
+});
+
+test('Easy Apply alone retains Chrome grants while inactive and the periodic copy recovers after sign-out', async () => {
+  let at = Date.parse('2026-11-14T10:00:00Z'), cookies = [], revoked = 0;
+  const settings = store({linkedinJobs: {on: false, signedIn: true}, easyApply: {on: true}}), kc = keychain();
+  const routes = linkedinRoutes(settings, {keychain: kc, now: () => at});
+  const chrome = {storage: {local: {get: async () => ({linkedinGranted: {cookies: true, origin: true}}), remove: async () => {}}},
+    permissions: {contains: async () => true, remove: async () => { revoked++; }}, cookies: {getAll: async () => cookies}};
+  const call = async (_config, path, init) => path === '/extension/linkedin-pending' ? routes.pending() : routes.refresh(JSON.parse(init.body));
+  routes.refresh({cookies: []});
+  assert.deepEqual(routes.pending(), {revoke: false, refresh: false}, 'inactive keeps its grants, but no immediate repeated copy');
+  at += 12 * 3600000 + 1;
+  assert.equal(routes.pending().refresh, true, 'a saved switch gets a later refresh even with no credential kept');
+  await revokeIfOff({chrome, call, settings: async () => ({})});
+  assert.deepEqual(routes.pending(), {revoke: false, refresh: false}, 'still signed out: wait for the next copy interval');
+  cookies = [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}];
+  at += 12 * 3600000 + 1;
+  await revokeIfOff({chrome, call, settings: async () => ({})});
+  const view = linkedinView(settings, {keychain: kc});
+  assert.equal(view.signedIn, true);
+  assert.equal(view.signin.state, 'ok');
+  assert.equal(view.on, false);
+  assert.equal(settings.settings().easyApply.on, true);
+  assert.equal(revoked, 0);
+  assert.equal(readSession({keychain: kc}).li_at, SECRET);
 });

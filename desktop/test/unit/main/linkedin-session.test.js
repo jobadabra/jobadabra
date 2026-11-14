@@ -224,7 +224,7 @@ test('Chrome signed out: the copy and the mark go together; an explicit "not sig
   assert.equal(signedIn(settings), false, 'LinkedIn jobs still on, but nothing is kept: a turn-on asks for a sign-in');
   // Gitar on #4283: On with nothing kept is not a quiet On: the one sign-in state says Needs you (signed out), so the card, notice and ⌘K offer Sign in again
   assert.deepEqual(signinView(settings), {state: 'needs-you', why: 'signed-out', empties: 0});
-  assert.equal(settings.settings().linkedinJobs.copiedAt, undefined, 'no 12 h refresh of a sign-in that is gone');
+  assert.ok(settings.settings().linkedinJobs.copiedAt, 'the sign-out answer starts the next copy interval for the saved switch');
   // Gitar on #4297: the next sign-in ends that Needs you itself (no read wrote it), so the card stops saying Sign in again at once
   saveSession(settings, good(), {keychain: kc});
   assert.deepEqual(signinView(settings), {state: 'ok', why: '', empties: 0});
@@ -252,6 +252,19 @@ test('Chrome sign-out marks Needs you for either saved switch and renewal change
     assert.equal(signinView(settings).state, 'ok');
     assert.deepEqual([settings.settings().linkedinJobs.on, settings.settings().easyApply.on], [jobs, easy]);
     assert.equal(JSON.stringify(settings.settings()).includes(SECRET), false);
+  }
+});
+test('a saved switch can recover through refresh after Chrome sign-out, without another sign-in press', () => {
+  for (const [jobs, easy] of [[true, false], [false, true], [true, true]]) {
+    const settings = store({linkedinJobs: {on: jobs}, easyApply: {on: easy}}), kc = keychain();
+    saveSession(settings, good(), {keychain: kc});
+    refreshSession(settings, [], {keychain: kc});
+    assert.equal(signinView(settings).state, 'needs-you');
+    assert.deepEqual(refreshSession(settings, good(), {keychain: kc}), {ok: true});
+    assert.equal(signedIn(settings), true);
+    assert.equal(signinView(settings).state, 'ok');
+    assert.equal(settings.settings().linkedinJobs.signedOutByChrome, undefined);
+    assert.deepEqual([settings.settings().linkedinJobs.on, settings.settings().easyApply.on], [jobs, easy]);
   }
 });
 test('an open Chrome way expires with the window\'s own watch and ends only once a copy was kept', async () => {
