@@ -70,7 +70,7 @@ export function signInEnded(answer, view = {}) {
 
 const SIGNIN_LINES = {missing: 'signinMissing', 'signed-out': 'signinSignedOut', check: 'signinCheck', empty: 'signinEmpty'};
 /** The Settings card's state line while LinkedIn jobs is on and its sign-in needs the person (the one state: lib/linkedin-session.js signinView), else ''. */
-export const signinLine = view => (view?.loaded && view.on && view.signin?.state === 'needs-you' ? t(`pagesLinkedinServices.${SIGNIN_LINES[view.signin.why] || 'signinEmpty'}`) : view?.loaded && view.on && view.lost ? t('pagesLinkedinServices.signinMissing') : '');   // lost: on, no sign-in kept (inactive until renewed, owner 14 Nov 2026)
+export const signinLine = view => (!view?.loaded || !view.on ? '' : view.lost ? t('pagesLinkedinServices.signinMissing') : view.signin?.state === 'needs-you' ? t(`pagesLinkedinServices.${SIGNIN_LINES[view.signin.why] || 'signinEmpty'}`) : '');   // lost: on, no sign-in kept (inactive until renewed, owner 14 Nov 2026)
 /** The ⌘K command "Renew LinkedIn sign-in" while LinkedIn jobs is on (it opens the renew dialog with `run`), else null. */
 export const renewCommandOf = (view, run = () => {}) => (view?.loaded && view.on
   ? {label: t('pagesLinkedinServices.renewLabel'), hint: t('pagesLinkedinServices.renewHint'), keywords: 'linkedin link sign in sign-in login renew expired signed out session connection', run} : null);

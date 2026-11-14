@@ -296,3 +296,10 @@ test('LinkedIn jobs on with its sign-in lost: the card says so and Renew is offe
   assert.equal(signinLine({...lost, on: false, lost: false}), '');
   assert.ok(renewCommandOf(lost, () => {}));
 });
+
+// Gitar on #4420: the derived lost state wins over an older stored verdict, so the card never shows a stale reason.
+test('lost wins over an older stored needs-you on the card line', () => {
+  const stale = {loaded: true, on: true, lost: true, signedIn: false, signin: {state: 'needs-you', why: 'check', empties: 0}};
+  assert.match(signinLine(stale), /no sign-in kept/);
+  assert.match(signinLine({...stale, lost: false, signedIn: true}), /^Needs you: /, 'not lost: the stored reason shows as before');
+});

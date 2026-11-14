@@ -3,7 +3,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {EASY_APPLY, commandOf, nextStep, rowOf} from '../../../renderer/easy-apply-words.js';
+import {EASY_APPLY, commandOf, nextStep, rowOf, turnOffCommandOf} from '../../../renderer/easy-apply-words.js';
 
 const view = extra => ({loaded: true, on: false, signedIn: true, warned: false, offered: true, ...extra});
 
@@ -63,4 +63,14 @@ test('Settings: a lost Easy Apply is a needsYou card whose button is Renew and o
   assert.match(page, /needsYou \? .Renew./, 'the button reads Renew while a card needs you');
   assert.match(page, /service\.id === 'linkedin-easy-apply' \? openEasyApply\(\)/, 'its click opens the Easy Apply flow');
   assert.equal(nextStep(view({on: false, lost: true, signedIn: false})), 'linkedin-first', 'which goes to the sign-in first');
+});
+
+// Gitar on #4420: a lost Easy Apply press is Renew, so Turn off is its own ⌘K entry (as LinkedIn jobs keeps its Turn off), and it clears the saved switch without a sign-in.
+test('a lost Easy Apply can be turned off without renewing: its own ⌘K entry, wired to the off call', () => {
+  assert.equal(turnOffCommandOf(view({lost: true, signedIn: false}), () => {}).label, 'Turn off LinkedIn Easy Apply');
+  assert.equal(turnOffCommandOf(view({on: true}), () => {}), null, 'active: the one command already says Turn off');
+  assert.equal(turnOffCommandOf(view({offered: false, lost: true}), () => {}), null, 'not offered: none');
+  const door = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
+  assert.match(door, /turnOffCommandOf\(view, \(\) => turnOff\(\)\)/, 'the entry is added with the others');
+  assert.match(door, /async function turnOff\(\) \{\n  await window\.pilot\.easyApplyOff\(\);/, 'and calls the off handler');
 });
