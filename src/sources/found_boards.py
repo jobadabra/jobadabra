@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_claims, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -329,8 +329,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     retry, dropped = (lambda entry: _retry_due(entry, now)), (dead if dead is not None else _dead())
     searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
     proposed = boards if boards is not None else board_ideas.ideas(search)
-    todo = board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
-                                      kept, since, handed=set(_early))   # web=False: these only; a board read early in this run reads on
+    todo = board_claims.first(board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
+                                      kept, since, handed=set(_early)), early)   # web=False: these only; a board read early in this run reads on; one early read per board (board_claims.py)
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
 
     def item(board):
@@ -348,7 +348,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     if late_pages:
         print(f"Job boards: {len(late_pages)} read after the last search's time taken from it, not read again", flush=True)
     hosts = {board['host'] for board in todo}
-    spares = list(enumerate(item(board) for board in (board_yield.pick(spare, kept, retry, dropped, remember=False) if spare else [])
+    spares = list(enumerate(item(board) for board in (board_claims.free(board_yield.pick(spare, kept, retry, dropped, remember=False), early) if spare else [])
                             if board['host'] not in hosts))
     taken, lock = {}, threading.Lock()   # taken: {a board's host: [(spare item, result)]} the boards read in place of it while it refused
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
@@ -390,6 +390,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                     break
                 _, spare_item = spares.pop(0)
                 order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
+            if not board_claims.take(spare_item[0], early):   # another early read took this board since the list was made
+                continue
             print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
             result = one(spare_item)
             with lock:
@@ -459,7 +461,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # each board, whose future maps to its item so it is kept as it ends (#3892)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
     start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
-    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
+    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_claims.first(board_yield.pick(these, kept, retry, dropped, remember=False), early), hosts, workers - len(reads), start))
     # Why (#3892, 12 Nov 2026; rounds 13 Nov 2026, sa): boards are kept as they end (in the list's order a slow first board held the others' titles
     # and places past the AI's time), and a board's rounds are handed as each ends (`between`, board_rounds.py: a board with six rounds never ended
     # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
