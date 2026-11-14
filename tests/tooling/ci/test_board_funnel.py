@@ -91,5 +91,45 @@ class BoardFunnel(unittest.TestCase):
         self.assertEqual('No search log in this folder.\n', board_funnel.table(Path(tempfile.mkdtemp())))
 
 
+class RealRun(unittest.TestCase):
+    """A slice of a real search's artifact (c04 Madrid, the PR side of a search pair, 14 Nov 2026; titles, employers and addresses replaced by job-N, hosts kept), counted
+    by hand from its lines with grep and sort -u, not by board_funnel. The expected cells below are those hand counts: the 22 round lines include 10 `, the AI read the page,`
+    rounds that the first ROUND pattern never matched (InfoJobs and four city sites had no row, airlinejobs read at 66 s with 1 word), found by this very check."""
+    FIXTURE = Path(__file__).parent / 'fixtures' / 'board_funnel_c04'
+
+    def cells(self, source):
+        text = board_funnel.table(self.FIXTURE)
+        for line in text.splitlines():
+            if line.startswith(f'| {source} |'):
+                return [cell.strip() for cell in line.strip('| ').split('|')]
+        self.fail(f'no row for {source}')
+
+    def test_every_round_line_gives_its_board_a_row(self):
+        # source: named by, got a place, read at, words, jobs on pages (the hand sums of the log's round lines)
+        for source, read_at, words, pages in (('jobijoba.es', '5', '2', '49'), ('airlinejobs.com', '6', '2', '27'), ('infojobs.net', '6', '2', '0'), ('domestiko.com', '40', '1', '10'),
+                                              ('gremioempleo.es', '6', '2', '6'), ('jobtoday.com', '6', '2', '5'), ('tecnoempleo.com', '6', '1', '1'), ('mostolesemplea.es', '7', '2', '-'),
+                                              ('alcorconemplea.es', '7', '2', '-'), ('portalempleoparla.ayuntamientoparla.es', '39', '2', '-')):
+            cells = self.cells(source)
+            self.assertEqual((read_at, words), (cells[3], cells[4].split(',')[0]), source)
+            if pages != '-':
+                self.assertEqual(pages, cells[5], source)
+        self.assertEqual('2, 1 page(s) refused', self.cells('trabajos.com')[4])
+
+    def test_the_stage_cells_equal_the_hand_counts(self):
+        # kept, kept-then-dropped, never judged, judged no, place out, then shown and right (judged.json rows of the board by hand)
+        for source, kept, waiting, no, shown, right in (('jobijoba.es', '47', '-', '2', '8', '8'), ('airlinejobs.com', '22', '-', '5', '2', '2'), ('trabajos.com', '10', '5', '6', '-', '-'),
+                                                        ('domestiko.com', '9', '-', '1', '-', '-'), ('gremioempleo.es', '-', '3', '-', '-', '-'), ('jobtoday.com', '2', '1', '-', '-', '-'),
+                                                        ('tecnoempleo.com', '1', '-', '-', '-', '-')):
+            cells = self.cells(source)
+            self.assertEqual((kept, waiting, no, shown, right), (cells[6], cells[8], cells[9], cells[-2], cells[-1]), source)
+
+    def test_a_job_a_feed_lists_twice_counts_once(self):
+        cells = self.cells('Arbeitnow')   # 26 never_asked lines, 23 distinct addresses (3 listed twice), 5 placed out
+        self.assertEqual(('23', '5'), (cells[8], cells[10]))
+
+    def test_the_judged_jobs_no_board_can_be_told_are_counted_apart(self):
+        self.assertIn('21 judged job(s) had no host', board_funnel.table(self.FIXTURE))
+
+
 if __name__ == '__main__':
     unittest.main()

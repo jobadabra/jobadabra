@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from inout import LINE as STAGE   # the one parser of a Stage line (its `rest` is what follows the link)
 
 SEC = re.compile(r'^\[(\d+)s\] (.*)$')
-ROUND = re.compile(r"^Job boards: (?P<name>.+?) round '(?P<word>[^']*)'(?: in [^:]+)?: (?:(?P<jobs>\d+) job\(s\) on the page, (?P<new>\d+) new|page not read \((?P<why>[^)]*)\)), (?P<d>\d+) s.* · (?P<url>\S+)$")
+ROUND = re.compile(r"^Job boards: (?P<name>.+?) round '(?P<word>[^']*)'(?: in [^:]+)?: (?:(?P<jobs>\d+) job\(s\) on the page(?: \((?P<all>\d+) with its next pages\))?, (?P<new>\d+) new(?:, .+?)?|page not read \((?P<why>[^)]*)\)), (?P<d>\d+) s(?: \(.*?\))?(?: · (?P<url>\S+))?$")   # tools/persona-search/test: src/sources/board_round_log.py said() is the one writer; the `how` and the next-pages note are optional there
 LATER = re.compile(r'^Job boards named later: (?P<pos>\d+)\. (?P<name>.+?) \((?P<host>\S+)\): (?P<reason>.+?) \[rank')
 LATER_FREE = re.compile(r'^Job boards named later: places left (\d+), held by (.+)$')
 NAMED = (('pack', re.compile(r'^First jobs: reading (.+?), the job boards that gave people like you')), ('AI', re.compile(r'^Job boards proposed for [^:]+: (.+)$')),
@@ -47,10 +47,11 @@ def lines_of(folder):
 
 def board_round(rows, host_of_name, hit, sec):
     """One round line of a board: its host's row counts the round, its jobs, a refused page, and the second the board was first read at (the line's second minus its length)."""
-    row = rows[host_of(hit['url'])]
-    host_of_name[norm(hit['name'])] = host_of(hit['url'])
+    host = host_of(hit['url']) if hit['url'] else hit['name']   # a round with no link (an older log) is told by its board's name
+    row = rows[host]
+    host_of_name[norm(hit['name'])] = host
     row['rounds'] += 1
-    row['jobs'] += int(hit['jobs'] or 0)
+    row['jobs'] += int(hit['all'] or hit['jobs'] or 0)   # jobs on all the pages the round read, the next pages included
     row['refused'] += hit['jobs'] is None
     row['first'] = min(row['first'] if row['first'] is not None else sec, max(0, sec - int(hit['d'])))
 
@@ -187,7 +188,7 @@ def table(folder):
         place = row['place'] or ('free feed, always read' if row['feed'] else 'read' if row['rounds'] else 'no reason logged')
         refused = f", {row['refused']} page(s) refused" if row['refused'] else ''
         out.append(f"| {key} | {', '.join(sorted(set(row['named']))) or '-'} | {place} | {'-' if row['first'] is None else row['first']} | {row['rounds'] or '-'}{refused} | "
-                   f"{row['jobs'] or '-'} | " + ' | '.join(str(count[s] or '-') for s in ('kept', 'dropped', 'never_asked', 'ai_no', 'placed_out', 'no_link')) + f" | {linkless(row['urls'])} | {row['shown'] or '-'} | {row['right'] or '-'} |")
+                   f"{row['jobs'] if row['rounds'] or row['jobs'] else '-'} | " + ' | '.join(str(count[s] or '-') for s in ('kept', 'dropped', 'never_asked', 'ai_no', 'placed_out', 'no_link')) + f" | {linkless(row['urls'])} | {row['shown'] or '-'} | {row['right'] or '-'} |")
     out += ['', f"Clocks: list arrived {seen(clock.get('list'))} · board read cut {seen(clock.get('cut'))} · last title pass {seen(clock.get('titles'))} · "
                 f"last place pass {seen(clock.get('places'))} · run end {seen(clock.get('end'))}"]
     if clock.get('later_free'):
@@ -200,6 +201,7 @@ def table(folder):
         out.append('shown / right: n/a, judged.json is missing or unreadable (the blind judge did not finish).')
     elif unknown:
         out.append(f'{unknown} judged job(s) had no host (judged before the host was kept): in no row above.')
+    out.append('Counts are distinct jobs, one per address: a job a source lists twice counts once, so a feed\'s own `Stages:` count can be a few higher.')
     out.append('Logs in this artifact: draw/run-1.log is every line the engine printed (rounds, Stages, Board pass, Waiting, stacks at time-up); run.log is only the AI relay.')
     out.append('Not shown yet: ' + '; '.join(f'{name} (needs {pr})' for name, pr in NEEDS))
     return '\n'.join(out) + '\n'
