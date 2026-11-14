@@ -1,5 +1,5 @@
 """Guard: release — READY (tools/ship-watch.sh) and the PR list read the "Claude: …" label, so it must be a pure function of the newest Claude review and the head: "approved" only for the head that review looked at,
-never from GitHub's review state (an Approve posted by Actions is a COMMENT), and "Claude: reviewing" (written by the review job's first step, 14 Nov 2026) is always replaced by the verdict step, which runs also after a failed or cancelled job (the Gitar label needed 10 fixes for a stuck state). Runs tools/claude-label.mjs under node with a fake gh."""
+never from GitHub's review state (an Approve posted by Actions is a COMMENT), with no "reviewing" state (14 Nov 2026: the one state with a second writer; 4 Gitar rounds on #4124-#4134): the same inputs always give the same label, whichever writer runs. Runs tools/claude-label.mjs under node with a fake gh."""
 import json
 import shutil
 import subprocess
@@ -53,16 +53,19 @@ class ClaudeLabelTest(unittest.TestCase):
         self.assertEqual(wanted, 'Claude: approved')
         self.assertEqual(seen, ['pr edit 7 --add-label Claude: not reviewed', 'pr edit 7 --add-label Claude: approved', 'pr edit 7 --remove-label Claude: not reviewed'])
 
-    def test_reviewing_is_set_alone_and_the_verdict_step_replaces_it(self):
-        read = {'data': {'repository': {'pullRequest': {'number': 7, 'state': 'OPEN', 'isDraft': False, 'title': 't', 'headRefOid': A, 'baseRefName': 'main', 'headRepository': {'nameWithOwner': 'o/r'},
-                'commits': {'nodes': []}, 'reviews': {'nodes': []}, 'comments': {'nodes': []}, 'labels': {'nodes': [{'name': 'Claude: approved · not re-reviewed'}]}}}}}
-        script = ("(() => { const seen = []; const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(%s); seen.push(a.slice(0, 5).join(' ')); return ''; };"
-                  " return [m.sync('o/r', 7, run, m.LABELS.reviewing.name), seen]; })()") % json.dumps(read)
-        wanted, seen = node(script)
-        self.assertEqual(wanted, 'Claude: reviewing')
-        self.assertEqual(seen[0], 'pr edit 7 --add-label Claude: reviewing')
-        self.assertIn('pr edit 7 --remove-label Claude: approved · not re-reviewed', seen)
-        self.assertEqual(node("m.wantedLabel([], '%s')" % A), 'Claude: not reviewed', 'the verdict step wants no "reviewing"')
+    def test_a_push_during_a_review_leaves_no_reviewing_and_the_same_inputs_give_the_same_label(self):
+        """No writer can leave a "reviewing" label, and a stray one (written by an earlier build) is removed; a second writer on the same inputs changes nothing."""
+        def read(labels):
+            return {'data': {'repository': {'pullRequest': {'number': 7, 'state': 'OPEN', 'isDraft': False, 'title': 't', 'headRefOid': B, 'baseRefName': 'main', 'headRepository': {'nameWithOwner': 'o/r'},
+                    'commits': {'nodes': []}, 'reviews': {'nodes': [{'author': {'login': 'github-actions'}, 'submittedAt': '2026-11-14T10:00:00Z', 'body': f'**Claude review: ✅ Approve** on x\n<!-- claude-review sha={A} -->'}]},
+                    'comments': {'nodes': []}, 'labels': {'nodes': [{'name': n} for n in labels]}}}}}
+        script = ("(() => { const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(%s); seen.push(a.slice(0, 5).join(' ')); return ''; }; const seen = [];"
+                  " const first = m.sync('o/r', 7, run); const calls = seen.splice(0); return [first, calls, m.wantedLabel([{sha: '%s', verdict: 'APPROVE'}], '%s'), m.LABELS.reviewing || null]; })()") % (json.dumps(read(['Claude: reviewing', 'Claude: approved'])), A, B)
+        first, calls, wanted, reviewing = node(script)
+        self.assertEqual(first, 'Claude: approved · not re-reviewed', 'the head moved past the reviewed one: a push during a review')
+        self.assertIn('pr edit 7 --remove-label Claude: reviewing', calls)
+        self.assertEqual(wanted, first, 'the same reviews and head give the same label from any writer')
+        self.assertIsNone(reviewing, 'there is no "reviewing" label definition')
 
 
 if __name__ == '__main__':
