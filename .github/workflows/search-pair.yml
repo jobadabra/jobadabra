@@ -256,6 +256,7 @@ jobs:
           OWN: ${{ matrix.person.own_draft }}
         run: |
           set -uo pipefail
+          runs=(); tails=()
           echo "press_start=$(date +%s)" >> times.env
           # run.mjs works in <tmpdir>/jp-persona-draw-<tag> and --fresh empties it: the two sides run at once on this runner, so their tags must differ (pair-main, pair-pr),
           # and each round's jobs are read (gate.py extract) before the next round's --fresh. Each person is its own runner.
@@ -270,8 +271,12 @@ jobs:
                 [ -f "$tmp/jp-persona-draw-pair-draft/data/proposed.ok" ] && [ -f "$tmp/jp-persona-draw-pair-draft/data/web-shared.ok" ] || touch "$out/boards-not-shared"   # the draft's proposal or its one web search failed (propose.py writes web-shared.ok): this side asks for itself, and the table says it is not counted
               fi
               node tools/persona-search/codex.mjs -- node "side-$side/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/$out" --presses 1 --first-only "${fresh[@]}" --engine api --tag "pair-$side" "${draft[@]}" > "$out/run.log" 2>&1 &
+              runs+=($!)
+              # Why (14 Nov 2026, owner via mac-95: "why I don't see live logs/updates", pair run 43625820367): the file was the only sink, so the step showed nothing until it ended; the search's own lines now also stream here with their side, while the file stays for the artifact. tail stops when its run ends (--pid).
+              tail -n +1 -F --pid="$!" "$out/run.log" 2>/dev/null | sed -u "s/^/[$side-$k] /" &
+              tails+=($!)
             done
-            wait
+            wait "${runs[@]}"; wait "${tails[@]}"; runs=(); tails=()
             for side in main pr; do
               out="out/${{ matrix.person.id }}--$side-$k"
               python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-pair-$side/data/jobs.sqlite" "$out/jobs.json" || echo '[]' > "$out/jobs.json"
@@ -290,8 +295,8 @@ jobs:
           set -uo pipefail
           echo "judge_start=$(date +%s)" >> times.env
           files=(); for out in out/*--*; do files+=("$out/jobs.json" "$out/judged.json"); done
-          if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py --pooled "$N" "${files[@]}" > out/judge.log 2>&1
-          else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge-pooled "$ID" "${files[@]}" > out/judge.log 2>&1; fi
+          if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py --pooled "$N" "${files[@]}" 2>&1 | tee out/judge.log
+          else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge-pooled "$ID" "${files[@]}" 2>&1 | tee out/judge.log; fi
           judge_rc=$?   # one log for both sides, out/judge.log (no copy per side folder: nothing of the pair reads a side's judge.log, and a copy would show each side the other side's calls)
           if [ "$judge_rc" -ne 0 ]; then { echo "The pooled judge failed for ${{ matrix.person.id }} (exit $judge_rc): no side has verdicts, so no side counts. out/judge.log says why."; echo '```'; tail -n 5 out/judge.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
           for out in out/*--*; do
