@@ -13,6 +13,9 @@ PLACES = {
     'franken': ('area', 'DE', 49.55, 10.9, 60), 'nürnberg': ('city', 'DE', 49.45, 11.08, 20), 'baden, ag': ('city', 'CH', 47.47, 8.31, 10),
     'baden-württemberg': ('area', 'DE', 48.6, 9.0, 100), 'zürich': ('city', 'CH', 47.37, 8.54, 25), 'zurigo': ('city', 'CH', 47.37, 8.54, 25),
     'wallisellen': ('city', 'CH', 47.41, 8.59, 5), 'altdorf': ('city', 'CH', 46.88, 8.64, 5), 'altdorf bei nürnberg': ('city', 'DE', 49.38, 11.36, 5),
+    'münchen, germany': ('city', 'DE', 48.137, 11.576, 25), 'nürnberg, germany': ('city', 'DE', 49.452, 11.077, 20), 'augsburg, germany': ('city', 'DE', 48.37, 10.9, 15),
+    'münchen, germany; nürnberg, germany; augsburg, germany': ('city', 'DE', 48.137, 11.576, 25),   # what the map answered for a list in the b08 replay: its first city
+    'bielefeld, germany; bochum, germany': ('city', 'DE', 52.02, 8.53, 15), 'bielefeld, germany': ('city', 'DE', 52.02, 8.53, 15), 'bochum, germany': ('city', 'DE', 51.48, 7.22, 12),
     'germany': ('country', 'DE', None, None, None), 'remote - emea': ('remote', '', None, None, None), 'bogus': ('city', 'XX', 91.0, 8.0, 10)}
 
 
@@ -127,6 +130,18 @@ class TriageTests(unittest.TestCase):
         got = self.triage.decide(['Nürnberg', 'Baden, AG'], self.SEARCH, NoCalls())
         self.assertEqual(got['nürnberg'], 'best')
         self.assertEqual(got['baden, ag'], 'out')
+
+    def test_a_job_listing_several_places_one_of_them_yours_stays_in_the_real_rule(self):
+        """b08 replay of #4224 (14 Nov 2026): the map put "München; Nürnberg; Augsburg" at Munich and the cleanup closed it for a Nürnberg search.
+        Plays the real wanted_location over the answers decide() keeps, no patch of it."""
+        from src.sources import feeds
+        listed, elsewhere = 'München, Germany; Nürnberg, Germany; Augsburg, Germany', 'Bielefeld, Germany; Bochum, Germany'
+        geo.resolve(['nürnberg, germany'], Client())
+        got = geo.verdicts([listed, elsewhere], {'best_places': ['nürnberg'], 'anywhere_in': [], 'cities_abroad': []}, Client())
+        self.assertEqual(got[geo.norm(listed)], 'best')
+        self.assertEqual(got[geo.norm(elsewhere)], 'out')   # every part placed and outside: still closed
+        with mock.patch.dict(feeds.placed(), {geo.norm(listed): got[geo.norm(listed)]}, clear=False):
+            self.assertTrue(feeds.wanted_location({'location': listed, 'title': 'x'}))
 
     def test_remote_is_left_to_the_model(self):
         asked = []
