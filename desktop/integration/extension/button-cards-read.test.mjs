@@ -100,6 +100,42 @@ test('a link on the page\'s own path naming another id is still a posting; only 
   } finally { await page.close(); }
 });
 
+test('links on the page\'s own path with letters in their ids are postings; a link to the page\'s own address is not (#3877)', async () => {
+  // #3877: the page's own path read as "the page itself" for every link whose ids had no 5-digit number (/viewjob?jk=abc123), so a list of
+  // same-path postings with letter ids read as none
+  const page = await browser.newPage();   // fixtures/visits/letter-ids.html, opened at the address of its own last link
+  try {
+    await page.goto(`${base}/letter-ids.html?jk=abc123`);
+    const linked = await call(page, 'extractPage');
+    assert.deepEqual(linked.cards.map(card => new URL(card.url).search).filter(search => search.startsWith('?jk=')), ['?jk=def456', '?jk=ghi789', '?jk=jkl012'],
+      'three postings; the page\'s own address, the same with a param added (Gitar on #4278) and its next page are the page');
+  } finally { await page.close(); }
+});
+
+test('a page whose own id is under another name still reads the same-path postings (Gitar on #4287)', async () => {
+  const page = await browser.newPage();   // fixtures/visits/letter-ids.html at an address holding its id under tk, not jk
+  try {
+    await page.goto(`${base}/letter-ids.html?tk=xyz98765`);
+    const linked = await call(page, 'extractPage');
+    const read = linked.cards.map(card => new URL(card.url).searchParams.get('jk'));
+    assert.ok(['def456', 'ghi789', 'jkl012'].every(id => read.includes(id)), `the postings are read: ${read}`);
+  } finally { await page.close(); }
+});
+
+test('on a page with an id, a same-path link naming no id is the page; one naming another id is a posting (Gitar on #4291)', async () => {
+  // Gitar on #4291: at /viewjob?jk=abc123, the next-page link /viewjob?start=10 named none of the page's ids and read as a posting
+  const page = await browser.newPage();
+  try {
+    await page.goto(`${base}/letter-ids.html?jk=abc123`);
+    await page.evaluate(`history.replaceState(null, '', '/viewjob?jk=abc123');
+      document.body.insertAdjacentHTML('afterbegin', '<a href="/viewjob?start=10">Stand-in next page</a><a href="/viewjob?jk=def456&amp;start=10">Stand-in posting def456</a>')`);
+    const linked = await call(page, 'extractPage');
+    const read = linked.cards.map(card => new URL(card.url).search);
+    assert.ok(!read.includes('?start=10'), `the id-less link is the page: ${read}`);
+    assert.ok(read.includes('?jk=def456&start=10'), `the link naming def456 is a posting (positive control): ${read}`);
+  } finally { await page.close(); }
+});
+
 test('the next page is the pager\'s next number, never the top menu\'s marked link', async () => {
   const {page} = await open('attribute');
   try {

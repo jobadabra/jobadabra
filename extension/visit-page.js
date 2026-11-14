@@ -10,10 +10,21 @@ export function extractPage() {
   const seen = new Set();
   const cards = [];
   const here = new URL(location.href);
-  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids are all ids the page's own address
-  // already holds (the selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
-  const ownIds = new Set([...here.searchParams.values()].filter(value => /^\d{5,}$/.test(value)));
-  const toPage = href => { const at = new URL(href); return at.host === here.host && at.pathname === here.pathname && [...at.searchParams.values()].filter(value => /^\d{5,}$/.test(value)).every(value => ownIds.has(value)); };
+  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path that points at the page's own job (the
+  // selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
+  // Why (#3877; Gitar on #4278, #4282, #4287, #4291: one rule for the five shapes): a same-path link is the page when it names no id (the next page,
+  // a sort), or when it carries one of the page's ids under the same name and no other value under a name where the page has an id (its header
+  // link, with a tracking value added); any other same-path link naming an id is a posting. An id is a value of 5+ word characters with a digit
+  // (abc123, 3870321; a page number is not). Before: only 5-digit numbers were ids, so /viewjob?jk=def456 read as the page.
+  const ID = /^(?=.*\d)[\w-]{5,}$/;
+  const pageIds = [...here.searchParams].filter(([, value]) => ID.test(value));
+  const toPage = href => {
+    const at = new URL(href);
+    if (at.host !== here.host || at.pathname !== here.pathname) return false;
+    if (![...at.searchParams.values()].some(value => ID.test(value))) return true;
+    return pageIds.some(([name, value]) => at.searchParams.get(name) === value)
+      && pageIds.every(([name, value]) => !at.searchParams.has(name) || at.searchParams.get(name) === value);
+  };
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.href.split('#')[0];
     if (!/^https?:/.test(href) || seen.has(href) || !JOB.test(href) || toPage(href)) continue;
