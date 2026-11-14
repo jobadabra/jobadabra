@@ -142,6 +142,7 @@ jobs:
             tools/beta_rate_gate.py
             tools/pr_flaky.py
             tools/flaky-verdict.mjs
+            tools/pr_verdict_pair_gate.py
             desktop/e2e/
             tools/gh-ledger.sh
             .github/actions/gh-ledger

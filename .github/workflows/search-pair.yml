@@ -414,9 +414,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     permissions:
+      contents: read
       checks: write
       pull-requests: read   # the head the PR has now (a cancel is "superseded" only when a newer head exists)
+      actions: write        # asks the PR verdict to read the row again (the last step; tools/pr_verdict_pair_gate.py)
     steps:
+      # Why (14 Nov 2026, run 43608451071 of #4224: this job failed with "can't open file tools/persona-search/pair_row.py"): the job had no checkout since #4128, so a cancelled run could never write "superseded"
+      #   and its row stayed running; the two files its step runs are checked out now.
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            tools/persona-search/pair_row.py
+            tools/persona-search/engine_calls.py
+          sparse-checkout-cone-mode: false
       - name: "The row, if this run still owns it and it has no numbers (a cancelled or failed run must not leave it running for good)"
         env:
           GH_TOKEN: ${{ github.token }}
@@ -432,3 +443,11 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
           python3 tools/persona-search/pair_row.py next old.json "$(jq -nc --arg ended "$ENDED" --arg run "$GITHUB_RUN_ID" --arg url "$RUN_URL" --argjson newer "$newer" '{kind: "died", run_id: $run, run_url: $url, ended: $ended, newer: $newer}')" > row.json
           if [ "$(jq -r .noop row.json)" != true ]; then jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null; fi
+      # Why (14 Nov 2026, owner: "The PR CI check (search pair) should tell us"): the row is now part of "All checks passed" (tools/pr_verdict_pair_gate.py), and a check run ending starts no workflow_run
+      #   event, so the pair asks for the verdict itself: a dispatch with no input is the verdict's sweep, which takes every open head whose status is pending. Never red: the 10-minute sweep repairs a lost ask.
+      - name: "Ask the PR verdict to read the row"
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run pr-verdict.yml --repo "$GITHUB_REPOSITORY" || echo "the verdict was not asked (the 10-minute sweep reads the row)"

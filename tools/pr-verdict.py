@@ -414,20 +414,12 @@ def flaky_note(repo, ref, live, why):
         return why
 
 
-def publish_rows(a, pulls, live, state, server, ref):
-    """Rows and the summary table come after the status and never change it (tools/pr_verdict_rows.py: one row per by-hand run, the current open head only)."""
+def companion(repo, ref, name, call, what):
+    """`call(module)` of a verdict companion (rows, the pair's start, the pair's row); a failure is printed and gives None, the verdict stands (tools/pr_verdict_rows.py, pr_verdict_pair.py, pr_verdict_pair_gate.py)."""
     try:
-        main_state_module(a.repo, ref, 'pr_verdict_rows').publish(a.repo, a.sha, pulls, live, state, gh, server, datetime.now(timezone.utc), a.dry_run, os.environ.get('GITHUB_STEP_SUMMARY', ''))
-    except Exception as error:   # the companion not loaded (publish() catches its own failures): the status above stands
-        print(f'check rows companion not loaded ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
-
-
-def publish_pair(a, pulls, files, ref):
-    """A search PR's before/after pair starts here (tools/pr_verdict_pair.py), after the status and the rows; never able to change the status."""
-    try:
-        main_state_module(a.repo, ref, 'pr_verdict_pair').publish(a.repo, a.sha, pulls, files, gh, datetime.now(timezone.utc), a.dry_run)
+        return call(main_state_module(repo, ref, name))
     except Exception as error:
-        print(f'search pair not started here ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
+        print(f'{what} not run ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
 
 
 def main():
@@ -474,6 +466,9 @@ def main():
         if greys:
             state, why, live, _, target = judge(greys)
     state = 'pending' if state == 'settling' else state
+    # The pair starts first (its row, when it is instant, is then read below), the row then decides a search PR's green (plan 5/5; both are tools/pr_verdict_pair*.py).
+    companion(a.repo, ref, 'pr_verdict_pair', lambda m: m.publish(a.repo, a.sha, pulls, files, gh, datetime.now(timezone.utc), a.dry_run), 'search pair start')
+    state, why = companion(a.repo, ref, 'pr_verdict_pair_gate', lambda m: m.apply(a.repo, a.sha, pulls, files, state, why, gh), 'search pair row') or (state, why)
     print(quota_line() or 'quota: not readable')
     for r in live:
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
@@ -489,8 +484,7 @@ def main():
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')
-    publish_rows(a, pulls, live, state, server, ref)
-    publish_pair(a, pulls, files, ref)
+    companion(a.repo, ref, 'pr_verdict_rows', lambda m: m.publish(a.repo, a.sha, pulls, live, state, gh, server, datetime.now(timezone.utc), a.dry_run, os.environ.get('GITHUB_STEP_SUMMARY', '')), 'check rows')
     return 0
 
 
