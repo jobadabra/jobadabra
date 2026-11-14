@@ -47,6 +47,13 @@ _lock = threading.Lock()
 _state = None       # domain -> {'gap', 'calm', 'ok', 'at'}; 'next' (the next free slot) lives only in this process
 
 
+class NotAsked(Exception):
+    """Raised by a reader that got no answer from its site this search: its own gate said "not now" before the first request (a cloud turn refused, a full
+    window, the read cut) and no refusal of the site was in force. aggregators.scan leaves it unmarked, so the next search asks again.
+    Why (14 Nov 2026, Always on run_4b38d7e4e614a395 then run_1d768eb072bbfaf0): LinkedIn's read refused by the site's turn returned no jobs and was marked read,
+    so the next run rested it 6 h and never asked; a read that got an answer, a 429 included, returns what it read and rests as any other."""
+
+
 class Busy(OSError):
     """The site asked us to slow down for longer than this run waits: try it in a later run. Not a refusal."""
 

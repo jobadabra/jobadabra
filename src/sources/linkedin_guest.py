@@ -65,8 +65,8 @@ class Pace:
         self.reset()
 
     def reset(self):
-        """No request yet, no stop."""
-        self.last, self.stopped = None, None
+        """No request yet, no answer, no stop."""
+        self.last, self.stopped, self.answers = None, None, 0
 
     def stop(self, why):
         """Stop every later read of the process; True the first time (it is said once)."""
@@ -74,8 +74,13 @@ class Pace:
         return first
 
     def began(self, at):
-        """A request starts now (`at`, the run's clock)."""
+        """A request starts now (`at`, the run's clock): LinkedIn answers it, whatever comes back."""
         self.last = at
+        self.answered()
+
+    def answered(self):
+        """LinkedIn answered one page (a request sent, or the site's cached copy): read() tells a read from "not asked" by this count."""
+        self.answers += 1
 
 
 PACE = Pace()
@@ -187,6 +192,7 @@ def _get(url):
         if linkedin_turn.active():
             kind, given = linkedin_turn.ask(url, None if cut is None else cut - time_budget.now())
             if kind == 'cached':
+                PACE.answered()
                 return url, given
             if kind == 'no':
                 if PACE.stop('cloud'):
@@ -279,9 +285,10 @@ def _page(role, place, page, seen, jobs):
 def read(search):
     """The jobs of the strategy's LinkedIn searches, as listed (titles and places are judged by the run like any source's): page 1 of each search, then page 2,
     at most SEARCH_PAGES pages. What was read before a stop, the read cut or a full window is kept. A search that fails on the network is that search only;
-    all failing raises the last error (the lane failing). Held before any request was sent: raises aggregators.NotAsked (not counted as read)."""
+    all failing raises the last error (the lane failing). Held with no answer and no LinkedIn stop in force: raises host_pace.NotAsked (not counted as read)."""
     jobs, seen, failed, error, held = [], set(), set(), None, ''
-    wanted, asked, before = searches(search), 0, PACE.last
+    wanted, asked = searches(search), 0
+    answers, refused = PACE.answers, PACE.stopped not in (None, 'cloud')   # a stop LinkedIn gave earlier in this process still rests (Gitar on #4184)
     going = list(wanted)
     for page in range(PAGES):
         for pair in list(going):
@@ -303,9 +310,8 @@ def read(search):
         raise error
     if not PACE.stopped:
         print(f'LinkedIn: {len(jobs)} job(s) from the public search' + (f' ({held})' if held else ''), flush=True)
-    if held and not jobs and PACE.last == before:   # held before the first request (the site's "no", a full window, the cut): not a read, the next search asks again
-        from .aggregators import NotAsked
-        raise NotAsked(held)
+    if held and not jobs and PACE.answers == answers and not refused:   # no answer at all (the site's "no", a full window, the cut): not a read
+        raise host_pace.NotAsked(held)
     return jobs
 
 

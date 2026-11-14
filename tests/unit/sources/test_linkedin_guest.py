@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import pool_served, store, time_budget
-from src.sources import aggregators, describe, host_pace, linkedin_guest, read_budget, reader_rows, visits
+from src.sources import describe, host_pace, linkedin_guest, read_budget, reader_rows, visits
 
 FIXTURES = os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures', 'sources', 'linkedin_guest')
 SEARCH = {'role_keywords': ['Site Reliability Engineer'], 'locations': {'top_tier': ['Geneva']}}
@@ -206,7 +206,7 @@ class GuestTest(unittest.TestCase):
         with self.assertRaises(linkedin_guest.Later):
             linkedin_guest.description(urls[6])
         linkedin_guest.reset()   # the next press: a new process, the same computer
-        with self.assertRaises(aggregators.NotAsked):   # nothing asked: not counted as read, so LinkedIn does not rest 6 h (14 Nov 2026)
+        with self.assertRaises(host_pace.NotAsked):   # nothing asked: not counted as read, so LinkedIn does not rest 6 h (14 Nov 2026)
             linkedin_guest.read(SEARCH)
         self.assertIn(linkedin_guest.WINDOW_FULL, self.said(), 'said, not a stop: no pause')
         self.assertNotIn(linkedin_guest.SLOW_DOWN, self.said())
@@ -231,7 +231,7 @@ class GuestTest(unittest.TestCase):
         def other_press_fills_the_window(seconds):   # during this press's gap, another process sends the rest of the window
             self.clock[0] += seconds
             linkedin_guest.FILE.write_text('{"sent": [%s]}' % ', '.join(str(self.clock[0] - n) for n in range(linkedin_guest.WINDOW_MAX)))
-        with mock.patch.object(linkedin_guest, '_sleep', side_effect=other_press_fills_the_window), self.assertRaises(aggregators.NotAsked):
+        with mock.patch.object(linkedin_guest, '_sleep', side_effect=other_press_fills_the_window), self.assertRaises(host_pace.NotAsked):
             linkedin_guest.read(SEARCH)
         self.assertEqual(len(site.requests), asked, 'nothing sent: the window filled while this press waited')
         self.assertIn(linkedin_guest.WINDOW_FULL, self.said())

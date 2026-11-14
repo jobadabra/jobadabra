@@ -186,6 +186,23 @@ class TurnTest(unittest.TestCase):
         self.assertIsNotNone(aggregators.read_lately(db, linkedin_guest.NAME, search=search), 'a sent request is a read: it rests')
         self.assertEqual(press([{'answer': 'go', 'lease': 'lt_2'}]), (False, []), 'after the 429 nothing is asked in the rest')
 
+    def test_a_stop_in_force_still_rests_and_a_cached_answer_is_an_answer(self):
+        """Gitar on #4184: a 429 LinkedIn gave earlier in this process (a job page, an earlier read) holds the next read before any request; that read
+        rests as a read (never asked again in the rest). A page the site served from its cache is LinkedIn's answer too, so a later "no" is not "not asked"."""
+        search = {'role_keywords': ['SRE', 'DevOps'], 'locations': {'top_tier': ['Geneva']}}
+        self.run_with([{'answer': 'go', 'lease': 'lt_1'}], linkedin=lambda url: 429)
+        self.assertEqual(linkedin_guest.PACE.stopped, 'limited', 'positive control: the stop is in force')
+        with mock.patch.object(linkedin_turn, '_open', FakeSite([]).open):
+            self.assertEqual(linkedin_guest.read(search), [], 'held by the stop: a read, it rests')
+        linkedin_guest.reset()
+        empty = linkedin_guest.EMPTY_END
+        with mock.patch.object(linkedin_turn, '_open', FakeSite([{'answer': 'cached', 'body': empty}, {'answer': 'no', 'why': 'x'}]).open), \
+                mock.patch.object(linkedin_guest, '_opener', Site(lambda url: CARDS, self.clock)):
+            self.assertEqual(linkedin_guest.read(search), [], 'the cached empty end answered the first search: a read')
+        linkedin_guest.reset()
+        with mock.patch.object(linkedin_turn, '_open', FakeSite([{'answer': 'no', 'why': 'x'}]).open), self.assertRaises(host_pace.NotAsked):
+            linkedin_guest.read(search)
+
     def test_a_github_run_asks_with_its_repo_key(self):
         env = {linkedin_turn.TURN: 'https://site.example', 'JOBADABRA_TRIAL_KEY': 'JPT1.handle.mac'}
         site = FakeSite([{'answer': 'no', 'why': 'x'}])
