@@ -49,3 +49,12 @@ test('a second result never leaves the first job\'s button behind', () => {
   afterAdded({dialog: d, job: {url: 'https://jobs.example.test/2'}, openJob() {}, button, label: 'Open job', stay: true});
   assert.equal(d.actions.children.filter(c => 'openJob' in c.dataset && !c.removed).length, 1, 'one button, for the newest job');
 });
+
+test('a worked add whose result names no job still closes with its toast, and opens no drawer or button', () => {
+  const d = dialog(), opened = [], said = [];
+  afterAdded({dialog: d, job: null, openJob: one => opened.push(one), button, label: 'Open job', say: () => said.push('toast')});
+  assert.deepEqual([said, d.open, opened], [['toast'], false, []], 'toast, closed, no drawer for a job it cannot name');
+  const s = dialog();
+  assert.equal(afterAdded({dialog: s, job: null, openJob: one => opened.push(one), button, label: 'Open job', stay: true}), null);
+  assert.equal(s.actions.children.length, 2, 'no "Open job" button that would open nothing');
+});
