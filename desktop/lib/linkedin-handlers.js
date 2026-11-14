@@ -11,8 +11,15 @@ import {easyApplyOn} from '../renderer/apply-settings-model.js';
 export function linkedinRoutes(storage, deps = {}) {
   const note = deps.refresh || realRefresh;
   return {
-    session: payload => session.saveSession(storage, payload?.cookies, {...deps, for: session.takeWanted(storage)}),
-    pending: () => { const on = session.state(storage).on; return {revoke: !session.signedIn(storage), refresh: on && note.look()}; },   // a copy is asked only by a Find jobs press (LinkedIn jobs on); a kept one is taken any time (refreshSession)   // the permissions stay while a sign-in is kept for either switch
+    // Why (Gitar on #4276): only a copy someone asked for in the last 15 min is kept (it turns on only that switch); with a sign-in kept, an unasked one is a refresh. The note is used up only on a kept copy.
+    session: payload => {
+      const wanted = session.peekWanted(storage);
+      if (!wanted && !session.signedIn(storage)) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
+      const saved = session.saveSession(storage, payload?.cookies, {...deps, for: wanted === 'renew' ? undefined : wanted || undefined});
+      if (saved.ok && wanted) session.clearWanted(storage);
+      return saved;
+    },
+    pending: () => { const pressed = note.look(); return {revoke: !session.signedIn(storage), refresh: (session.state(storage).on && pressed) || session.copyIsOld(storage)}; },   // a Find jobs press, or a kept copy 12 h old (Easy Apply alone); the permissions stay while a sign-in is kept
     refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
 }

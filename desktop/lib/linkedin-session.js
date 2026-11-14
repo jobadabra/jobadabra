@@ -49,7 +49,7 @@ export function saveSession(storage, cookies, {keychain = realKeychain, now = Da
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   const before = signedIn(storage) ? readSession({keychain})?.li_at : undefined;   // in memory only: the same sign-in saved again keeps its clock (Gitar on #4247)
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {signedIn: true, ...(wanted === 'jobs' ? {on: true} : {}), ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; `for`, owner 14 Nov 2026: two switches, one sign-in): only the switch that asked turns on; a saved copy is no verdict, so `signin` stays, only its keep time is stamped: the next read that works after Needs you is what says "renewed"
+  save(storage, {signedIn: true, copiedAt: now(), ...(wanted === 'jobs' ? {on: true} : {}), ...(before === clean.li_at ? {} : {keptAt: new Date(now()).toISOString()})});   // Why (Gitar on #3914, 12 Nov 2026; keptAt 14 Nov 2026; `for`, owner 14 Nov 2026: two switches, one sign-in): only the switch that asked turns on; a saved copy is no verdict, so `signin` stays, only its keep time is stamped: the next read that works after Needs you is what says "renewed"
   return {ok: true};
 }
 
@@ -60,12 +60,12 @@ export function saveSession(storage, cookies, {keychain = realKeychain, now = Da
  */
 export function refreshSession(storage, cookies, {keychain = realKeychain, held = true, now = Date.now} = {}) {
   if (!signedIn(storage)) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271: Easy Apply alone keeps one too
-  if (!held) return {ok: true, kept: true};
+  if (!held) { save(storage, {copiedAt: now()}); return {ok: true, kept: true}; }   // the extension answered: no new ask for 12 h (copyIsOld)
   const clean = cleanCookies(cookies);
   if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271)
   const before = readSession({keychain})?.li_at;   // compared in memory only: a copy of the same sign-in is no new sign-in
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
-  if (before !== clean.li_at) save(storage, {keptAt: new Date(now()).toISOString()});
+  save(storage, {copiedAt: now(), ...(before !== clean.li_at ? {keptAt: new Date(now()).toISOString()} : {})});
   return {ok: true};
 }
 
@@ -78,17 +78,18 @@ const WANTS = new Set(['jobs', 'easy-apply', 'renew']);
 export const WANTED_MS = 15 * 60000;   // Why (Gitar on #4271): a Chrome way left unfinished must not decide a copy that comes much later; the window's own watch gives up after 2.5 min
 /** The Chrome way was opened by `wanted` ('jobs' | 'easy-apply' | 'renew'): kept (with its time) until the extension's copy arrives, so that copy turns on only the switch that asked. */
 export function noteWanted(storage, wanted, {now = Date.now} = {}) { if (WANTS.has(wanted)) save(storage, {wanted, wantedAt: now()}); }
-/**
- * Who asked for the copy now arriving, then forgotten. Nobody (or asked over 15 min ago): with a sign-in kept the copy is a refresh and turns nothing on (Gitar on #4271: an Easy Apply-only
- * person reopening the extension's page never gets LinkedIn jobs); with none kept, 'jobs' (the extension's page has its own consent, as before the two switches). 'renew' -> undefined.
- */
-export function takeWanted(storage, {now = Date.now} = {}) {
+/** Who asked for the copy now arriving ('jobs' | 'easy-apply' | 'renew'), or null when nobody did in the last 15 min. Reads only: the route clears it once the copy was kept (Gitar on #4276). */
+export function peekWanted(storage, {now = Date.now} = {}) {
   const mine = storage.settings().linkedinJobs || {};
-  if (mine.wanted) save(storage, {wanted: undefined, wantedAt: undefined});
-  const fresh = WANTS.has(mine.wanted) && now() - (Number(mine.wantedAt) || 0) <= WANTED_MS;
-  if (!fresh) return signedIn(storage) ? undefined : 'jobs';
-  return mine.wanted === 'renew' ? undefined : mine.wanted;
+  return WANTS.has(mine.wanted) && now() - (Number(mine.wantedAt) || 0) <= WANTED_MS ? mine.wanted : null;
 }
+/** The copy was kept: the note is used up. */
+export const clearWanted = storage => save(storage, {wanted: undefined, wantedAt: undefined});
+
+// Why (Gitar on #4276): a sign-in kept for Easy Apply alone gets no Find jobs press to ask for a fresh copy, so the extension's own minute look asks once the last copy is this old.
+export const COPY_AGE_MS = 12 * 3600000;
+/** True when a sign-in is kept and the extension last answered a copy (or the sign-in was kept) over 12 h ago. */
+export const copyIsOld = (storage, {now = Date.now} = {}) => signedIn(storage) && now() - (Number(storage.settings().linkedinJobs?.copiedAt) || 0) > COPY_AGE_MS;
 
 /** LinkedIn jobs on with the sign-in already kept (it was signed in for Easy Apply): nothing is asked. -> {ok: true} | {ok: false, reason: 'needs-signin'}. */
 export function turnOn(storage) {
@@ -109,7 +110,7 @@ export function turnOff(storage, {keychain = realKeychain} = {}) {
 /** Delete the kept sign-in (both switches are off): the Keychain item, its mark, its state and its keep time. Writes no switch. */
 export function forget(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  save(storage, {signedIn: false, signin: undefined, keptAt: undefined});
+  save(storage, {signedIn: false, signin: undefined, keptAt: undefined, copiedAt: undefined});
 }
 
 // Design (#3911, owner, 12 Nov 2026: "Why I don't get any notification or feedback"): "is the person's LinkedIn sign-in working" has ONE owner, settings.linkedinJobs.signin, moved only by a read's
