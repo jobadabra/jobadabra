@@ -3,6 +3,7 @@ export const messages = {
   "linkedinWarning": "LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.",
   "linkedinWhere": "Settings → Connections → LinkedIn",
   "linkedinLead": "Jobadabra can read your LinkedIn job searches every time you press Find jobs, in the background with no window. You sign in once, the way you choose below: Jobadabra never sees your password. The sign-in stays on this Mac, and you can turn it off any time in {where}.",
+  "linkedinLeadKept": "Jobadabra can read your LinkedIn job searches every time you press Find jobs, in the background with no window, with the LinkedIn sign-in it already keeps for Easy Apply. Turn it off any time in {where}.",
   "linkedinAsk": "Also search LinkedIn on every Find jobs?",
   "linkedinSignin": "Sign in to LinkedIn",
   "linkedinWays": "How do you want to sign in?",

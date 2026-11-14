@@ -3,6 +3,7 @@ export const messages = {
   "linkedinWarning": "LinkedIn kann als automatisiert erkannte Konten einschränken; wir lesen langsam und nur Ihre Stellensuchen.",
   "linkedinWhere": "Einstellungen → Verbindungen → LinkedIn",
   "linkedinLead": "Jobadabra kann bei jeder Stellensuche Ihre LinkedIn-Suchen im Hintergrund ohne Fenster lesen. Sie melden sich einmal an, auf die Art, die Sie unten wählen: Jobadabra sieht Ihr Passwort nie. Die Anmeldung bleibt auf diesem Mac. Jederzeit ausschaltbar unter {where}.",
+  "linkedinLeadKept": "Jobadabra kann bei jeder Stellensuche Ihre LinkedIn-Suchen im Hintergrund ohne Fenster lesen, mit der LinkedIn-Anmeldung, die es schon für Easy Apply aufbewahrt. Jederzeit ausschaltbar unter {where}.",
   "linkedinAsk": "Bei jeder Stellensuche auch LinkedIn durchsuchen?",
   "linkedinSignin": "Bei LinkedIn anmelden",
   "linkedinWayWindowNote": "Melden Sie sich auf LinkedIns eigener Seite an. Eine eigene Anmeldung, die Sie in LinkedIn einzeln beenden können.",

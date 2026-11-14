@@ -32,9 +32,9 @@ test('a cookie value that is not one printable token is refused (nothing odd rea
   for (const value of ['', 'two words', 'tab\there', 'line\nbreak', 'x'.repeat(2049), 'café']) assert.equal(cleanCookies([cookie('li_at', value)]), null, JSON.stringify(value).slice(0, 30));
 });
 
-test('saving the session puts it in the Keychain under one item, turns the switch on and never returns the value', () => {
+test('saving the session for LinkedIn jobs puts it in the Keychain under one item, turns its switch on and never returns the value', () => {
   const settings = store({linkedinJobs: {asked: 1}}), kc = keychain();
-  const done = saveSession(settings, good(), {keychain: kc});
+  const done = saveSession(settings, good(), {keychain: kc, for: 'jobs'});
   assert.deepEqual(done, {ok: true});
   assert.equal(JSON.stringify(done).includes(SECRET), false);
   assert.equal(SERVICE, 'jobadabra.linkedin-jobs.session');
@@ -113,7 +113,7 @@ test('#2731 the refresh copy: replaces the Keychain item while on; Chrome signed
   const settings = store(), kc = keychain();
   assert.equal(refreshSession(settings, good(), {keychain: kc}).ok, false, 'off: a copy never arrives');
   assert.equal(kc.items.size, 0);
-  saveSession(settings, good(), {keychain: kc});
+  saveSession(settings, good(), {keychain: kc, for: 'jobs'});
   const fresh = [cookie('li_at', 'AQEDAR-fresh-value'), cookie('JSESSIONID', '"ajax:55"')];
   const answer = refreshSession(settings, fresh, {keychain: kc});
   assert.deepEqual(answer, {ok: true});
@@ -195,7 +195,7 @@ test('a kept sign-in is stamped, and when LinkedIn ends it one line says how man
   const settings = store(), kc = keychain(), lines = [];
   const log = (...line) => lines.push(line);
   const at = iso => ({now: () => Date.parse(iso)});
-  saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T08:00:00Z')});
+  saveSession(settings, good(), {keychain: kc, for: 'jobs', ...at('2026-11-10T08:00:00Z')});
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z');
   saveSession(settings, good(), {keychain: kc, ...at('2026-11-10T20:00:00Z')});   // the consent page or the window run again on the same sign-in (Gitar on #4247)
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-10T08:00:00.000Z', 'the same sign-in saved again keeps its clock');

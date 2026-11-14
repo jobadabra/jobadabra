@@ -3,6 +3,7 @@ export const messages = {
   "linkedinWarning": "LinkedIn può limitare gli account ritenuti automatizzati; leggiamo lentamente e solo le tue ricerche di lavoro.",
   "linkedinWhere": "Impostazioni → Connessioni → LinkedIn",
   "linkedinLead": "Jobadabra può leggere le ricerche LinkedIn ogni volta che premi Cerca lavoro, in background senza finestre. Accedi una volta, nel modo che scegli qui sotto: Jobadabra non vede mai la tua password. L’accesso resta su questo Mac. Puoi disattivarlo in qualsiasi momento in {where}.",
+  "linkedinLeadKept": "Jobadabra può leggere le ricerche LinkedIn ogni volta che premi Cerca lavoro, in background senza finestre, con l’accesso LinkedIn che conserva già per Easy Apply. Puoi disattivarlo in qualsiasi momento in {where}.",
   "linkedinAsk": "Cercare anche su LinkedIn a ogni ricerca?",
   "linkedinSignin": "Accedi a LinkedIn",
   "linkedinWayWindowNote": "Accedi sulla pagina di LinkedIn. Un accesso separato che puoi chiudere da solo in LinkedIn.",

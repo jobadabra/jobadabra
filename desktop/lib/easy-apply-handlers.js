@@ -4,7 +4,7 @@ import {turnOff, turnOn, viewOf} from './easy-apply-switch.js';
 
 /** The window's three channels. In demo mode nothing is saved and turning on answers not-offered, so the window never says "on" over a row that reads off (Gitar on #4008). `packaged`: app.isPackaged. `clock` stamps the warning. */
 export function registerEasyApplyHandlers({DEMO, ipcMain, storage, packaged, clock = () => new Date()}) {
-  ipcMain.handle('easyApplyState', () => (DEMO ? {on: false, linkedinOn: false, warned: false, offered: !packaged} : viewOf(storage, {packaged})));
+  ipcMain.handle('easyApplyState', () => (DEMO ? {on: false, signedIn: false, warned: false, offered: !packaged} : viewOf(storage, {packaged})));
   ipcMain.handle('easyApplyOn', (_, answer) => (DEMO ? {ok: false, reason: 'not-offered'} : turnOn(storage, {warned: answer?.warned === true, now: clock(), packaged})));
   ipcMain.handle('easyApplyOff', () => (DEMO ? {ok: true} : turnOff(storage)));
 }

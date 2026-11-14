@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {EASY_APPLY, commandOf, nextStep, rowOf} from '../../../renderer/easy-apply-words.js';
 
-const view = extra => ({loaded: true, on: false, linkedinOn: true, warned: false, offered: true, ...extra});
+const view = extra => ({loaded: true, on: false, signedIn: true, warned: false, offered: true, ...extra});
 
 test('the warning is the owner\'s D4 text, word for word, with "Turn on" / "Not now"', () => {
   assert.equal(EASY_APPLY.warn.line, "Easy Apply sends applications from your own LinkedIn account. LinkedIn's terms do not allow automated applying, and LinkedIn may limit or restrict your account. "
@@ -15,19 +15,20 @@ test('the warning is the owner\'s D4 text, word for word, with "Turn on" / "Not 
   assert.match(EASY_APPLY.warn.lead, /Standard and Background wait for your Submit/);
 });
 
-test('a press: manage while on, LinkedIn jobs first without its sign-in, the warning once, then straight on', () => {
+// Why (owner, 14 Nov 2026: "a turn on should focus just on that specific case (easy apply or linkedin jobs)"): no sign-in kept -> Easy Apply's own sign-in dialog, never LinkedIn jobs'.
+test('a press: manage while on, its own sign-in dialog with no sign-in kept, the warning once, then straight on', () => {
   assert.equal(nextStep(view({on: true})), 'manage');
-  assert.equal(nextStep(view({linkedinOn: false})), 'linkedin-first');
-  assert.equal(nextStep(view({linkedinOn: false, warned: true})), 'linkedin-first', 'the sign-in comes before anything else');
+  assert.equal(nextStep(view({signedIn: false})), 'sign-in');
+  assert.equal(nextStep(view({signedIn: false, warned: true})), 'sign-in', 'the sign-in comes before anything else');
   assert.equal(nextStep(view()), 'warn');
   assert.equal(nextStep(view({warned: true})), 'turn-on');
 });
 
-test('the Connections row: only where offered, and it says why it is off', () => {
+test('the Connections row: only where offered; off reads Off, with or without a sign-in (it no longer needs LinkedIn jobs)', () => {
   assert.equal(rowOf(view({offered: false})).shown, false, 'packaged build: no row until sending lands');
   assert.equal(rowOf({loaded: false}).shown, false, 'not read yet: no row');
   assert.deepEqual(rowOf(view()), {shown: true, on: false, words: 'Off'});
-  assert.deepEqual(rowOf(view({linkedinOn: false})), {shown: true, on: false, words: 'Needs LinkedIn jobs on'});
+  assert.deepEqual(rowOf(view({signedIn: false})), {shown: true, on: false, words: 'Off'});
   assert.equal(rowOf(view({on: true})).on, true);
 });
 

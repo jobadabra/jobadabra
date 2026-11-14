@@ -27,10 +27,10 @@ test('a POST with nothing usable is refused and the switch stays off', () => {
 
 test('the window\'s view has the state and the ask, never a cookie value', () => {
   const settings = store(), kc = keychain();
-  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
+  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, signedIn: false, ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
   linkedinRoutes(settings, {keychain: kc}).session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   const view = linkedinView(settings, {keychain: kc});
-  assert.deepEqual(view, {on: true, asked: 0, declined: 0, ask: false, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
+  assert.deepEqual(view, {on: true, asked: 0, declined: 0, signedIn: true, ask: false, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
   assert.equal(JSON.stringify(view).includes(SECRET), false);
 });
 
@@ -68,4 +68,31 @@ test("#2731 a Find jobs press asks, the extension's look hears it, its copy land
   settings.saveSettings({linkedinJobs: {on: false}});
   assert.deepEqual(routes.pending(), {revoke: true, refresh: false}, 'off never asks for a copy');
   assert.deepEqual(routes.refresh({held: false}), {ok: false, error: 'LinkedIn jobs is off'});
+});
+
+// Why (owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times"): a sign-in turns on only the switch that asked for it, by either way.
+test('two switches, one sign-in: each way signs in for the switch that asked; LinkedIn jobs then turns on with no second sign-in', async () => {
+  const settings = store(), kc = keychain(), handlers = new Map(), routes = new Map(), opened = [];
+  const server = {setVisitRoute: (path, fn) => routes.set(path, fn), extensionSeen: () => true};
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server, storage: settings, deps: {keychain: kc, isolated: true}, log: () => {},
+    openPage: async () => { opened.push('chrome'); return {opened: true}; }, signIn: async () => ({ok: true, cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]})});
+  assert.deepEqual(await handlers.get('linkedinJobsConnect')({}, {for: 'easy-apply'}), {opened: true}, 'the Chrome way, asked by Easy Apply');
+  routes.get('/extension/linkedin-session')({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
+  let view = await handlers.get('linkedinJobsState')();
+  assert.equal(view.on, false, 'LinkedIn jobs stays off: Easy Apply asked');
+  assert.equal(view.signedIn, true);
+  assert.equal(routes.get('/extension/linkedin-pending')().revoke, false, 'a kept sign-in keeps the extension\'s LinkedIn permissions');
+  assert.deepEqual(await handlers.get('linkedinJobsOn')(), {ok: true}, 'LinkedIn jobs later: nothing asked');
+  assert.equal((await handlers.get('linkedinJobsState')()).on, true);
+
+  const other = store(), kc2 = keychain(), h2 = new Map();
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => h2.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: other, deps: {keychain: kc2, isolated: true}, log: () => {},
+    openPage: async () => ({opened: true}), signIn: async () => ({ok: true, cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]})});
+  assert.deepEqual(await h2.get('linkedinJobsOn')(), {ok: false, reason: 'needs-signin'}, 'nothing kept: no turn-on without a sign-in');
+  assert.deepEqual(await h2.get('linkedinJobsSignIn')({}, {for: 'easy-apply'}), {ok: true}, 'the window way, asked by Easy Apply');
+  view = await h2.get('linkedinJobsState')();
+  assert.deepEqual([view.on, view.signedIn], [false, true]);
+  assert.deepEqual(await h2.get('linkedinJobsSignIn')({}, {for: 'jobs'}), {ok: true});
+  assert.equal((await h2.get('linkedinJobsState')()).on, true, 'asked by LinkedIn jobs: its switch turns on');
+  assert.ok(readSession({keychain: kc2}));
 });
