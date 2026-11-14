@@ -35,12 +35,19 @@ def words(base):
     """{'INSTRUCTIONS': ..., 'FIELD_INSTRUCTIONS': ...} of board_check.py at `base` (git), read without importing it."""
     source = subprocess.run(['git', 'show', f'{base}:src/sources/board_check.py'], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     known = {}   # every top-level string constant in order, so one built from another (JOB_BOARD_EXAMPLES) reads as the module does
+
+    def text(node):   # only string literals, names of earlier ones and '+': never runs the file's code
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.Name) and node.id in known:
+            return known[node.id]
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left, right = text(node.left), text(node.right)
+            return None if left is None or right is None else left + right
+        return None
     for node in ast.parse(source).body:
-        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
-            try:
-                known[node.targets[0].id] = eval(compile(ast.Expression(node.value), 'board_check', 'eval'), {'__builtins__': {}}, dict(known))
-            except Exception:  # noqa: BLE001 — not a plain string constant (a class, a call): not a prompt
-                continue
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and text(node.value) is not None:
+            known[node.targets[0].id] = text(node.value)
     return {name: known[name] for name in ('INSTRUCTIONS', 'FIELD_INSTRUCTIONS')}
 
 
