@@ -254,9 +254,10 @@ def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
     # Why (Gitar on #4044): the run again is decided once, by pair_row.decide (every PR, once; owner via sa, 13 Nov 2026); this only words the verdict, and 3/3 deletes the hold path.
     again = bool(ours and invalid and rerun and not fell)
     still = pending(body)
-    # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
     every = {**earlier, **done}
     flat = pair_row.no_proven_gain(every, {person: m['d'] for person, m in every.items()}, named) if not invalid and not never else []   # the row is red for it (pair_row.decide)
+    # Why (Gitar on #3967; 14 Nov 2026, owner: the pair's row is the verdict): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
+    #   It also stays while the row is red for no proven gain, so the hold and the row never disagree until the hold goes (5/5).
     lift = ours and not fell and not flat and not still and not invalid and not never
     head = 'Hold kept' if ours else 'Not held by ship (no "search-hold" label)'
     if lift:

@@ -125,7 +125,9 @@ def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()
         # Design (14 Nov 2026): the row's meaning is "valid, nobody worse, and the claimed gain beyond the usual difference"; a valid pair with no loss and no such gain is red, not green.
         red = 'no proven gain: ' + ' · '.join(short(line) for line in lines if line.split(' ', 1)[0] in flat)
         return {'conclusion': 'failure', 'title': red[:140], 'summary': '\n'.join(lines + ['The PR names ' + ', '.join(flat) + ' in its Moves lines but none moved beyond the usual difference: close the PR, or name the gain by hand and merge with the ruleset override. ' + OVERRIDE]), 'rerun': []}
-    return {'conclusion': 'success', 'title': ' · '.join(short(line) for line in lines)[:140], 'summary': '\n'.join(lines), 'rerun': []}
+    carried = [person for person in sorted(done) if person in named and done[person]['after'] - done[person]['before'] > band(spreads.get(person))] or [line.split(' ', 1)[0] for line in earlier if line.split(' ', 1)[0] in named and 'gain beyond' in line]
+    said = f"gain proven by {', '.join(carried)}: " if carried else ''   # sa, 14 Nov 2026: the row says which person carried the yes
+    return {'conclusion': 'success', 'title': (said + ' · '.join(short(line) for line in lines))[:140], 'summary': '\n'.join(([f'The yes is carried by {", ".join(carried)}.'] if carried else []) + lines), 'rerun': []}
 
 
 def safe(text):

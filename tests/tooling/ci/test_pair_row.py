@@ -189,6 +189,14 @@ class TheRowDemandsAProvenGainOnlyFromThePeopleTheMovesLinesName(unittest.TestCa
         out = self.verdict({'p3': moves(5, 20)}, {'p3'})
         self.assertEqual(out['conclusion'], 'success')
 
+    def test_the_row_says_which_person_carried_the_yes(self):   # sa, 14 Nov 2026
+        out = self.verdict({'p3': moves(5, 20), 'p9': moves(12, 12)}, {'p3', 'p9'})
+        self.assertTrue(out['title'].startswith('gain proven by p3: '), out['title'])
+        self.assertTrue(out['summary'].startswith('The yes is carried by p3.'))
+        self.assertNotIn('gain proven by', self.verdict({'p3': moves(15, 15)}, set())['title'], 'a pair that claims nothing names no one')
+        first = 'p3 5 → 20 right jobs (one run a side, gain beyond the usual difference of 7)'
+        self.assertIn('gain proven by p3', self.verdict({'p9': moves(12, 12)}, {'p3', 'p9'}, earlier=[first])['title'])
+
     def test_a_named_person_level_within_the_band_is_red_no_proven_gain_with_the_way_out(self):
         out = self.verdict({'p3': moves(15, 17)}, {'p3'})
         self.assertEqual(out['conclusion'], 'failure')
