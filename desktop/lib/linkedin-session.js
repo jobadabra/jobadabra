@@ -10,7 +10,7 @@
 // lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
-import {linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
+import {easyApplyOn, linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
 
 export const SERVICE = realKeychain.TWIN_LINKEDIN_SESSION;   // one owner of the item's name: lib/keychain.js (Gitar on #4246)
 export const ACCOUNT = 'linkedin-jobs';
@@ -84,15 +84,15 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
-const easyOn = storage => storage.settings().easyApply?.on === true;   // Easy Apply uses the sign-in too (owner, 14 Nov 2026: one sign-in, two switches)
+const easyOn = storage => easyApplyOn(storage.settings());   // Easy Apply uses the sign-in too (owner, 14 Nov 2026: one sign-in, two switches); the one rule, so a saved yes with no sign-in behind it holds nothing (Gitar on #4391)
 /** True when a copy from the extension is taken, and so the extension keeps its LinkedIn grants: a Chrome way waits for it, a sign-in is kept, or LinkedIn jobs is on (a refresh, also after a Chrome sign-out). One rule, no second name (Gitar on #4380). */
-export const takesCopy = (storage, deps = {}) => state(storage).on || easyOn(storage) || loginOf(storage, deps).state !== 'none';
+export const takesCopy = (storage, deps = {}) => state(storage).on || loginOf(storage, deps).state !== 'none';   // Easy Apply on means a kept sign-in, which this already holds
 /**
  * The Chrome way was opened with LinkedIn jobs off: the sign-in waits for its copy (WANTED_MS). A sign-in already kept with its item there stays as it is: the press turns its switch on
  * with it (owner, 14 Nov 2026: "he should never login 2 times"; Gitar on #4350, #4365: nothing is deleted, so an expired wait leaves no orphan and no working sign-in is lost).
  */
 export const openSignin = (storage, deps = {}) => {
-  if (state(storage).on || easyOn(storage) || (loginOf(storage, deps).state === 'kept' && readSession(deps))) return;
+  if (state(storage).on || (loginOf(storage, deps).state === 'kept' && readSession(deps))) return;
   moveLogin(storage, 'waiting', deps);
 };
 

@@ -112,3 +112,20 @@ test('the three channels: demo mode touches no settings; a real turn-on passes t
   assert.deepEqual(await handlers.easyApplyOff(), {ok: true});
   assert.equal((await handlers.easyApplyState()).on, false);
 });
+
+// Gitar on #4391: a saved Easy Apply yes with no sign-in behind it (after a Chrome sign-out) is off, so it holds nothing: no copy, no kept item, no skipped clean-up.
+test('a saved Easy Apply yes with no sign-in holds nothing: no copy, the Chrome way waits, clean-up runs, LinkedIn jobs off deletes the item', () => {
+  const lost = () => store({linkedinJobs: {on: false, login: {state: 'none', at: 0}}, easyApply: {on: true, warnedAt: NOW.toISOString()}});
+  const withItem = () => { const removed = []; return {removed, keychain: {read: () => ITEM, remove: key => removed.push(key)}}; };
+  assert.equal(easyApplyOn(lost().mine), false, 'the saved yes reads off');
+  assert.equal(linkedin.takesCopy(lost()), false, 'nobody asked: a copy is not taken');
+  const open = lost();
+  linkedin.openSignin(open, {keychain: {read: () => null}});
+  assert.equal(linkedin.loginOf(open).state, 'waiting', 'the Chrome way waits for its copy');
+  const orphan = withItem();
+  linkedin.forgetUnused(lost(), {keychain: orphan.keychain, now: () => Date.now()});
+  assert.equal(orphan.removed.length, 1, 'the orphaned item is cleaned up at start');
+  const jobs = store({linkedinJobs: {on: true, login: {state: 'none', at: 0}}, easyApply: {on: true, warnedAt: NOW.toISOString()}}), gone = withItem();
+  linkedin.turnOff(jobs, {keychain: gone.keychain});
+  assert.equal(gone.removed.length, 1, 'LinkedIn jobs off deletes the item: nothing uses it');
+});
