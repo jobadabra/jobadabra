@@ -6,6 +6,8 @@ Env (all under the TAPE_ prefix the app's engine env passes, desktop/lib/pipelin
   JOBADABRA_TAPE_SHARED=<folder>   pages: the first search to ask an address fetches it and writes status, body and seconds; the other gets the same bytes after the same seconds, counted from
                                    its own ask, so it is not faster inside the 3-minute clock. An address only one search asks, and a search's own second ask, are live (a real run refetches).
   JOBADABRA_TAPE_SHARED_AI=1       AI answers: the same rule for a byte-identical request (dates normalised, as src/search_tape.py keys it).
+                                   Also per wording for the engine's batched asks (src/ai/decide.py _ask): two searches pack the same wordings into different batches (src/ai/decide_gate.py is arrival order),
+                                   so each wording's answer is shared, not only a batch's bytes.
   JOBADABRA_TAPE_SHARED_REPLAY=1   serve a finished run's folder (`_SCALE` times its seconds): nothing is asked of any site or AI; what the folder lacks fails like an unreachable site.
 Invariant: install() refuses unless the engine's data folder and the shared folder are both under the OS temp folder, so the owner's app folder can never be read through it.
 Not covered: reads that do not go through urllib (the page browser, the extension). Uses src/search_tape.py's reply and key helpers (one definition of a request's key and of a replayed reply)."""
@@ -45,10 +47,10 @@ def _write(path, data):
     os.replace(tmp, path)
 
 
-def _log(kind, what, seconds):
+def _log(kind, what, seconds, **more):
     try:
         with open(os.path.join(folder, f'log-{SIDE}.jsonl'), 'a', encoding='utf-8') as file:
-            file.write(json.dumps({'kind': kind, 'url': what[:200], 'seconds': round(seconds, 2), 't': round(time.time(), 1)}) + '\n')
+            file.write(json.dumps({'kind': kind, 'url': what[:200], 'seconds': round(seconds, 2), 't': round(time.time(), 1), **more}) + '\n')
     except OSError:
         pass
 
@@ -225,6 +227,50 @@ class _Client:
         return getattr(self.live(), name)
 
 
+def _wording_key(topic, answers, instructions, wording):
+    return 'w-' + hashlib.sha1(json.dumps([topic, list(answers), instructions, wording], ensure_ascii=False).encode('utf-8')).hexdigest()[:24]
+
+
+def _per_wording(real):
+    """decide._ask with the answers shared per wording: the side that asks a wording first (the layer's lock) asks it in its own batch and writes the answer; the other side takes that answer
+    and asks only what is still unanswered. Batch membership is arrival order by design (src/ai/decide_gate.py), so a batch of the same wordings differs between two searches and its bytes (the key
+    _Messages shares by) differ; the wording does not. A failed or unasked answer is not shared (the other side asks it itself).
+    Why (14 Nov 2026, sa): two same-code c15 sides packed the same ~555 link wordings into different 50-wording batches and each asked its own."""
+    from .ai.decide_gate import UNASKED
+
+    def ask(topic, pairs, answers, instructions, client, allowance):
+        if REPLAY or not pairs:
+            return real(topic, pairs, answers, instructions, client, allowance)
+        asked, got, mine, waits = time.monotonic(), [UNASKED] * len(pairs), [], []
+        for i, (_, wording) in enumerate(pairs):
+            base = os.path.join(folder, _wording_key(topic, answers, instructions, wording))
+            role = _role(base)
+            (waits if role == 'other' else mine).append((i, base, role))
+        if mine:   # our own batch first, before any wait: a side never holds claims while it waits for the other's
+            results = real(topic, [pairs[i] for i, _, _ in mine], answers, instructions, client, allowance)
+            for (i, base, role), answer in zip(mine, results):
+                got[i] = answer
+                if role == 'first':
+                    _write(base + '.json', json.dumps({'answer': None if answer is UNASKED else answer, **({'error': 'unasked'} if answer is UNASKED else {}), 'seconds': 0}).encode())
+            _count('wording_asked', len(mine))
+        late = []
+        for i, base, _ in waits:
+            record = _await(base, asked, WAIT_AI_S, pairs[i][1])
+            if record is None or record.get('error'):
+                late.append(i)
+            else:
+                got[i] = record['answer']
+                _count('wording_shared')
+        if late:
+            for i, answer in zip(late, real(topic, [pairs[i] for i in late], answers, instructions, client, allowance)):
+                got[i] = answer
+            _count('wording_asked_late', len(late))
+        _log('wording_batch', f'{topic} {len(pairs)}', time.monotonic() - asked, mine=len(mine), shared=len(waits) - len(late), late=len(late))
+        return got
+    ask.same_inputs = True
+    return ask
+
+
 def _under_temp(path):
     base = os.path.realpath(tempfile.gettempdir())
     return os.path.commonpath([base, os.path.realpath(path)]) == base
@@ -245,4 +291,8 @@ def install():
         from .ai import providers
         real_build = providers.build
         providers.build = lambda env=None, action='', log=None: _Client(lambda: real_build(env, action, log))
+    if os.environ.get('JOBADABRA_TAPE_SHARED_AI') == '1':
+        from .ai import decide
+        if not getattr(decide._ask, 'same_inputs', False):
+            decide._ask = _per_wording(decide._ask)
     atexit.register(lambda: _log('exit', json.dumps(counts), 0))
