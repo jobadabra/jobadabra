@@ -190,6 +190,13 @@ class LayoutYieldTests(unittest.TestCase):
         self.assertEqual(len(jobs), 20)
         self.assertNotIn('layout', notes, '8 of the 28 links are not jobs, whatever they are called')
 
+    def test_one_job_title_counts_one_link(self):
+        """sa on #4154: a job whose address is not among the links is matched by its title once; three links carrying that title are not three jobs."""
+        from src.sources import board_layout
+        markup = '<html><body><a href="/a">Python Developer 9</a><a href="/b">Python Developer 9</a><a href="/c">Python Developer 9</a></body></html>'
+        found = [{'url': 'https://jobs.example/elsewhere', 'title': 'Python Developer 9'}]
+        self.assertFalse(board_layout._reads_the_jobs(ROOT, markup, 'https://jobs.example/search', found), 'one job, three links: 1 of 3 is under MATCH_SHARE')
+
     def test_a_root_layout_whose_links_are_all_jobs_is_learned(self):
         jobs, notes = self.learned(_listing(0, 20))
         self.assertEqual((len(jobs), notes.get('layout')), (20, ROOT))

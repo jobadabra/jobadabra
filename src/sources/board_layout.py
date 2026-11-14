@@ -12,13 +12,25 @@ second such page (a failed fetch is that page's failure and is not counted). At 
 page the layout was learned from, and a layout with no structure (an empty prefix: any link under the root) must give MATCH_SHARE jobs. Both numbers are page_recipes'.
 Tests: tests/unit/sources/test_board_layouts.py (the replay), test_board_layout_yield.py (the yield), test_scout_board_layouts.py (board discovery learns it).
 """
+import collections
 import threading
 
 from . import careers, page_recipes
+from ..press import stage
 
 # Why (14 Nov 2026, Gitar on #4143): one sparse page, or the posting judge's run-to-run difference, must not retire a layout that works on the board's other pages: a page where the usual read
 # finds more is read the usual way (that page alone pays), and the layout is retired on a repeat. 2 is "a repeat", the smallest count that is not one page's luck, not a tuned threshold.
 SHORTFALLS = 2
+
+
+class _Uncounted:
+    """A details sink that counts nothing: `_once` only keeps a failure, and the page read's own guard counts it once when it is raised again."""
+    @staticmethod
+    def failed(where, reason):
+        pass
+
+
+_UNCOUNTED = _Uncounted()
 
 
 def _once(fetch):
@@ -30,10 +42,10 @@ def _once(fetch):
         with lock:
             hit = seen.get(address)
         if hit is None:
-            try:
+            with stage.guard('employer sites: linked page', _UNCOUNTED) as caught:
                 hit = (fetch(address), None)
-            except Exception as error:   # kept and raised again to every asker: the caller's own guard decides what a failed page means
-                hit = (None, error)
+            if caught:   # kept and raised again to every asker: the caller's own guard (careers.read_page_from) counts it and decides what a failed page means
+                hit = (None, caught.error)
             with lock:
                 hit = seen.setdefault(address, hit)
         if hit[1] is not None:
@@ -133,10 +145,17 @@ def _reads_the_jobs(recipe, markup, url, found):
         return True
     norm = lambda address: address.split('#')[0].rstrip('/')   # the same on both sides: a found job's url may carry a fragment or a slash the link does not
     urls = {norm(job['url']) for job in found}
-    # Why (14 Nov 2026, Gitar on #4154): a title is only the way back to a job whose address is not among the links named (a redirect, a tracking part); a link whose own address is a job's
-    # must not lend its title to another link ("Apply", "View job"), or navigation named like a job would count as one.
+    # Why (14 Nov 2026, Gitar on #4154; sa): a title is only the way back to a job whose address is not among the links named (a redirect, a tracking part), one link per such job, and never
+    # an empty one: a link whose own address is a job's must not lend its title to another link ("Apply", "View job"), nor one job's title count every link that carries it.
     linked = {norm(link) for _, link in named}
-    titles = {job['title'].lower() for job in found if norm(job['url']) not in linked}
-    jobs = sum(1 for title, link in named if norm(link) in urls or title.lower() in titles)
+    unmatched = collections.Counter(job['title'].strip().lower() for job in found if norm(job['url']) not in linked and job['title'].strip())
+    jobs = 0
+    for title, link in named:
+        title = (title or '').strip().lower()
+        if norm(link) in urls:
+            jobs += 1
+        elif title and unmatched[title] > 0:
+            unmatched[title] -= 1
+            jobs += 1
     bare = recipe['kind'] == 'links' and recipe['prefix'] == '' and recipe.get('depth', 1) == 1
     return jobs >= page_recipes.MATCH_SHARE * len(named) if bare else jobs * page_recipes.MAX_FACTOR >= len(named)
