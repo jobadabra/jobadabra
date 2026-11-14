@@ -46,6 +46,7 @@ class PassTime(unittest.TestCase):
 
     def test_only_new_lane_reads_switch_to_the_pass_time(self):
         pass_at, lane_end = read_budget.pass_at(), read_budget.run_end()
+        read_budget.pass_at(started=pass_at)
         self.assertTrue(read_budget.past_cut(now=pass_at + 1))
         self.assertEqual(read_budget.cut_at(), 1090)
         with slots.in_lane(lane_end):
@@ -57,9 +58,9 @@ class PassTime(unittest.TestCase):
 
     def test_the_read_gate_and_worker_share_the_first_published_cut(self):
         self.paces.return_value = {'place_rounds': 20, 'place_vague': 4, 'title_rounds': 1}
-        self.assertEqual(read_budget.pass_at(), 1125)
+        self.assertEqual(read_budget.pass_at(started=1125), 1125)
         self.paces.return_value['place_rounds'] = 12.5
-        self.assertEqual(read_budget.pass_at(), 1125, 'pace changes before worker startup must not move the read gate')
+        self.assertEqual(read_budget.pass_at(), 1125, 'pace changes after the worker begins must not move the read gate')
         with slots.in_lane(1165):
             self.assertTrue(read_budget.past_cut(now=1130))
         time_budget.start(180, now=1000)

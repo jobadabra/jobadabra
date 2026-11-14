@@ -54,26 +54,27 @@ def run_end():
     return time_budget.end() - time_budget.part(time_budget.TAIL)
 
 
-def pass_at():
-    """Publish one cutoff on Run.clock before either the read gate or worker can use it; reuse it for this run.
-    Why (#4408): live pace changes made the pre-publication read gate disagree with the worker. Clock.start gives each run a fresh holder.
+def pass_at(*, started=None, published=False):
+    """Estimate the pass moment from current paces until the worker publishes `started` once; then return that run-owned cutoff.
+    `published` reads only that value (None before the worker begins judging), so gates never freeze an estimate.
+    Why (#4416): construction and reader gates precede this search's pace measurements; only the worker commits its actual snapshot boundary.
     Reserve cold map/place/vague or title work plus one scheduler grain; scaled bounds cover full batches before run_end."""
     end = run_end()
     if end is None:
         return None
     clock, cut = time_budget.CLOCK, time_budget.CLOCK.board_pass
     with clock._lock:
-        if cut[0] is not None:
+        if started is not None and cut[0] is None:
+            cut[0] = started
+        if published or cut[0] is not None:
             return cut[0]
     paces = {**time_budget.PACE, **time_budget._paces()}
     places = 2 * paces['place_rounds'] + paces['place_vague']
     need = max(places, paces['title_rounds']) + BETWEEN_S
     at = end - min(max(need, time_budget.part(PASS_MIN)), time_budget.part(PASS_MAX))
-    # Why (#4408): pacing I/O stays outside the lock; concurrent first callers must return the same published value.
+    # Why (#4416): pace I/O stays outside the lock; a concurrent worker publication takes precedence over this estimate.
     with clock._lock:
-        if cut[0] is None:
-            cut[0] = at
-        return cut[0]
+        return cut[0] if cut[0] is not None else at
 
 
 def deadline(now=None):
@@ -105,7 +106,7 @@ def cut_at():
 def past_cut(now=None):
     """Start no new lane read past pass_at, while cut_at still lets open reads finish to run_end.
     Why (14 Nov 2026, owner: "Yes, stop new reads then (Recommended)"): leave time to judge the jobs already read inside this search."""
-    at = pass_at() if lane_end() is not None else cut_at()
+    at = pass_at(published=True) if lane_end() is not None else cut_at()
     return at is not None and (now if now is not None else time_budget.now()) >= at
 
 

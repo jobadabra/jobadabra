@@ -24,7 +24,7 @@ class HandOver(unittest.TestCase):
         self.enterContext(mock.patch.object(feeds, 'triage'))
         time_budget.start(180, now=time.monotonic() - 100)
         with mock.patch.object(boards_first.Beside, '_known', lambda lane, wait: lane._put(self.jobs)), \
-                mock.patch('src.sources.read_budget.pass_at', return_value=None):
+                mock.patch('src.sources.read_budget.run_end', return_value=None):
             self.lane = boards_first.Beside({})
             self.assertTrue(self.lane.done.wait(timeout=10))
         self.shown = []
@@ -136,7 +136,7 @@ class HandOver(unittest.TestCase):
                     held.wait(timeout=30)
                 time_budget.start(seconds)
                 with mock.patch.object(boards_first.Beside, '_known', read), \
-                        mock.patch('src.sources.read_budget.pass_at', return_value=None):
+                        mock.patch('src.sources.read_budget.run_end', return_value=None):
                     lane = boards_first.Beside({})
                 self.assertTrue(begun.wait(timeout=10))
                 hand = threading.Thread(target=lane.last_pass, args=(self.db, self.shown.extend), daemon=True)
