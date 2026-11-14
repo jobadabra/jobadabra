@@ -65,7 +65,9 @@ def board_jobs(say=print, search=None, on_board=None):
         # Why (14 Nov 2026, benchmark run 43642654233, Krakow chef): the slice waited for the field answer too (53 s) though the country's
         # answer (37 s) fills the read's places (board_ideas._in_turn, owner 13 Nov "Country fills, field waits"): Pracuj.pl landed at
         # 120 s, after the search's time. The country's boards start once they are in; the field's join the same read as `later`.
-        _wait_early(search, part='country')
+        from .sources import read_budget
+        if _wait_early(search, part='country') is False and read_budget.past_cut():
+            return []   # the early country call is late or failed: nothing is asked again past the read cut (Gitar, #4412)
         proposed = _proposed(board_ideas, search, field=False)
         if proposed:
             later = lambda: _named_meanwhile(board_ideas, search)
@@ -122,20 +124,22 @@ def _whole(board_ideas, search, country):
 def _wait_early(search, part='future'):
     """The early proposal of this same search ended (waited for until the read cut at most), so the slice's own ask finds its answers
     cached instead of asking again; nothing for another search or none started. part: 'future' (the whole proposal, taken once) or
-    'country' (the countries' call only; the whole stays to be taken by the boards named later)."""
+    'country' (the countries' call only; the whole stays to be taken by the boards named later).
+    -> True when it ended in time, False when late or failed, None when there was none to wait for."""
     if _early.get('search') != search:
         _early.clear()
-        return
+        return None
     future = _early.get(part)
     if part == 'future':
         _early.clear()
     if future is None:
-        return
+        return None
     from .sources import read_budget
     try:
         future.result(timeout=read_budget.seconds_left(read_budget.cut_at()))
+        return True
     except Exception:  # noqa: BLE001 — late or failed: the slice asks itself (a late answer is cached when it comes)
-        pass
+        return False
 
 
 def _named_meanwhile(board_ideas, search):

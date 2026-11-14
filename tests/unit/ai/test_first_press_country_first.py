@@ -32,13 +32,16 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
     def setUp(self):
         self.addCleanup(first_jobs._early.clear)
         self.field_asked, self.field_release, self.reads, store = threading.Event(), threading.Event(), [], {}
-        self.country = list(COUNTRY)
+        self.country, self.country_asks, self.country_release = list(COUNTRY), [], threading.Event()
+        self.country_release.set()
 
         def ask(system, content, client=None):
             if system == board_ideas.FIELD_SYSTEM:
                 self.field_asked.set()
                 self.field_release.wait(10)
                 return list(FIELD)
+            self.country_asks.append(1)
+            self.country_release.wait(2)
             return list(self.country)
         for name, value in (('_ask', ask), ('proven', lambda search, limit=2: []), ('slices', lambda search: [ASKED]),
                             ('asked_for', lambda search: ASKED), ('load', lambda: store), ('save', lambda data: None),
@@ -62,10 +65,12 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.addCleanup(self.finish_early)
         self.addCleanup(self.field_release.set)
+        self.addCleanup(self.country_release.set)
 
     def finish_early(self):
         """Each test waits for its own background proposal before its patches stop (#2228)."""
         self.field_release.set()
+        self.country_release.set()
         for key in ('future', 'country'):
             future = first_jobs._early.get(key)
             if future is not None:
@@ -106,6 +111,17 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
             out['later'] = first_jobs.board_jobs(lambda line: None, SEARCH)
         self.assertEqual(seen, [0], 'no board was read before the field answered')
         self.assertEqual(self.reads[0][0], ['f0.test'], 'with no country board the field boards are the read')
+
+
+    def test_a_late_country_call_is_not_asked_again_past_the_cut(self):
+        self.country_release.clear()
+        with mock.patch('builtins.print'), mock.patch('src.sources.read_budget.seconds_left', lambda *a: 0.2), \
+                mock.patch('src.sources.read_budget.past_cut', lambda *a: True):
+            first_jobs.propose_early(SEARCH)
+            got = first_jobs.board_jobs(lambda line: None, SEARCH)
+        self.assertEqual(got, [], 'nothing is read once the cut has come')
+        self.assertEqual(len(self.country_asks), 1, 'the late country call was asked again inline, past the read cut')
+        self.assertEqual(self.reads, [])
 
 
 if __name__ == '__main__':
