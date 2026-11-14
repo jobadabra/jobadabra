@@ -119,7 +119,7 @@ export function usageLine(messages) {
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
   number state isDraft title headRefOid baseRefName baseRefOid headRepository { nameWithOwner }
   commits(last: 1) { nodes { commit { status { context(name: "${CHECK}") { state } } } } }
-  reviews(last: 30) { nodes { author { login } submittedAt body } }
+  reviews(last: 100) { nodes { author { login } submittedAt body } }
   comments(last: 30) { nodes { body } }
   labels(first: 50) { nodes { name } }
 } } }`;

@@ -131,6 +131,14 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertIn('RULE A text', prompt)
         self.assertNotIn('{{', prompt)
 
+    def test_every_read_of_the_reviews_asks_for_the_newest_ones(self):
+        """Gitar's findings on #4131: READY and the label pick the newest Claude review, so a read of the reviews must be a window of the NEWEST (`last`), never the oldest (`first`)."""
+        review_query = (ROOT / 'tools' / 'claude-review.mjs').read_text(encoding='utf-8')
+        self.assertIn('reviews(last: 100) { nodes { author { login } submittedAt body } }', review_query)
+        graphql_view = (ROOT / 'tools' / 'pr-rest-lib.sh').read_text(encoding='utf-8')
+        self.assertIn('reviews(last:100)@include(if:$full)', graphql_view)
+        self.assertNotIn('reviews(first:', graphql_view)
+
 
 if __name__ == '__main__':
     unittest.main()
