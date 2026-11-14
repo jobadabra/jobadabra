@@ -31,9 +31,6 @@ def _file():
     return paths.DATA / FILE
 
 
-_pass_cut = (None, None)   # Why (14 Nov 2026): the pass worker alone publishes its cutoff; every reader observes it.
-
-
 _short = [False]   # the boards read first gave enough jobs: only the best READ_FLOOR employer sites (src/sources/boards_first.py)
 
 
@@ -57,28 +54,26 @@ def run_end():
     return time_budget.end() - time_budget.part(time_budget.TAIL)
 
 
-def pass_at(started=None):
-    """Reserve the cold map/place/vague pipeline or title estimate, plus one scheduler grain, before run_end.
-    Why (14 Nov 2026, b01): place pacing excludes the map; title pacing divides by slots. Their bare sum left 11.38 s for 53 jobs.
-    The unpaced map uses the place-round estimate; scaled bounds cover full batches without changing the search deadline.
-    Once the worker commits, its cutoff stays fixed: its own pace updates cannot reopen reads.
-    started: the cutoff the worker committed to; publish it before judging even when the clock crossed between reads."""
-    global _pass_cut
+def pass_at():
+    """Publish one cutoff on Run.clock before either the read gate or worker can use it; reuse it for this run.
+    Why (#4408): live pace changes made the pre-publication read gate disagree with the worker. Clock.start gives each run a fresh holder.
+    Reserve cold map/place/vague or title work plus one scheduler grain; scaled bounds cover full batches before run_end."""
     end = run_end()
     if end is None:
         return None
-    epoch = time_budget._end_pass   # Why (14 Nov 2026): Clock.start replaces this run token even when timestamps repeat.
-    if _pass_cut[0] is epoch:
-        return _pass_cut[1]
-    if started is not None:
-        _pass_cut = (epoch, started)
-        return started
+    clock, cut = time_budget.CLOCK, time_budget.CLOCK.board_pass
+    with clock._lock:
+        if cut[0] is not None:
+            return cut[0]
     paces = {**time_budget.PACE, **time_budget._paces()}
     places = 2 * paces['place_rounds'] + paces['place_vague']
     need = max(places, paces['title_rounds']) + BETWEEN_S
     at = end - min(max(need, time_budget.part(PASS_MIN)), time_budget.part(PASS_MAX))
-    # Why (14 Nov 2026): the worker can publish while a reader loads paces; recheck its single assignment after that I/O.
-    return _pass_cut[1] if _pass_cut[0] is epoch else at
+    # Why (#4408): pacing I/O stays outside the lock; concurrent first callers must return the same published value.
+    with clock._lock:
+        if cut[0] is None:
+            cut[0] = at
+        return cut[0]
 
 
 def deadline(now=None):
