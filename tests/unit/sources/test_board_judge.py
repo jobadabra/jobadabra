@@ -43,7 +43,9 @@ PAGES = {url: page + TEXT for url, page in {
     'https://any-search.example/': '<title>Any Search</title><a>Used cars</a>',
     'https://any-search.example/?q=first+officer': '<title>first officer - Any Search</title><nav><a>Used cars</a></nav><a>First Officer B737, Berlin</a>',
     'https://an-airline.example/careers': '<title>An Airline careers</title>',
-    'https://aviation-news.example/search?q=first+officer': '<title>Aviation News</title>', 'https://quiet.example/pilot-jobs': '<title>Quiet</title>'}.items()}
+    'https://aviation-news.example/search?q=first+officer': '<title>Aviation News</title>', 'https://quiet.example/pilot-jobs': '<title>Quiet</title>',
+    **{f'https://{host}/': f'<title>{host}</title>' for host in ('crew-careers.example', 'every-job.example', 'an-airline.example',
+                                                                 'aviation-news.example', 'quiet.example')}}.items()}   # each site's home page
 KINDS = {'crew-careers.example': 'field board', 'every-job.example': 'job board', 'any-search.example': 'job board',
          'an-airline.example': 'one employer', 'aviation-news.example': 'other'}
 
@@ -108,6 +110,14 @@ class PageJudge(unittest.TestCase):
         with mock.patch.object(careers, 'READER', 'auto'):
             self.assertIsNone(board_check.field_kind(found('Scripted', 'https://scripted.example/jobs?query={role}'), fetch, ['pilot'], ask=self.ask))
         self.assertEqual(self.asked, [], 'no AI asked about an empty frame')
+
+    def test_a_board_whose_home_page_is_not_read_is_not_judged_from_its_list_alone(self):
+        # Why (#4205, Gitar): one passing error on the home page must not leave the verdict to the list page alone
+        listing = '<title>first officer - Any Search</title><a>First Officer B737, Berlin</a>' + TEXT
+        with mock.patch.object(careers, 'READER', 'auto'):
+            self.assertIsNone(board_check.field_kind(found('Any Search', 'https://any-search.example/?q={role}'),
+                                                     {'https://any-search.example/?q=first+officer': listing}.get, ['first officer'], ask=self.ask))
+        self.assertEqual(self.asked, [])
 
     def test_nothing_is_judged_while_the_page_reader_is_off(self):
         self.assertIsNone(board_check.field_kind(board_ideas.valid(ANSWER[0]), lambda url: PAGES[url], ['pilot'], ask=self.ask))
