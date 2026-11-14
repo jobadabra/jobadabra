@@ -8,7 +8,7 @@ import {keyOf} from '../renderer/question-filter.js';
 /**
  * Queues the missing items of `job`'s stored check. `check` = (job) => the stored check or null (lib/apply-readiness.js storedCheck, which compares the saved details again, no browser).
  * Idempotent: a question already on the answers page is not added twice, and a job already marked as blocked by a question is not counted again.
- * -> {ok, items: [{kind, label}] (what the check still lacks), added: lines written}. {ok: false, reason: 'no check'} when the job has none stored (the drawer then offers Check again).
+ * -> {ok, items: [{kind, label}] (what the check still lacks), added: lines written, skipped: asked questions with no stored verdict, so not marked}. {ok: false, reason: 'no check'} when the job has none stored (the drawer then offers Check again).
  */
 export async function queueMissing(storage, job, {check, questions, verdicts, fetcher} = {}) {
   const url = String(job?.url || ''), company = String(job?.company || '');
@@ -23,6 +23,7 @@ export async function queueMissing(storage, job, {check, questions, verdicts, fe
   const fresh = asked.filter(label => !(known[keyOf(label)]?.jobs || []).some(each => each.url === url));
   const trace = withAsked.filter(item => item.kind === 'answer').map(item => ({label: item.asked, required: true, reason: questions.NO_ANSWER}));
   const added = trace.length ? await questions.collect(storage, {trace}, company, fetcher, null, null, null) : 0;
+  const skipped = fresh.filter(label => !known[keyOf(label)]);   // a verdict the store no longer holds (its cap) cannot be marked: said, never silently "queued" (Gitar on #4396)
   if (fresh.length) verdicts.record(storage, fresh, {url, company});
-  return {ok: true, items: missing.map(({kind, label}) => ({kind, label})), added};
+  return {ok: true, items: missing.map(({kind, label}) => ({kind, label})), added, skipped};
 }

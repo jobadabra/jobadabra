@@ -29,18 +29,19 @@ async function back(job, {away}) {
 
 /**
  * Opens the queue on a job's missing items. `groups`: [{queue: 'details' | 'learned', labels}] (the to-dos' labels per drawer); `only` true = each drawer holds just those ("Fix all": one drawer after
- * the other, the next opening when the person closes the one before), false = the whole queue opens on the first of them ("Add it" / "Answer it"). A label the queue does not hold (set aside,
+ * the other, the next opening when the person finishes the one before; a dismissed drawer, with items left, returns to Apply readiness: Gitar on #4396), false = the whole queue opens on the first of them ("Add it" / "Answer it"). A label the queue does not hold (set aside,
  * never asked) is left out; none found = the queue opens as it is.
  */
 export async function openReadinessQueue(job, groups, only = false) {
   latest = job.url;
   const queued = await Promise.resolve().then(() => window.pilot.queueJobMissing(job)).catch(error => ({ok: false, reason: String(error?.message || error)}));   // written before the queue is read
+  if (queued?.skipped?.length) window.pilot?.uiLog?.('readiness: questions with no stored verdict were not queued', String(queued.skipped.length));   // counts only, never the questions
   if (!queued?.ok) window.pilot?.uiLog?.('readiness: the job\'s questions were not added to the queue', String(queued?.reason || queued?.error || 'refused').slice(0, 200));   // the queue still opens as it is, never claiming the job's items are in it
   await loadQuestions({force: true});
   const open = ([group, ...rest]) => {
     const keys = group.labels.map(label => keyFor(questionsNow(), group.queue, label)).filter(Boolean);
     return openQuestionReview({queue: group.queue, start: keys[0] || '', only: only && keys.length ? keys : null,
-      onClose: closed => (rest.length && !closed.away ? open(rest) : back(job, closed))});
+      onClose: closed => (rest.length && !closed.away && closed.finished ? open(rest) : back(job, closed))});
   };
   await open(groups);
 }

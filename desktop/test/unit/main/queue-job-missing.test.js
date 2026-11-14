@@ -53,3 +53,11 @@ test('an item with no full asked question (a check stored before `asked`, or cut
   assert.equal(await store.openStore(s).page('answers').text().then(text => text.includes(ASKED.slice(0, 20))), false);
   assert.equal(verdicts.cached(s)[keyOf(ASKED)].blocked, undefined, 'no job-blocking mark on a question the check cannot name in full');
 });
+
+test('an asked question whose verdict the store no longer holds is reported as skipped, never as queued (Gitar on #4396)', async () => {
+  const s = fresh();
+  s.saveSettings({questionVerdicts: {[keyOf(ASKED)]: judged[keyOf(ASKED)]}});   // the Nationality verdict was evicted
+  const got = await queueMissing(s, JOB, parts());
+  assert.deepEqual(got.skipped, [FACT_Q]);
+  assert.equal(verdicts.cached(s)[keyOf(FACT_Q)], undefined);
+});

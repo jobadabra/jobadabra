@@ -240,7 +240,7 @@ const listOf = (now, kind, only = null) => ({queue: [...(now[kind] || [])].filte
 const drawerOf = (now, key, kind) => (key && (now.learned || []).some(q => q.key === key) ? 'learned' : key && (now.details || []).some(q => q.key === key) ? 'details' : kind);
 
 // Opens a drawer (queue: 'details' | 'learned') on its questions (read once if Jobs has not read them yet). start: a question's key to show first.
-// only: the keys the drawer holds and nothing else (a job's "Fix all": its own missing details and answers); onClose({away}): called once when it closes (away: another screen took over).
+// only: the keys the drawer holds and nothing else (a job's "Fix all": its own missing details and answers); onClose({away, finished}): called once when it closes (away: another screen took over; finished: nothing is left in the drawer).
 // Why (14 Nov 2026, #4325, owner: "make it easy for him to fix all the issues"): the job drawer opens this on what that job lacks and reads its stored check again when it closes.
 export async function openQuestionReview({force = false, start = '', queue = 'details', only = null, onClose = null} = {}) {
   claimOverlay('review');
@@ -298,7 +298,7 @@ export function closeQuestionReview(options) {
   const done = state.onClose;
   state.onClose = null;
   state.only = null;
-  done?.({away: options?.away === true});
+  done?.({away: options?.away === true, finished: !state.queue.length});
 }
 
 // Profile → What we learned on its Confirmed view (a question's "covered by"; the drawer header's button opens All), searched for a saved answer's name when one is given.

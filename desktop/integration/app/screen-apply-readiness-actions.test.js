@@ -52,11 +52,10 @@ before(() => {
     press('Fix all 2 in the queue');
     await kit.until(() => reviewOpen() && reviewText().includes('What is your nationality?'), 'the first drawer of Fix all');
     const first = {text: reviewText(), others: reviewText().includes('notice period')};
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
-    await kit.until(() => reviewOpen() && reviewText().includes('Tell us about your hobbies'), 'the second drawer of Fix all, after the first closed');
-    const second = {text: reviewText(), others: reviewText().includes('Another form asked this')};
+    // Dismissed with its item unanswered: back to Apply readiness, not pushed on into the next drawer (Gitar on #4396). Finishing a drawer chains to the next one; the demo blocks saving, so that half is not played here.
     await closeReview();
-    return {buttons, addIt, answerIt, first, second};
+    const dismissed = {reviewOpen: reviewOpen()};
+    return {buttons, addIt, answerIt, first, dismissed};
   }});
 });
 
@@ -70,7 +69,7 @@ test('"Add it" opens Your details on that fact; "Answer it" opens What we learne
   assert.match(screen.result.answerIt, /Tell us about your hobbies/);
 });
 
-test('"Fix all" holds only this job\'s items, Your details first and then the questions', live, () => {
+test('"Fix all" holds only this job\'s items; dismissing its first drawer returns to Apply readiness, not into the next drawer', live, () => {
   assert.equal(screen.result.first.others, false, "the notice period is in the queue but not this job's: it is not in Fix all");
-  assert.equal(screen.result.second.others, false, "another form's question is in the queue but not this job's");
+  assert.equal(screen.result.dismissed.reviewOpen, false, 'Esc with an item left is "later", not "go on to the questions"');
 });
