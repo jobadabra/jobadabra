@@ -140,10 +140,14 @@ class RedMainTest(unittest.TestCase):
     def green_at(self, commit):
         self.run_at(commit, TESTS); self.run_at(commit, PAGES)
 
+    def script_env(self, **extra):
+        """The one environment every script run here gets, its REST cache inside this test's own folder.
+        Why (14 Nov 2026, mac-95: a flaky ERROR in the push gate): track() once left PR_REST_CACHE unset, so the script read and wrote ${TMPDIR}/pr-rest-cache, shared by every copy of this test and by the real tools; the stub's ETag is a checksum of the file, so another run's cached body answered this run's conditional read (IndexError on the verdict)."""
+        return {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo), 'PR_REST_CACHE': str(self.tmp / 'rest-cache'), **extra}
+
     def state(self, **extra):
         (self.tmp / 'gh' / 'runs.json').write_text(json.dumps(list(reversed(self.runs))))   # gh lists the newest first
-        env = {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo), 'PR_REST_CACHE': str(self.tmp / 'rest-cache'), **extra}
-        result = subprocess.run(['bash', str(SCRIPT)], capture_output=True, text=True, env=env, timeout=60)
+        result = subprocess.run(['bash', str(SCRIPT)], capture_output=True, text=True, env=self.script_env(**extra), timeout=60)
         return result.stdout.strip(), result.returncode
 
     def test_green_when_the_newest_commit_with_a_verdict_is_green(self):
@@ -236,9 +240,8 @@ class RedMainTest(unittest.TestCase):
         self.assertEqual((result.stdout.strip(), result.returncode), ('unknown', 0))
 
     def track(self):
-        env = {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo)}
         (self.tmp / 'gh' / 'runs.json').write_text(json.dumps(list(reversed(self.runs))))
-        result = subprocess.run(['bash', str(SCRIPT), 'track'], capture_output=True, text=True, env=env, timeout=60)
+        result = subprocess.run(['bash', str(SCRIPT), 'track'], capture_output=True, text=True, env=self.script_env(), timeout=60)
         return result.stdout.strip(), result.returncode
 
     def reruns(self):
@@ -263,7 +266,7 @@ class RedMainTest(unittest.TestCase):
         self.runs[-2].update({'status': 'in_progress', 'conclusion': ''})   # the re-run: no failed job showing, commit 3 unfinished, commit 1 green behind it
         (self.tmp / 'gh' / f'jobs-{self.runs[-2]["databaseId"]}.json').write_text(json.dumps({'jobs': [{'conclusion': None}]}))
         out, code = self.track()
-        self.assertEqual((code, out.split('|')[0], out.split('|')[1]), (1, 'red', self.shas[3][:7]), 'the older green commit does not make main green while the red commit is being re-run')
+        self.assertEqual((code, out.split('|')[0], (out.split('|') + [''])[1]), (1, 'red', self.shas[3][:7]), f'the older green commit does not make main green while the red commit is being re-run (the script said: {out!r})')
         self.runs[-2].update({'status': 'completed', 'conclusion': 'success'})
         out, code = self.track()
         self.assertEqual((code, out), (0, f'green {self.shas[3][:7]}'))
