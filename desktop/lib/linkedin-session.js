@@ -8,7 +8,7 @@
 // profile import's, lib/linkedin-oauth.js). Guards: test/unit/main/linkedin-session.test.js, test/unit/main/easy-apply-switch.test.js.
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
-import {linkedinSignedIn} from '../renderer/apply-settings-model.js';
+import {linkedinSignedIn, SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
 
 export const SERVICE = realKeychain.TWIN_LINKEDIN_SESSION;   // one owner of the item's name: lib/keychain.js (Gitar on #4246)
 export const ACCOUNT = 'linkedin-jobs';
@@ -62,7 +62,7 @@ export function refreshSession(storage, cookies, {keychain = realKeychain, held 
   if (!signedIn(storage)) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271: Easy Apply alone keeps one too
   if (!held) { save(storage, {copiedAt: now()}); return {ok: true, kept: true}; }   // the extension answered: no new ask for 12 h (copyIsOld)
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271)
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined, copiedAt: undefined, ...(state(storage).on ? {signin: nextSignin(signinView(storage), 'signed-out')} : {})}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271); On with nothing kept is Needs you, Sign in again (Gitar on #4283)
   const before = readSession({keychain})?.li_at;   // compared in memory only: a copy of the same sign-in is no new sign-in
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
   save(storage, {copiedAt: now(), ...(before !== clean.li_at ? {keptAt: new Date(now()).toISOString()} : {})});
@@ -75,10 +75,10 @@ export function readSession({keychain = realKeychain} = {}) {
 }
 
 const WANTS = new Set(['jobs', 'easy-apply', 'renew']);
-export const WANTED_MS = 15 * 60000;   // Why (Gitar on #4271): a Chrome way left unfinished must not decide a copy that comes much later; the window's own watch gives up after 2.5 min
+export const WANTED_MS = SIGNIN_WAIT_MS;   // Why (Gitar on #4271, #4283): a Chrome way left unfinished must not decide a later copy; it lasts exactly as long as the window's own watch
 /** The Chrome way was opened by `wanted` ('jobs' | 'easy-apply' | 'renew'): kept (with its time) until the extension's copy arrives, so that copy turns on only the switch that asked. */
 export function noteWanted(storage, wanted, {now = Date.now} = {}) { if (WANTS.has(wanted)) save(storage, {wanted, wantedAt: now()}); }
-/** Who asked for the copy now arriving ('jobs' | 'easy-apply' | 'renew'), or null when nobody did in the last 15 min. Reads only: the route clears it once the copy was kept (Gitar on #4276). */
+/** Who asked for the copy now arriving ('jobs' | 'easy-apply' | 'renew'), or null when nobody did within the window's watch (WANTED_MS). Reads only: the route clears it once the copy was kept (Gitar on #4276). */
 export function peekWanted(storage, {now = Date.now} = {}) {
   const mine = storage.settings().linkedinJobs || {};
   return WANTS.has(mine.wanted) && now() - (Number(mine.wantedAt) || 0) <= WANTED_MS ? mine.wanted : null;

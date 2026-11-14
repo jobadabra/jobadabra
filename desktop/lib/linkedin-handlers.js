@@ -11,7 +11,7 @@ import {easyApplyOn} from '../renderer/apply-settings-model.js';
 export function linkedinRoutes(storage, deps = {}) {
   const note = deps.refresh || realRefresh;
   return {
-    // Why (Gitar on #4276): only a copy someone asked for in the last 15 min is kept (it turns on only that switch); with a sign-in kept, an unasked one is a refresh. The note is used up only on a kept copy.
+    // Why (Gitar on #4276): only a copy someone asked for while the window still waits (WANTED_MS, Gitar on #4283) is kept (it turns on only that switch); with a sign-in kept, an unasked one is a refresh. The note is used up only on a kept copy.
     session: payload => {
       const wanted = session.peekWanted(storage);
       if (!wanted && !session.signedIn(storage)) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
