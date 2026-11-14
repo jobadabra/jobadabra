@@ -24,11 +24,11 @@ from pr_events_cursor import deliver_pending  # noqa: E402
 ENDINGS = ('DONE', 'FAILED', 'REVIEW', 'MERGED', 'CLOSED', 'RED', 'GREEN', 'READY', 'COMMENT', 'CONFLICT')
 QUIET = ('GREEN', 'REVIEW')
 # "CONFLICT FIXED" is the watcher's own repair, nothing for the session to do.
-# Why (13 Nov 2026, ra; owner: "When Gitar not replying, just reopen the PR fresh"): "GITAR STALE" and "PAIR NOT STARTED" are the non-endings that wake: without them a head Gitar never reviews, or a pair that never started, waits forever for a READY that cannot come (rb, 14 Nov 2026: not `FAILED`, which ends a wait).
-WAKE = re.compile(r'^ship: (?:GITAR STALE|PAIR NOT STARTED|' + '|'.join(end for end in ENDINGS if end not in QUIET) + r')\b(?! FIXED)')
+# Why (13 Nov 2026, ra; owner: "When Gitar not replying, just reopen the PR fresh"): "GITAR STALE" is the non-ending that wakes: without it a head Gitar never reviews waits forever for a READY that cannot come. (14 Nov 2026, plan 3/5: the line for a pair that did not start is gone: the PR's verdict starts the pair and a failed start is said on its row.)
+WAKE = re.compile(r'^ship: (?:GITAR STALE|' + '|'.join(end for end in ENDINGS if end not in QUIET) + r')\b(?! FIXED)')
 
 ASK = ('PR watcher (an automatic message, not the owner; it gives no approval). Events of your own PR, newest last. Act now by your rules, and verify the current head first, '
-       'an event may be superseded: RED = fix it and say the cause; CONFLICT = rebase; COMMENT = mark the working label, then fix or answer; READY = tell the owner; GITAR STALE = run the reopen-fresh command on that line (never ask Gitar); PAIR NOT STARTED = start the pair by the command on that line when its quota is back (the PR stays held); '
+       'an event may be superseded: RED = fix it and say the cause; CONFLICT = rebase; COMMENT = mark the working label, then fix or answer; READY = tell the owner; GITAR STALE = run the reopen-fresh command on that line (never ask Gitar); '
        'MERGED = fast-forward the primary checkout, remove the worktree, tell the owner what to do; CLOSED unmerged = ask why.\n')
 
 

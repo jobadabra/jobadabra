@@ -42,6 +42,8 @@ class Gh:
             return ''
         if args[:2] == ('run', 'list'):
             return json.dumps(self.runs)
+        if 'filter=all' in text:
+            return json.dumps([r.get('output[title]', '') for r in self.rows])
         if '/check-runs?per_page=100&check_name=' in text:
             return json.dumps(self.rows[-1:])   # the API's default filter: the latest of that name
         if '/issues/' in text and text.rstrip().endswith('--jq') or '/comments' in text:
@@ -130,6 +132,16 @@ class TheVerdictStartsThePair(unittest.TestCase):
         gh.fail = False
         self.assertEqual(play(gh, now=NOW + timedelta(minutes=4)), 'start')
         self.assertEqual(len(gh.dispatched), 2)
+
+    def test_a_quota_that_stays_out_stops_after_the_cap_not_every_3_minutes(self):
+        """Gitar on #4212: a failed dispatch makes no run, so only the run list counted starts and the retry never stopped."""
+        gh, minute = Gh(fail_dispatch=True), 0
+        for _ in range(12):
+            play(gh, now=NOW + timedelta(minutes=minute))
+            minute += 4
+        self.assertEqual(len(gh.dispatched), mod.CAP[0], 'one try per 3 minutes up to the cap, then the row says "pair limit" and nothing is dispatched')
+        self.assertIn('pair limit', gh.rows[-1]['output[title]'])
+        self.assertIn('gh workflow run', gh.rows[-1]['output[summary]'])
 
     def test_four_starts_in_a_day_is_the_cap_and_the_row_says_how_to_start_by_hand(self):
         gh = Gh(runs=[run_of(60 * k + 10) for k in range(4)])
