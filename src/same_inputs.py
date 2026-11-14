@@ -29,6 +29,11 @@ counts = {}
 folder = ''
 
 
+def captures_text():
+    """True inside a same-inputs run (its throwaway folder is set): failed calls then log their error text too (src/ai/providers/contract.py detail)."""
+    return bool(os.environ.get('JOBADABRA_TAPE_SHARED'))
+
+
 def _count(name, amount=1):
     counts[name] = counts.get(name, 0) + amount
 

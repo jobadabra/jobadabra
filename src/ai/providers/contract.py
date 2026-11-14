@@ -10,7 +10,6 @@ limit, not signed in, not installed; every other call would fail the same way), 
 this file in desktop/lib/ai/contract.js. Guarded by tests/unit/ai/test_ai_providers.py.
 """
 from dataclasses import dataclass, field
-import os
 import re
 import sys
 import time
@@ -80,10 +79,13 @@ def reason(error):
     return 'the AI call failed'
 
 
+TEXT_MARK = ' || text: '   # a Technical line's class and facts, then this marker, then the error's own text (only in a same-inputs run); readers test for the marker, never parse the facts
+
+
 def detail(what, error):
-    """The technical line behind a plain warning: what was asked and named(error), for the technical log only."""
-    # Why (ot, 14 Nov 2026, sa): a same-inputs pair needs the text of each failed call to name why a side did not run normally; that run's folder is a throwaway, so the text is safe there
-    text = f': {scrubbed(error)}' if os.environ.get('JOBADABRA_TAPE_SHARED') and str(error) else ''
+    """The technical line behind a plain warning: what was asked and named(error), for the technical log only; inside a same-inputs run also the scrubbed error text after TEXT_MARK."""
+    from ... import same_inputs   # the one owner of the same-inputs switch
+    text = f'{TEXT_MARK}{scrubbed(error)}' if same_inputs.captures_text() and str(error) else ''
     print(f'Technical: {what}: {named(error)}{text}', flush=True)
 
 
