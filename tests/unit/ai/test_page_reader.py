@@ -41,7 +41,7 @@ class ReaderTests(unittest.TestCase):
     def test_the_answer_becomes_jobs_with_links_kept_on_the_employers_own_site(self):
         jobs = page_reader.read('https://acme.ch/karriere', PAGE, FakeClient(), self.db)
         self.assertEqual([(j['title'], j['location'], j['url']) for j in jobs],
-                         [('Site Reliability Engineer (100%)', 'Zürich', 'https://acme.ch/jobs/sre-zh'), ('Fake', '', 'https://acme.ch/karriere#job:fake')])   # evil.example link replaced by the page's own address for this job (dedupe.unlinked_job_url); junk and duplicates dropped
+                         [('Site Reliability Engineer (100%)', 'Zürich', 'https://acme.ch/jobs/sre-zh'), ('Fake', '', 'https://acme.ch/karriere#job:--fake--')])   # evil.example link replaced by the page's own address for this job (src/job_identity.py); junk and duplicates dropped
 
     def test_an_unchanged_page_is_not_read_again_and_a_changed_one_is(self):
         client = FakeClient()

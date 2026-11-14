@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 from .. import budget_tape
 from . import cost, decide, engine, page_words
-from ..notion.dedupe import unlinked_job_url
+from ..job_identity import unlinked_job_url
 from ..sources import ats, careers, posting_text
 from .models import SMALL_MODEL
 
@@ -93,7 +93,7 @@ def clean(items, base):
             link = base
         place = re.sub(r'\s+', ' ', str(item.get('place') or '')).strip()[:80]
         employer = re.sub(r'\s+', ' ', str(item.get('employer') or '')).strip()[:120]
-        if link == base:   # no link of its own: its own address all the same, or the board read and the store keep one job of the page (dedupe.unlinked_job_url)
+        if link == base:   # no link of its own: its own address all the same, or the board read and the store keep one job of the page (src/job_identity.py)
             link = unlinked_job_url(base, title, employer, place)
         key = (title.lower(), link)
         if key in seen:
