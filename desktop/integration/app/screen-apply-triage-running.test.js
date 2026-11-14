@@ -29,7 +29,7 @@ before(() => {
       return {
         footer: [...dialog.querySelectorAll('.dialog-foot button')].filter(shown).map(button => button.textContent.trim()),
         inline: [...dialog.querySelectorAll('#triage-progress button')].filter(shown).length,
-        elapsed: document.getElementById('triage-elapsed').textContent.trim(), results: [...document.querySelectorAll('#triage-results li')].map(li => li.textContent.trim()),
+        elapsed: document.getElementById('triage-elapsed').textContent.trim(), results: [...document.querySelectorAll('#triage-results li')].map(li => li.textContent.trim()), done: [...document.querySelectorAll('#triage-steps li')].map(li => li.textContent.trim()),
         words: shown(document.getElementById('triage-progress')) ? document.getElementById('triage-progress-text').textContent.trim() : '',
         width: document.getElementById('triage-bar').style.width, sliding: document.querySelector('#triage-progress .bar')?.classList.contains('is-sliding') === true,
         fieldLocked: field.disabled || field.readOnly, stopDisabled: document.getElementById('triage-cancel').disabled,
@@ -90,7 +90,7 @@ test('the moment a check starts the dialog says which job it is reading, with a 
 
 test('while the first read is still held the dialog keeps changing by itself: the seconds count up and the words stay', live, () => {
   const {first, ticked} = screen.result;
-  assert.match(first.elapsed, /^Getting ready · \d+:\d\d$/);
+  assert.match(first.elapsed, /^Getting started · \d+:\d\d$/);
   assert.notEqual(ticked.elapsed, first.elapsed);
   assert.equal(ticked.words, first.words);
   assert.deepEqual(first.results, [], 'nothing finished yet');
@@ -102,13 +102,15 @@ test('the read\'s steps change the line at once, each with its own seconds; anot
   assert.match(steps.opening.elapsed, /^Opening the page · 0:0\d$/);
   assert.deepEqual([steps.foreign, steps.unknown, steps.otherQuery], [false, false, false]);
   assert.match(steps.pressing.elapsed, /^Pressing Apply · 0:0\d$/);
+  // Why (14 Nov 2026, #4325, owner: "Each of them with seconds of how much it took"): each finished step stays listed with its own seconds.
+  assert.deepEqual(steps.pressing.done.map(line => line.replace(/\d+ s$/, 'N s')), ['✓ Getting started · N s', '✓ Opening the page · N s']);
   assert.match(steps.pressing.words, /^Checking apply readiness · 1 of 3 · Running Engineer 1 · Alder Works$/);
 });
 
 test('after one read the bar shows its share and names the next job', live, () => {
   const {second} = screen.result;
   assert.match(second.words, /^Checking apply readiness · 2 of 3 · Running Engineer 2 · Birch Labs$/);
-  assert.match(second.elapsed, /^Getting ready · 0:0\d$/, 'each job starts at its first step, with its own seconds');
+  assert.match(second.elapsed, /^Getting started · 0:0\d$/, 'each job starts at its first step, with its own seconds');
   assert.equal(second.width, '33%');
   assert.equal(second.sliding, false);
   assert.equal(second.results.length, 1, 'the finished job is listed as soon as it lands');
