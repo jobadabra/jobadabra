@@ -143,6 +143,19 @@ def not_a_board(entry):
     return kind in ('one employer', 'other') or (kind == 'gone' and len(entry.get('gone_days') or []) >= 2)
 
 
+def why_skipped(board, kept, retry_due=lambda entry: False, dropped=frozenset()):
+    """Why `pick` leaves this board out whatever the places left, in words for the log (None: it stays): the one owner of that test, pick and the
+    named-later log (board_later.join) both ask it."""
+    entry = kept.get(board['host'])
+    if registrable(board['host']) in dropped:
+        return 'dead: no job in your places in its last reads'
+    if entry and entry.get('state') == 'browser' and not retry_due(entry):
+        return 'refuses automated reading'
+    if entry and not_a_board(entry) and not retry_due(entry):
+        return 'not a job board'
+    return None
+
+
 def pick(boards, kept, retry_due=lambda entry: False, dropped=frozenset(), remember=True, enough=ENOUGH):
     """The boards to read now: every one read before (not dropped: `dropped` = dead(db); a 'browser' one once its retry is due), then up to
     MAX_UNTRIED not read yet (one found not to be a board skipped, as a 'browser' one, until its retry), only while the relevant jobs of the boards already read are fewer than ENOUGH. The order is the list's (ranked
@@ -151,7 +164,7 @@ def pick(boards, kept, retry_due=lambda entry: False, dropped=frozenset(), remem
     tried, untried = [], []
     for board in list(boards) + (remembered(boards, kept) if remember else []):
         entry = kept.get(board['host'])
-        if registrable(board['host']) in dropped or (entry and (entry.get('state') == 'browser' or not_a_board(entry)) and not retry_due(entry)):
+        if why_skipped(board, kept, retry_due, dropped):
             continue
         (tried if entry and entry.get('last_read') else untried).append(board)
     return tried + (untried[:MAX_UNTRIED] if total_relevant(kept) < enough else [])

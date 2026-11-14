@@ -459,7 +459,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # each board, whose future maps to its item so it is kept as it ends (#3892)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
     start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
-    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
+    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start, lambda board: board_yield.why_skipped(board, kept, retry, dropped), [read_item[0]['name'] for read_item in reads]))
     # Why (#3892, 12 Nov 2026; rounds 13 Nov 2026, sa): boards are kept as they end (in the list's order a slow first board held the others' titles
     # and places past the AI's time), and a board's rounds are handed as each ends (`between`, board_rounds.py: a board with six rounds never ended
     # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
