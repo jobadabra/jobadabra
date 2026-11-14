@@ -36,7 +36,25 @@ class PageFlags(unittest.TestCase):
         self.assertEqual(validity.page_flags({'a': {}, 'b': {}}, {'a': [CUT], 'b': [CUT]}), [])
 
 
+    def test_two_boards_cut_in_a_different_order_are_the_same_boards(self):
+        # found_boards.py joins the boards left with ', ' in completion order
+        a = "[124s] Job boards: X, Y still being read at the search's time; read next time"
+        b = "[124s] Job boards: Y, X still being read at the search's time; read next time"
+        self.assertEqual(validity.page_flags({'a': {}, 'b': {}}, {'a': [a], 'b': [b]}), [])
+
+    def test_a_board_cut_on_one_side_of_two_is_named_alone(self):
+        a = "[124s] Job boards: X, Y still being read at the search's time; read next time"
+        b = "[124s] Job boards: X still being read at the search's time; read next time"
+        self.assertEqual(validity.page_flags({'a': {}, 'b': {}}, {'a': [a], 'b': [b]}), ["Y still being read at the search's time on A only"])
+
+
 class ReadsFromTheSharedLayer(unittest.TestCase):
+    def test_a_truncated_row_is_skipped_not_a_crash(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with open(os.path.join(folder, 'log-abc.jsonl'), 'w', encoding='utf-8') as file:
+                file.write(json.dumps({'kind': 'live', 'url': 'https://h/x'}) + '\n{"kind": "li')
+            self.assertEqual(validity.reads_by_side(validity.read_logs(folder), {'a': 'abc', 'b': 'zzz'}), {'a': {'h': 1}, 'b': {}})
+
     def test_the_rows_the_layer_writes_are_counted_per_side_and_host(self):
         with tempfile.TemporaryDirectory() as folder:
             same_inputs.folder = folder

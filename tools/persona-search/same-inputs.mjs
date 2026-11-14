@@ -2,7 +2,7 @@
 //   node tools/persona-search/same-inputs.mjs <profile id> --a <ref|folder> (--b <ref|folder> | --control) [--no-share] [--no-ai] [--presses 2] [--keep]
 //   A = before, B = after (main twice is an A/A: the noise). A ref gets its own throwaway worktree under <os temp>/jp-same-inputs/trees/<sha> (made once); a folder is used as it is and must already hold
 //   src/same_inputs.py (a worktree made after this tool landed does). A ref from before it landed gets the module copied into its throwaway tree only, never into a checkout you work in.
-//   --control: B is A's ref again (two trees, one code): the person's own same-code spread, read by same_inputs_report.py <pair work> <id> --control <this work>.
+//   --control (a git ref only): B is A's ref again (two trees, one code): the person's own same-code spread, read by same_inputs_report.py <pair work> <id> --control <this work>.
 //   --no-share: nothing shared (the baseline), --no-ai: pages only, --presses 2: a second search on the same install (the link answers are cached), --keep: leave <work>/shared and the stores.
 // Then python3 tools/persona-search/same_inputs_report.py <work> <profile id> prints LISTED / READ / RIGHT (both / only A / only B) with the blind judge run once over both lists.
 // Safety: fictional people only (search-profiles.json); the Claude plan only (every API key and base URL removed); EURES and LinkedIn guest off; the engine's data folder is a throwaway
@@ -65,6 +65,7 @@ const prepare = out => {
 };
 
 const dirs = {a: tree(refA, 'a'), b: tree(refB, 'b')};
+if (args.includes('--control') && fs.existsSync(refA) && fs.statSync(refA).isDirectory()) { console.error('--control needs a git ref for --a (it makes two trees of one commit); a folder is one tree'); process.exit(2); }
 if (dirs.a === dirs.b) { console.error('A and B are the same folder: the sides could not tell their own asks from the other\'s; pass two checkouts'); process.exit(2); }
 fs.mkdirSync(work, {recursive: true});
 if (!keep) process.on('exit', () => fs.rmSync(path.join(work, 'shared'), {recursive: true, force: true}));

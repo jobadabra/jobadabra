@@ -61,8 +61,14 @@ def read_logs(folder):
     found = {}
     for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
         if name.startswith('log-') and name.endswith('.jsonl'):
-            with open(os.path.join(folder, name), encoding='utf-8') as file:
-                found[name[4:-6]] = [json.loads(line) for line in file if line.strip()]
+            rows = []
+            with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as file:
+                for line in file:
+                    try:
+                        rows.append(json.loads(line))
+                    except ValueError:   # a run cut mid-write leaves a truncated last row: skipped, never a crash
+                        pass
+            found[name[4:-6]] = rows
     return found
 
 
@@ -75,7 +81,7 @@ def page_flags(reads, lines):
         a, b = reads['a'].get(host, 0), reads['b'].get(host, 0)
         if max(a, b) >= PAGES_MIN and max(a, b) >= PAGES_RATIO * min(a, b):
             flags.append(f'{host} read {a} times on A, {b} on B')
-    cut = {side: {name for line in lines[side] for name in UNFINISHED.findall(line)} for side in ('a', 'b')}
+    cut = {side: {name for line in lines[side] for group in UNFINISHED.findall(line) for name in group.split(', ')} for side in ('a', 'b')}   # found_boards.py joins the boards left with ', ' in completion order: compare them one by one
     for side, other in (('a', 'b'), ('b', 'a')):
         for name in sorted(cut[side] - cut[other]):
             flags.append(f"{name} still being read at the search's time on {side.upper()} only")

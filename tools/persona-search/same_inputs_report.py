@@ -61,14 +61,19 @@ for s in SIDES:
     lines[s] = [line for text in texts for line in text.splitlines()]
 result = same_inputs_validity.classify(lines)
 c = result['counts']
-sides = json.load(open(os.path.join(work, 'sides.json'))) if os.path.exists(os.path.join(work, 'sides.json')) else None   # same-inputs.mjs writes it; an older folder has none
-reads = same_inputs_validity.reads_by_side(same_inputs_validity.read_logs(os.path.join(work, 'logs')), sides) if sides else None
+try:
+    sides = json.load(open(os.path.join(work, 'sides.json')))   # same-inputs.mjs writes it; an older folder has none
+except (OSError, ValueError):
+    sides = None
+logs = same_inputs_validity.read_logs(os.path.join(work, 'logs'))
+recorded = isinstance(sides, dict) and all(sides.get(s) in logs for s in SIDES)   # both sides' logs present: a --no-share run or a missing log is "not recorded", never a pass
+reads = same_inputs_validity.reads_by_side(logs, sides) if recorded else None
 flags = same_inputs_validity.page_flags(reads, lines) if reads else []
 if result['verdict'].startswith('valid') and flags:
     result['verdict'], result['why'] = 'NOT VALID', ' (the two searches did not read the same pages: ' + '; '.join(flags) + ')'
 elif reads is None:
     result['why'] += ' (page reads not recorded for this folder: not checked)'
-print(f'{pid}: layer: src/same_inputs.py (the merged one; a throwaway layer is not this tool)' if sides else f'{pid}: layer: not recorded for this folder')   # Why (14 Nov 2026, sa): a throwaway-layer run was read as this tool
+print(f'{pid}: layer: src/same_inputs.py (the merged one; a throwaway layer is not this tool)' if recorded else f'{pid}: layer: not recorded for this folder')   # Why (14 Nov 2026, sa): a throwaway-layer run was read as this tool
 print(f'{pid}: {result["verdict"]}{result["why"]}: failed calls (AI, web search, feed reads) '
       + ', '.join(f'{s.upper()} {c[s]["failed"]} (clock rule {c[s]["clock"]}, other {c[s]["other"]}, no text {c[s]["notext"]})' for s in SIDES))
 for s, line in result['shown']:
@@ -90,10 +95,16 @@ if '--no-judge' not in sys.argv:
         counts = {'pid': pid, 'right': [len(R['a']), len(R['b'])], 'listed': [len(K['a']), len(K['b'])]}
         json.dump(counts, open(os.path.join(work, 'spread.json'), 'w'))   # a control pair's own difference is the person's same-code spread: `--control <this folder>` on a pair reads it
         if '--control' in sys.argv:
-            control = json.load(open(os.path.join(sys.argv[sys.argv.index('--control') + 1], 'spread.json')))
-            for name in ('right', 'listed'):
-                spread, difference = control[name][0] - control[name][1], counts[name][1] - counts[name][0]
-                print(f'{pid}: {name.upper()} difference B - A {difference:+d} is {same_inputs_validity.against_spread(difference, spread)} the same-code spread of {control["pid"]} ({control[name][0]} against {control[name][1]} with the same code both sides)')
+            try:
+                control = json.load(open(os.path.join(sys.argv[sys.argv.index('--control') + 1], 'spread.json')))
+            except (OSError, ValueError):
+                control = None   # a control folder whose judge did not run has no spread
+            if control is None or control.get('pid') != pid:
+                print(f'{pid}: no same-code spread to compare with: the control folder has no spread.json for {pid}')
+            else:
+                for name in ('right', 'listed'):
+                    spread, difference = control[name][0] - control[name][1], counts[name][1] - counts[name][0]
+                    print(f'{pid}: {name.upper()} difference B - A {difference:+d} is {same_inputs_validity.against_spread(difference, spread)} the same-code spread of {control["pid"]} ({control[name][0]} against {control[name][1]} with the same code both sides)')
 for s in SIDES:
     for d, _, files in os.walk(os.path.join(work, s)):
         if 'run-1.log' in files:
