@@ -16,6 +16,8 @@ import {init as settings} from './pages/settings.js';
 import {init as theme} from './pages/theme.js';
 import {init as textSize} from './pages/text-size.js';
 import {init as nav, paletteCommands} from './pages/nav.js';
+import {drawerActions} from './job-drawer/drawer-actions.js';
+import {openReadinessQueue} from './pages/jobs-readiness-queue.js';
 import {init as sidebarRail} from './sidebar-rail.js';
 import {init as jobs} from './pages/jobs.js';
 import {init as strategy} from './pages/strategy.js';
@@ -67,6 +69,7 @@ import {init as employers} from './pages/employers.js';
 import {startListening as saveProgress} from './save-progress.js';
 import {openJobPanel} from './pages/job-panel.js';
 import {renderFindCard} from './pages/jobs-find.js';
+drawerActions.openQueue = openReadinessQueue;   // the drawer's Apply readiness buttons that open the answers queue; set here, in the one module nothing imports, so the drawer and the pages form no import cycle (arch-check no-circular; #4394)
 
 await core();
 notionConnect();

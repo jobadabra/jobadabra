@@ -12,6 +12,8 @@ import * as pipeline from './pipeline.js';
 import {killTree} from './kill-tree.js';
 import * as questions from './questions.js';
 import * as questionLists from './question-lists.js';
+import * as questionVerdicts from './question-verdicts.js';
+import {queueMissing} from './queue-job-missing.js';
 import * as questionDismissed from './question-dismissed.js';
 import {claudeAi} from './question-ai.js';
 import {answerKey} from './question-answer.js';
@@ -82,6 +84,10 @@ export function registerApplyHandlers(ctx) {
     const asked = askedOf(reads);
     return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
+  // Why (14 Nov 2026, #4325): the drawer's "Fix all" / "Add it" / "Answer it" first put this job's missing questions in the queue (lib/queue-job-missing.js), then open it; when the queue closes the drawer reads the stored check again.
+  ipcMain.handle('queueJobMissing', (_, job) => (DEMO ? {ok: true, items: [], added: 0} : needsNotion('profile') || queueMissing(storage, {...jobOf(job), company: String(job?.company || '')}, {check: readiness.storedCheck, questions, verdicts: questionVerdicts}).catch(error => ({ok: false, reason: String(error?.message || error)}))));
+  const demoStored = async url => { const read = await demoTriageRead(storage.settings(), url), match = demoTriageMatch(storage.settings(), [{url}])[url]; return read && (match ? {...read, match} : read); };   // the demo's check and its match are two settings
+  ipcMain.handle('applyReadinessStored', (_, job) => (DEMO ? demoStored(String(job?.url || '')) : readiness.storedCheck(jobOf(job)).catch(() => null)));
   // The held batch's own match (lib/apply-check-first.js matchAll): the same call, without readiness's store step, so it never clears the form-check dialog's waiting reads.
   const matchHeld = reads => { const asked = askedOf(reads); return DEMO ? demoTriageMatch(storage.settings(), asked) : matchLogged(asked); };
   ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });

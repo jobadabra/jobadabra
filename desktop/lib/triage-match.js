@@ -17,7 +17,7 @@ import {log as appLog} from './log.js';
  * @param {string[]} labels the form's required questions
  * @param {Record<string, object>} judged verdicts by keyOf(label) (lib/question-verdicts.js)
  * @param {{label: string, value: string}[]} facts Your details (lib/base-facts.js)
- * @returns {{missing: {kind: 'detail'|'answer', label: string}[], unjudged: number, unnamed: number}}
+ * @returns {{missing: {kind: 'detail'|'answer', label: string, asked: string}[], unjudged: number, unnamed: number}}
  */
 export function missingOf(labels, judged, facts) {
   const has = new Set(facts.filter(fact => String(fact.value ?? '').trim()).map(fact => fact.label));
@@ -28,10 +28,10 @@ export function missingOf(labels, judged, facts) {
     if (looksLikeFieldId(label)) { unnamed += 1; continue; }   // a required box the page gave no question text (only its field id): it is never judged, so it has its own lasting state, not "busy AI"
     const verdict = judged[keyOf(label)];
     if (!verdict || !verdict.reuse) { unjudged += 1; continue; }
-    if (verdict.sensitive === true || verdict.person_only === true) { add({kind: 'answer', label}); continue; }
+    if (verdict.sensitive === true || verdict.person_only === true) { add({kind: 'answer', label, asked: label}); continue; }
     if (verdict.reuse === 'consent' || verdict.reuse === 'one_job' || verdict.covered_by) continue;
-    if (verdict.reuse === 'details') { if (!has.has(verdict.fact)) add({kind: 'detail', label: verdict.fact || label}); continue; }
-    add({kind: 'answer', label});
+    if (verdict.reuse === 'details') { if (!has.has(verdict.fact)) add({kind: 'detail', label: verdict.fact || label, asked: label}); continue; }
+    add({kind: 'answer', label, asked: label});
   }
   return {missing, unjudged, unnamed};
 }
