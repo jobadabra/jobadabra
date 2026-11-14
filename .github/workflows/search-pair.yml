@@ -37,11 +37,11 @@ on:
         description: "The row's check run id, set by the pair's own second run so one row exists per head; empty for a new pair"
         type: string
         default: ''
-      # Why (13 Nov 2026, sa: #4049's place rounds "refused from ~57 s" need each job's stage to be read by mechanism on both sides, as #4043 did for search-profiles): off by default, one dispatch away.
+      # Why (13 Nov 2026, sa: #4049's place rounds "refused from ~57 s" need each job's stage to be read by mechanism on both sides, as #4043 did for search-profiles): on by default since 14 Nov 2026 (sa, for the per-search funnel table, board_funnel.py: it is log lines only; owner: "let's fix also this"); a by-hand dispatch can switch it off.
       stage_log:
         description: 'One run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), on both sides, as the night logs'
         type: boolean
-        default: false
+        default: true
 
 # Why (Gitar on #3957): per PR and its people, since GitHub keeps one pending run per group: another PR, or other people of the same PR, never replace a waiting pair;
 # the same people again (a side not counted, "start the pair again") replace only their own pending run.
@@ -287,6 +287,9 @@ jobs:
             if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "$N" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1
             else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge "$ID" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1; fi
             python3 tools/persona-search/pair.py side "$out" "$(basename "$out" | sed -E 's/.*--(main|pr)-[0-9]+$/\1/')"
+            # Why (14 Nov 2026, owner via sa: "let's fix also this"): a low number said nothing about where the jobs went; one table per search (tools/persona-search/board_funnel.py), a report only: its exit code is ignored and it never reds a run.
+            python3 tools/persona-search/board_funnel.py "$out" > "$out/funnel.md" 2>/dev/null || true
+            if [ -s "$out/funnel.md" ]; then { echo "<details><summary>Where the jobs were lost: $(basename "$out")</summary>"; echo; cat "$out/funnel.md"; echo; echo "</details>"; } >> "$GITHUB_STEP_SUMMARY"; fi
             printf '{"own_draft": %s}\n' "$OWN" > "$out/person.json"
           done
           echo "end=$(date +%s)" >> times.env
