@@ -22,3 +22,13 @@ test('no case left unrun: no second browser', async () => {
   assert.equal(await runUnrun([{name: 'a'}], results, async () => { calls += 1; return []; }), results);
   assert.equal(calls, 0);
 });
+
+test('a case the second browser also never ran stays "not run", and a short second answer keeps the first result (Gitar on #4142)', async () => {
+  const items = [{name: 'a'}, {name: 'b'}, {name: 'c'}];
+  const first = [right('a'), retired('b'), retired('c')];
+  const twice = await runUnrun(items, first, async list => [retired(list[0].name), right(list[1].name)]);
+  assert.equal(twice[1].retired, true, 'still not run: the second retirement is a real red, never a pass');
+  assert.equal(twice[2].ok, true);
+  const short = await runUnrun(items, first, async () => []);
+  assert.deepEqual(short, first, 'no answer for a case: its first result stays');
+});
