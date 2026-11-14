@@ -2,7 +2,7 @@
 // CI's side of the broker's board mark (tools/persona-search/board-mark.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)", "For good (Recommended)").
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {brokerPost, markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
+import {OWN_MAX_MS, OWN_STEP_MS, brokerPost, markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
 import {boardForward} from '../../../../tools/persona-search/codex.mjs';
 
 const item = {url: 'https://www.trans.bg/search?q=driver', name: 'TRANS.BG', kind: 'board'};
@@ -54,6 +54,40 @@ test('after a read the mark is told how it ended: jobs as opened, a stop or a 42
     {op: 'report', page: item.url, outcome: 'stopped', why: 'HTTP 403'},
     {op: 'report', page: item.url, outcome: 'waiting', why: 'asked us to slow down'},
   ]);
+});
+
+test('a pair side waits for its own run\'s read of the page and gets the same cards; another run\'s read stays a skip', async () => {
+  const naps = [];
+  const sleep = async ms => { naps.push(ms); };
+  const {post, sent} = answers([{status: 200, json: {go: false, state: 'reading', own: true}}, {status: 200, json: {go: false, state: 'reading', own: true}},
+    {status: 200, json: {go: false, state: 'opened', jobs: [job], read_by: 'pair#1'}}]);
+  assert.deepEqual(await markSeams(post, {sleep}).ask(item), {go: false, cards: [toCard(job)], from: 'pair#1'});
+  assert.equal(sent.length, 3, 'asked again until the other side reported');
+  assert.equal(naps.length, 2);
+  const own = answers([{status: 200, json: {go: false, state: 'reading', own: true}}, {status: 200, json: {go: false, state: 'stopped'}}]);
+  assert.match((await markSeams(own.post, {sleep}).ask(item)).why, /turned CI's browser away before/, 'the other side was stopped: this side skips, never opens');
+});
+
+test('Gitar on #4355/#4359: a pair side whose other side never reports stops after the longest read in elapsed time, slow broker calls included, and skips, never opens', async () => {
+  let clock = 0;
+  const sent = [];
+  const post = async body => { sent.push(body); clock += 20_000; return {status: 200, json: {go: false, state: 'reading', own: true}}; };   // each broker round trip takes 20 s
+  const verdict = await markSeams(post, {sleep: async ms => { clock += ms; }, now: () => clock}).ask(item);
+  assert.equal(verdict.go, false);
+  assert.match(verdict.why, /did not report its read within 90 s/);
+  assert.ok(clock >= OWN_MAX_MS && clock < OWN_MAX_MS + 20_000 + OWN_STEP_MS, `ended at ${clock} ms: right after the bound, not after 30 naps`);
+  assert.ok(sent.length <= 5, `${sent.length} asks: the slow calls count against the bound`);
+});
+
+test('the own-read wait ends with the press: a Stop or the deadline during the wait opens nothing and asks no more', async () => {
+  const stop = new AbortController();
+  const {post, sent} = answers([{status: 200, json: {go: false, state: 'reading', own: true}}]);
+  const pending = markSeams(post).ask(item, stop.signal);
+  setImmediate(() => stop.abort());
+  const verdict = await pending;
+  assert.equal(verdict.go, false);
+  assert.match(verdict.why, /stopped/);
+  assert.equal(sent.length, 1, 'the real nap ends at once on the abort; no second ask');
 });
 
 test('Gitar on #4306: a Stop before the ask sends nothing', async () => {
