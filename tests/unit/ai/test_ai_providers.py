@@ -306,6 +306,25 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(schema.problems(back, SCHEMA), [])
 
 
+class TechnicalLineText(unittest.TestCase):
+    """Guard: privacy: an error's own text reaches the technical log only inside a same-inputs throwaway run, never in a person's log."""
+
+    def line(self, shared):
+        import contextlib
+        import io
+        env = {'JOBADABRA_TAPE_SHARED': '/tmp/x'} if shared else {}
+        out = io.StringIO()
+        with unittest.mock.patch.dict(os.environ, env, clear=False), contextlib.redirect_stdout(out):
+            if not shared:
+                os.environ.pop('JOBADABRA_TAPE_SHARED', None)
+            contract.detail('decide link-kind', RuntimeError('no free slot in time'))
+        return out.getvalue()
+
+    def test_text_only_in_a_same_inputs_run(self):
+        self.assertIn('no free slot in time', self.line(True))
+        self.assertNotIn('no free slot in time', self.line(False))
+
+
 # Each engine: the environment that picks it, and the adapter class it builds.
 ENGINE_CASES = {
     'api': ({'ANTHROPIC_API_KEY': 'k'}, 'AnthropicApi'),
