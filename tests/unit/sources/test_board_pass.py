@@ -241,12 +241,42 @@ class TheLastPass(unittest.TestCase):
         self.addCleanup(hung.set)
         at(164.9)   # 0.1 s before the pass's end (165): the clock is set, the wait is that tenth of a second
         result = []
-        with mock.patch.object(board_pass, '_titles', lambda jobs: hung.wait()):
+        workers = []
+
+        def titles(jobs):
+            workers.append(threading.current_thread())
+            hung.wait(timeout=30)
+
+        with mock.patch.object(board_pass, '_titles', titles):
             judging = threading.Thread(target=lambda: result.append(board_pass.judge(board())), daemon=True)
             judging.start()
             judging.join(10)   # a hang guard, not the clock under test
         self.assertFalse(judging.is_alive(), 'the pass ended at the run\'s end')
         self.assertTrue(any(line.startswith('Board pass: board.example.test places asked') for line in self.said), self.said)
+        hung.set()
+        workers[0].join(timeout=30)
+        self.assertFalse(workers[0].is_alive())
+
+    def test_a_title_round_still_out_when_the_join_ends_is_reported_as_cut(self):
+        """The pass's bounded join is not completion: unanswered titles still wait for the queue."""
+        at(164.9)
+        held, workers = threading.Event(), []
+        self.addCleanup(held.set)
+
+        def titles(jobs):
+            workers.append(threading.current_thread())
+            held.wait(timeout=30)
+
+        feeds._triaged()[feeds.ASKED] = True
+        with mock.patch.object(board_pass, '_titles', titles):
+            done = board_pass.judge([board()[0]])
+            try:
+                self.assertEqual(done.got, (0, 0), 'the title worker is still out: the pass was cut, not finished')
+                self.assertIn('answered 0 of 0 place(s), 0 of 1 title(s) by the deadline', done.said(0))
+            finally:
+                held.set()
+                workers[0].join(timeout=30)
+                self.assertFalse(workers[0].is_alive())
 
     def test_a_pass_cut_at_the_deadline_lists_what_both_answers_cover(self):
         """Pair 43604153744 (14 Nov 2026, d05): the pass was cut at the deadline and every answer it had was dropped ("not run: it had not ended")."""
@@ -340,6 +370,26 @@ class TheLastPass(unittest.TestCase):
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'listed: the queue owes them nothing')
         self.assertIn('Board pass: owed 3 · listed 3 · refused 0 · waiting 0 (posting not read 0 · no answer by the deadline 0)', self.said)
 
+    def test_a_group_queued_during_the_pass_wait_and_the_pass_list_each_job_once(self):
+        """A reader can queue its group after last_pass's first deliver, before the pass hands the same jobs back."""
+        at(100)
+        lane, shown = self.lane(lambda run, search, **kw: iter([('the board', board())]))
+        self.pass_time(lane)
+        wait = lane.passed.wait
+
+        def group_lands(timeout=None):
+            lane._queue([dict(job) for job in board()] + [{**board()[0], 'url': 'https://board.example.test/job/99', 'id': '99'}])
+            return wait(timeout)
+
+        with mock.patch.object(lane.passed, 'wait', side_effect=group_lands):
+            lane.last_pass(self.db, shown.extend)
+        self.assertEqual(len(shown), 4, 'three pass jobs plus a later job, each listed once by the delivery owner')
+        self.assertEqual(len(lane.matched), 4)
+        self.assertIn(f'Board pass: asked 1 place(s), 3 title(s), listed 3, at {PASS} s', self.said)
+        self.assertTrue(all(job['status'] == 'new' for job in shown), 'no second record turns a new match into seen')
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0)
+        self.assertIn('Board pass: owed 3 · listed 3 · refused 0 · waiting 0 (posting not read 0 · no answer by the deadline 0)', self.said)
+
     def test_a_job_the_pass_refuses_leaves_the_queues_list(self):
         at(100)
         self.model.out = {'late town'}
@@ -348,6 +398,29 @@ class TheLastPass(unittest.TestCase):
         lane.last_pass(self.db, shown.extend)
         self.assertEqual([job['title'] for job in shown], ['Known role 0'])
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'placed outside by the pass: the queue owes it nothing')
+
+    def test_a_refused_title_leaves_waiting_even_when_every_location_is_vague(self):
+        """No listable job does not mean no settled job: a title-no needs no posting to reject it."""
+        at(100)
+        self.model.out, self.model.vague = {'late town'}, True
+        create = self.model.messages.create
+
+        def refuse_titles(**kwargs):
+            response = create(**kwargs)
+            if 'The titles:' in kwargs['messages'][0]['content']:
+                response.content[0].text = '{"fit": []}'
+            return response
+
+        with mock.patch.object(self.model.messages, 'create', side_effect=refuse_titles):
+            lane, shown = self.lane(lambda run, search, **kw: iter([('the board', [board()[1]])]))
+            self.assertEqual(waiting_jobs.count(self.db, SEARCH), 1)
+            self.pass_time(lane)
+        self.assertEqual(feeds.place_of(board()[1]), 'vague')
+        self.assertIs(feeds.judged_title('Late role 0'), False)
+        lane.last_pass(self.db, shown.extend)
+        self.assertEqual(shown, [])
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'a refused title leaves even with no listable job')
+        self.assertIn('Board pass: owed 1 · listed 0 · refused 1 · waiting 0 (posting not read 0 · no answer by the deadline 0)', self.said)
 
     def test_an_untimed_run_makes_no_pass(self):
         time_budget.start(0)
