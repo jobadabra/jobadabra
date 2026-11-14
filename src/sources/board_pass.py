@@ -1,7 +1,7 @@
-"""Board-pass accounting prepared for the owner's six-part split; the search does not call this module yet.
+"""Board-pass accounting prepared for the owner's four-part judging split; the search does not call this module yet.
 Part 3 constructs Track/Done, calls counts/cut and consumes listable, settled and Done.report.
 Part 4 starts the production pass. _where/_host serve counts; Done.said formats Done.report's snapshot.
-Why (14 Nov 2026, owner): split the large judging PR so accounting is reviewed and tested before scheduling is connected.
+Why (14 Nov 2026, owner): review the four judging parts separately; startup and lanes are a later follow-up plan.
 """
 from collections import Counter, defaultdict
 from urllib.parse import urlparse
