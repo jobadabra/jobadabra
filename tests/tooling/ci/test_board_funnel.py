@@ -44,7 +44,7 @@ class BoardFunnel(unittest.TestCase):
             relay=['relay: small total 1 kind decide start 2 status 200', 'relay: small total 1 kind decide start 3 status 200'])
         text = board_funnel.table(root)
         by_source = {line.split(' | ')[0].strip('| '): line for line in text.splitlines() if line.startswith('| ') and not line.startswith('| source')}
-        self.assertIn('| jobijoba.es | AI, pack | read | 6 | 1 | 29 | 1 | - | - | 1 | - | 2 (shared page address) | 2 | 2 |', by_source['jobijoba.es'])
+        self.assertIn('| jobijoba.es | AI, pack | read | 6 | 1 | 29 | 1 | - | - | 1 | - | - | 2 (shared page address) | 2 | 2 |', by_source['jobijoba.es'])
         self.assertIn('| infojobs.net | AI | #1: no place left |', by_source['infojobs.net'])   # the named board's own row says why it never read
         self.assertIn('1 page(s) refused', by_source['zaplata.bg'])
         self.assertIn('| employer sites | - | read 4 of 11 sites, best first |', by_source['employer sites'])
@@ -63,6 +63,16 @@ class BoardFunnel(unittest.TestCase):
     def test_a_job_with_its_own_address_merges_nothing(self):
         text = board_funnel.table(folder(['[6s] Stage: Job boards found kept https://www.a.example/p#job:acme--welder--graz']))
         self.assertIn('| 1 (own address, since #4183) |', text)
+
+    def test_one_job_is_one_key_and_a_job_with_no_link_has_its_own_row(self):
+        text = board_funnel.table(folder([
+            '[6s] Stage: Job boards found read https://www.a.example/p#Welder',
+            '[7s] Stage: Job boards found never_asked https://www.a.example/p#Welder | Berlin, DE',
+            '[7s] Stage: Job boards found no_link -']))
+        rows = {line.split(' | ')[0].strip('| '): line for line in text.splitlines()}
+        self.assertIn('| a.example | - | no reason logged | - | - | - | - | - | 1 |', rows['a.example'])   # read + never_asked, one job: counted once as never judged
+        self.assertIn('| jobs with no link |', rows['jobs with no link'])
+        self.assertIn(' | 1 | ', rows['jobs with no link'])
 
     def test_unmerged_columns_are_named_not_guessed(self):
         text = board_funnel.table(folder(['[1s] Finding your first jobs…']))
