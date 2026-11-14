@@ -78,8 +78,8 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
 
             def read_on(on_round):   # Why (Gitar, #4200): run here, it held a board worker and the board's keep until it ended; the lane runs it
                 told = lambda url, *args, **kwargs: fetch(url, *args, **kwargs)   # noqa: E731 — the slice's pages from memory; its rounds to the lane (Gitar, #4210: not set on the slice's fetch)
-                told.on_round = on_round
-                return _read(board, search, told, None, False, show, ai)[0]
+                told.on_round = (lambda jobs: on_round(board_yield.placed(jobs))) if on_round else None   # placed first, as the slice's rounds (#4218)
+                return board_later.read_on_kept(board, search, _read(board, search, told, None, False, show, ai)[0])
             slots.go_on()(read_on, board.get('name') or board.get('host'))
         read.jobs = read_methods.in_places(jobs)
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)

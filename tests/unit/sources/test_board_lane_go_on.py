@@ -66,10 +66,11 @@ class TheLaneGoesOn(unittest.TestCase):
         self.addCleanup(time_budget.start, 0)
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}),
                       mock.patch.object(board_pages, 'PAUSE_S', 0), mock.patch('src.sources.board_yield.is_relevant', relevant),
+                      mock.patch('src.sources.board_yield.placed', lambda jobs: self.placed.append(list(jobs)) or list(jobs)),
                       mock.patch.object(boards, 'board_queries', return_value=[])):
             patch.start()
             self.addCleanup(patch.stop)
-        self.asked, self.rounds, self.more, self.handed = [], [], [], []
+        self.asked, self.rounds, self.more, self.handed, self.placed = [], [], [], [], []
 
     def fetch(self, url):
         self.asked.append(url)
@@ -101,6 +102,21 @@ class TheLaneGoesOn(unittest.TestCase):
         self.assertEqual([job['url'] for job in self.rounds[0]], ['https://stellen.example/job/fahrer-1'], 'the first round is handed with its first page only')
         self.assertIn('Job boards: Stellen: first jobs handed; its other words and next pages are read after the first-jobs step', log)
         self.assertIn("round 'busfahrer': 1 job(s) on the page (3 with its next pages)", log, 'a word asked by the read-on is paged')
+
+    def test_the_read_on_is_placed_kept_and_counted_as_the_slice_is(self):
+        """Gitar, #4218: the read-on's rounds were handed unplaced (the title sort asks only jobs in your places: 13 Nov 2026, run 43420915768) and
+        the board's memory counted its slice only, so a board whose relevant jobs came on the way on was remembered as yielding none."""
+        from src import run_counts
+        from src.ai import board_ideas
+        board_ideas.keep_board('stellen.example', {'jobs': 2, 'relevant': 2, 'state': 'ok'})   # the slice's keep (found_boards.read)
+        with mock.patch.object(run_counts, 'looked') as looked, mock.patch.object(run_counts, 'matched') as matched:
+            _, _, _, log = self.read(lane=True)
+        read_on = [job['url'] for job in self.more]
+        self.assertEqual(sorted({url for jobs in self.placed for url in (job['url'] for job in jobs)}), sorted(read_on), 'every read-on round placed first')
+        entry = board_ideas.load()['boards']['stellen.example']
+        self.assertEqual((entry['jobs'], entry['relevant']), (2 + len(read_on), 2 + len(read_on)), 'the board remembered with what its read-on gave')
+        self.assertEqual(([job['url'] for job in looked.call_args.args[0]], len(matched.call_args.args[0])), (read_on, len(read_on)))
+        self.assertIn(f'Job boards found: Stellen read on: {len(read_on)} more job(s), {len(read_on)} relevant', log)
 
     def test_outside_a_lane_the_slice_reads_page_one_of_two_words_and_says_why_not_more(self):
         jobs, _, asked, log = self.read(lane=False)
