@@ -125,6 +125,27 @@ class LayoutYieldTests(unittest.TestCase):
         self.assertRegex(said[0], r'layout not kept: reading through it gave 10 jobs on .* where the usual read found 13')
         self.assertEqual(notes['layout'], {'kind': 'tag', 'tag': 'div', 'class': 'card'}, 'replaced by the one the usual read\'s jobs give, which reads all 13: never the root layout again')
 
+    def test_a_drop_on_a_later_page_beats_an_earlier_keep(self):
+        """Gitar on #4161: a board's pages share one Layout; page 1 holds and notes the layout, page 2 reads fewer jobs than the usual read: the fact must not keep the layout."""
+        listing = lambda url: _listing(0, 13) if 'q=developer' in url else _listing(30, 13)
+        jobs, said, notes = self.scout({'layout': ROOT}, listing, words=('developer', 'engineer'))
+        self.assertEqual(len(said), 1, said)
+        self.assertNotEqual(notes['layout'], ROOT, 'the second page dropped it, whatever the first page said')
+
+    def test_a_layout_derived_from_the_ai_readers_jobs_is_checked_through_the_reads_fetch(self):
+        """Gitar on #4161: found_boards reads a page with Layout.read, then asks the AI reader and calls learn(page, url, jobs): reading through the derived layout must give those jobs."""
+        from src.sources import board_layout
+        notes = {}
+        layout = board_layout.Layout({**BOARD, 'learn': notes})
+        fetch = lambda url: _page(url, _listing(36, 38, folder='/job'))
+        url = 'https://jobs.example/search?q=developer'
+        layout.read('<html><body><p>No results.</p></body></html>', url, fetch)
+        ai_jobs = [{'url': f'https://jobs.example/job/python-developer-{n}', 'title': f'Python Developer {n}'} for n in range(38)]
+        with mock.patch('src.sources.page_recipes.derive', return_value={'kind': 'links', 'prefix': '/job'}):
+            layout.learn(_listing(36, 38, folder='/job'), url, ai_jobs)
+        self.assertNotIn('layout', notes, 'the layout reads 4 of the AI reader\'s 38 jobs')
+        self.assertEqual(notes['why'], 'its layout reads fewer jobs than the usual read found')
+
     def test_a_dropped_layout_with_no_replacement_leaves_the_fact(self):
         """The same re-read where no one shape reads the cards: the layout is noted stale (False), so the next publish carries none."""
         with mock.patch('src.sources.page_recipes.derive', return_value=None):

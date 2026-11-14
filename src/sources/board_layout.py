@@ -99,13 +99,15 @@ class Layout:
             return jobs
         print(f"Job board {self.host}: layout not kept: reading through it gave {len(jobs)} jobs on {url} where the usual read found {len(usual)}")
         self.recipe = None
-        self._note(False)
+        self.notes['layout'] = False   # Why (Gitar on #4161): a drop beats an earlier page's keep (`_note` writes only over a falsy one): the fact must not publish a layout this read found worse
         return self.learn(markup, url, usual)
 
     def _reads(self, recipe, markup, url, found):
         """Whether the recipe reads the jobs `found` (the usual read's, or the AI's) on the page it was derived from, and why not: reading through it gives at least as many jobs; and a layout with no
         structure (links, prefix '', depth 1: every one-segment link of the page) names at least MATCH_SHARE jobs among its links, because nothing tells its job links from the rest as a page grows
-        past the MAX_JOB_PAGES it reads (Jobeka: 28 links on the Scout's page, all read, 58 on a Madrid page, 40 read). A layout naming no link has nothing to read."""
+        past the MAX_JOB_PAGES it reads (Jobeka: 28 links on the Scout's page, all read, 58 on a Madrid page, 40 read). A layout naming no link has nothing to read.
+        The pages are read with `self.page`, the kept answers of this board read's last `read` (found_boards reads a page with `Layout.read` before it asks the AI reader and calls `learn`, so
+        the AI reader's jobs are checked the same way; the cache is by address, so another listing page's answers are the same pages). Before any read nothing is claimed beyond the share rule."""
         links = list(dict.fromkeys(link for _, link in page_recipes.replay(recipe, markup, url) if link))
         if not links:
             return True, ''
