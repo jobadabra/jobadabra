@@ -28,11 +28,11 @@ test('a POST with nothing usable is refused and the switch stays off', () => {
 
 test('the window\'s view has the state and the ask, never a cookie value', () => {
   const settings = store(), kc = keychain();
-  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
+  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, signedIn: false, login: 'none', ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
   openSignin(settings);
   linkedinRoutes(settings, {keychain: kc}).session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   const view = linkedinView(settings, {keychain: kc});
-  assert.deepEqual(view, {on: true, asked: 0, declined: 0, ask: false, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
+  assert.deepEqual(view, {on: true, asked: 0, declined: 0, signedIn: true, login: 'kept', ask: false, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
   assert.equal(JSON.stringify(view).includes(SECRET), false);
 });
 
@@ -71,7 +71,7 @@ test("#2731 a Find jobs press asks, the extension's look hears it, its copy land
   assert.equal(routes.pending().refresh, false, 'asked once per press');
   settings.saveSettings({linkedinJobs: {on: false}});
   assert.deepEqual(routes.pending(), {revoke: true, refresh: false}, 'off never asks for a copy');
-  assert.deepEqual(routes.refresh({held: false}), {ok: false, error: 'LinkedIn jobs is off'});
+  assert.deepEqual(routes.refresh({held: false}), {ok: false, error: 'No LinkedIn sign-in is kept'});
 });
 
 // Gitar on #4276, #4283, #4328: a Chrome copy is kept only while the Chrome way the person opened still waits; a window sign-in closes that way.
@@ -84,13 +84,13 @@ test('a Chrome copy nobody asked for is refused; an open Chrome way keeps its gr
   assert.equal(routes.pending().revoke, false, 'an open Chrome consent must not lose its grants before its copy arrives');
   assert.equal(routes.session({cookies: [{name: 'bcookie', value: 'x', domain: '.linkedin.com'}]}).ok, false, 'an unusable copy');
   assert.equal(routes.session(copy).ok, true, 'the next copy is still taken');
-  assert.equal(settings.settings().linkedinJobs.signinOpenAt, undefined, 'the Chrome way is done now');
+  assert.notEqual(settings.settings().linkedinJobs?.login?.state, 'waiting', 'the Chrome way is done now');
   const other = store(), kc2 = keychain(), handlers = new Map();
   registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: other,
     deps: {keychain: kc2, isolated: true}, log: () => {}, signIn: async () => ({ok: true, cookies: copy.cookies})});
   openSignin(other);   // the person first opened the Chrome way, then signed in with the window
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: true});
-  assert.equal(other.settings().linkedinJobs.signinOpenAt, undefined, 'the Chrome way is done: its late copy is not taken');
+  assert.notEqual(other.settings().linkedinJobs?.login?.state, 'waiting', 'the Chrome way is done: its late copy is not taken');
 });
 
 // Gitar on #4337: a copy after the 150 s wait is refused, and a Chrome page that never opened leaves no Chrome way open.
@@ -107,12 +107,12 @@ test('a copy after the Chrome way waited 150 s is refused; a page that never ope
   registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: other, deps: {keychain: keychain()},
     openPage: async () => ({opened: null, why: 'no-extension'})});
   assert.deepEqual(await handlers.get('linkedinJobsConnect')(), {opened: null, why: 'no-extension'});
-  assert.equal(other.settings().linkedinJobs?.signinOpenAt, undefined, 'nothing opened: no copy is waited for');
+  assert.notEqual(other.settings().linkedinJobs?.login?.state, 'waiting', 'nothing opened: no copy is waited for');
   const thrown = store(), h2 = new Map();
   registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => h2.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: thrown, deps: {keychain: keychain()},
     openPage: async () => { throw new Error('Chrome would not start'); }});
   await assert.rejects(h2.get('linkedinJobsConnect')(), /Chrome would not start/);
-  assert.equal(thrown.settings().linkedinJobs?.signinOpenAt, undefined, 'a page that threw opens no Chrome way (Gitar on #4340)');
+  assert.notEqual(thrown.settings().linkedinJobs?.login?.state, 'waiting', 'a page that threw opens no Chrome way (Gitar on #4340)');
 });
 
 // Gitar on #4340: switching LinkedIn jobs off ends an open Chrome way, so a late consent copy cannot turn it back on.
@@ -155,4 +155,44 @@ test('the window and the Chrome way turn LinkedIn jobs on as the press that aske
   blind.read = () => null;
   registerLinkedinHandlers({DEMO: false, storage: renewal, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, deps: {keychain: blind, isolated: true}, log: () => {}, signIn: async () => ({ok: true, cookies})});
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')({}), {ok: true}, 'LinkedIn jobs is on: a renewal turns nothing on and cannot fail');
+});
+
+// Gitar on #4350, #4354: a sign-in kept while LinkedIn jobs is off is deleted at the next start once no press can still use it; a Chrome wait or a fresh copy stays; one in use stays.
+test('at start a sign-in no press can still turn on is deleted; waiting, fresh and in-use ones stay', () => {
+  const now = () => Date.parse('2026-11-14T08:00:00Z');
+  for (const [name, mine, kept] of [['LinkedIn jobs on', {on: true, login: {state: 'kept', at: now() - 600000}}, true], ['Chrome way waiting', {on: false, login: {state: 'waiting', at: now() - 30000}}, true],
+    ['copy kept 30 s ago', {on: false, login: {state: 'kept', at: now() - 30000}}, true], ['copy kept 10 min ago', {on: false, login: {state: 'kept', at: now() - 600000}}, false]]) {
+    const settings = store({linkedinJobs: mine}), kc = keychain();
+    kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+    registerLinkedinHandlers({DEMO: false, ipcMain: {handle: () => {}}, server: {setVisitRoute: () => {}}, storage: settings, deps: {keychain: kc, now}});
+    assert.equal(kc.items.has(SERVICE), kept, name);
+  }
+});
+
+// Owner, 14 Nov 2026 ("he should never login 2 times"), Gitar on #4350, #4365, #4368: the Chrome way over a kept sign-in uses it: Chrome stays closed, nothing is deleted, the switch turns on.
+test('the Chrome way over a kept sign-in opens no Chrome and turns the switch on with it', async () => {
+  const settings = store({linkedinJobs: {on: false, login: {state: 'kept', at: 1}}}), kc = keychain(), handlers = new Map();
+  kc.items.set(SERVICE, JSON.stringify({li_at: SECRET}));
+  let opened = 0;
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: settings, deps: {keychain: kc, now: () => 2}, log: () => {}, openPage: async () => { opened++; return {opened: true}; }});
+  assert.deepEqual(await handlers.get('linkedinJobsConnect')(), {opened: true});
+  assert.equal(opened, 0, 'Chrome was not opened');
+  assert.equal(kc.items.has(SERVICE), true, 'nothing deleted');
+  assert.equal(settings.settings().linkedinJobs.on, true);
+  const none = store(), handlersNone = new Map();
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlersNone.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: none, deps: {keychain: keychain()}, log: () => {}, openPage: async () => { opened++; return {opened: true}; }});
+  await handlersNone.get('linkedinJobsConnect')();
+  assert.equal(opened, 1, 'nothing kept: Chrome opens and the sign-in waits for its copy');
+  assert.equal(none.settings().linkedinJobs.login.state, 'waiting');
+});
+
+// Gitar on #4358: a Chrome sign-out leaves LinkedIn jobs on: the extension keeps its grants and a copy from a new Chrome sign-in is taken, so one fact has one owner.
+test('signed out in Chrome with LinkedIn jobs on: grants kept, a new Chrome copy is taken and the sign-in is kept again', () => {
+  const settings = store({linkedinJobs: {on: true, login: {state: 'none', at: 1}}}), kc = keychain();
+  const routes = linkedinRoutes(settings, {keychain: kc, refresh: {look: () => false, delivered: () => {}}});
+  assert.equal(routes.pending().revoke, false, 'the grants stay: LinkedIn jobs is still on');
+  assert.deepEqual(routes.refresh({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}), {ok: true});
+  assert.equal(settings.settings().linkedinJobs.login.state, 'kept');
+  assert.equal(settings.settings().linkedinJobs.on, true);
+  assert.equal(linkedinRoutes(store(), {keychain: kc}).pending().revoke, true, 'nothing on, nothing kept, nothing waiting: the grants go');
 });

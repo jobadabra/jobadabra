@@ -216,3 +216,35 @@ test('a kept sign-in is stamped, and when LinkedIn ends it one line says how man
   assert.equal(settings.settings().linkedinJobs.keptAt, '2026-11-13T07:00:00.000Z', 'a new sign-in starts the clock again');
   assert.ok(!JSON.stringify(settings.settings()).includes(SECRET) && !JSON.stringify(lines).includes('AQEDAR'), 'no value in the settings or the line');
 });
+
+// Owner, 14 Nov 2026 ("One sign-in state"), Gitar on #4283, #4358: the sign-in has one state; waiting expires with the window's own watch, a kept copy ends it, a Chrome sign-out writes none, off clears it.
+test('the one sign-in state: waiting expires, a kept copy ends the wait, a sign-out writes none and the switch stays', async () => {
+  const {loginOf, takesCopy, openSignin, WANTED_MS} = await import('../../../lib/linkedin-session.js');
+  const {SIGNIN_WAIT_MS} = await import('../../../renderer/apply-settings-model.js');
+  assert.equal(WANTED_MS, SIGNIN_WAIT_MS, 'the same horizon as the window\'s watch, so a copy after "stayed off" is not taken');
+  const t0 = Date.parse('2026-11-14T10:00:00Z'), at = ms => ({now: () => t0 + ms});
+  const settings = store(), kc = keychain();
+  assert.equal(takesCopy(settings, at(0)), false, 'nobody asked');
+  openSignin(settings, at(0));
+  assert.equal(loginOf(settings, at(WANTED_MS - 1000)).state, 'waiting');
+  assert.equal(loginOf(settings, at(WANTED_MS + 1000)).state, 'none', 'stale: as if nobody asked, and no stamp outlives it');
+  openSignin(settings, at(0));
+  saveSession(settings, good(), {keychain: kc, now: () => t0 + 5000});
+  assert.equal(loginOf(settings, at(10000)).state, 'kept', 'a kept copy ends the wait');
+  assert.deepEqual(state(settings).on, false, 'a sign-in turns no switch on');
+  turnOn(settings, {keychain: kc});
+  assert.deepEqual(refreshSession(settings, [], {keychain: kc}), {ok: true, signedOut: true});
+  assert.deepEqual([state(settings).on, loginOf(settings, at(10000)).state], [true, 'none'], 'a Chrome sign-out: the switch stays on, the explicit none stops the older-install fallback reading it as kept');
+  turnOff(settings, {keychain: kc});
+  assert.equal(loginOf(settings, at(10000)).state, 'none');
+});
+
+// Gitar on #4247, #4365: the same sign-in saved again keeps its keep time in any state.
+test('the same sign-in saved again keeps its keep time, in any state', () => {
+  const settings = store({linkedinJobs: {on: true}}), kc = keychain();
+  saveSession(settings, good(), {keychain: kc, now: () => 1000});
+  const keptAt = settings.settings().linkedinJobs.keptAt;
+  settings.saveSettings({linkedinJobs: {...settings.settings().linkedinJobs, login: {state: 'waiting', at: 2000}}});
+  saveSession(settings, good(), {keychain: kc, now: () => 90000000});
+  assert.equal(settings.settings().linkedinJobs.keptAt, keptAt);
+});
