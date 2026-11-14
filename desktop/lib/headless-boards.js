@@ -137,7 +137,11 @@ async function readList(list, seams, total, tried) {
 // The owned browser, started the first time a board is due. -> null when it runs, else the step's result.
 async function startBrowser(browser, start, tee) {
   if (!browser.ready()) { tee(WORDS['no-browser']); return {state: 'no-browser', jobs: 0}; }
-  try { await start(); } catch { tee(WORDS.failed); return {state: 'failed', jobs: 0}; }
+  try { await start(); } catch (error) {
+    // Why (14 Nov 2026, rb, night 43633581251): CI's start failed twice and the line could not say why; the reason is shown only under the test harness (JOBADABRA_E2E), never to a person
+    tee(process.env.JOBADABRA_E2E === '1' ? `${WORDS.failed} (${String(error?.message || error).replace(/\s+/g, ' ').slice(0, 160)})` : WORDS.failed);
+    return {state: 'failed', jobs: 0};
+  }
   return null;
 }
 

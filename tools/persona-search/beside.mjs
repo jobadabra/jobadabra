@@ -18,6 +18,9 @@ export async function besideFor(storage, dir, exec) {
   const {linkRuntime} = await import(path.join(ROOT, 'desktop', 'e2e', 'lib', 'background-proof.mjs'));
   const why = linkRuntime(dir);
   if (why) throw new Error(`--beside: ${why}`);
+  // Why (14 Nov 2026, rb, try 2 on night 43633581251 "could not start" twice): the e2e harness gives the hidden browser `--no-sandbox` on Linux, as a CI runner (Ubuntu 24.04)
+  //   may not allow Chromium's sandbox (desktop/lib/background-browser.js); only that flag, through the one allow-list, no other (the honest user agent is unchanged).
+  if (process.platform === 'linux' && process.env.JOBADABRA_E2E === '1' && !process.env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS) process.env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS = JSON.stringify(['--no-sandbox']);
   const {withBeside} = await lib('search-beside.js');
   const {boardsSeams} = await lib('headless-boards-beside.js');
   const {visitsArgs} = await lib('pipeline-args.js');

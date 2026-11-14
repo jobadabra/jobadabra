@@ -17,9 +17,14 @@ export const toCard = job => ({title: job.title, url: job.url, place: job.place 
 
 /**
  * The broker's answer for one call: (body) -> {status, json}. `post` is injected by tests; the default signs in with this job's GitHub run token.
- * -> null outside a GitHub Actions job with `id-token: write` (no token): the caller then has no mark and skips every refusing page.
+ * Under codex.mjs (JOBADABRA_BOARD_MARK_URL) its relay signs the call. -> null outside a GitHub Actions job with `id-token: write` and outside the relay: the caller then skips every refusing page.
  */
 export async function brokerPost(env = process.env, fetchImpl = fetch) {
+  // Why (14 Nov 2026, rb): CI's searches run under tools/persona-search/codex.mjs, which keeps the run token and signs the mark's calls (boardForward); no token here
+  if (env.JOBADABRA_BOARD_MARK_URL) return async body => {
+    const answer = await fetchImpl(env.JOBADABRA_BOARD_MARK_URL, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
+    return {status: answer.status, json: await answer.json().catch(() => ({}))};
+  };
   const token = await runToken(env, fetchImpl).catch(() => null);
   if (!token) return null;
   return async body => {

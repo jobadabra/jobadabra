@@ -2,7 +2,8 @@
 // CI's side of the broker's board mark (tools/persona-search/board-mark.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)", "For good (Recommended)").
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
+import {brokerPost, markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
+import {boardForward} from '../../../../tools/persona-search/codex.mjs';
 
 const item = {url: 'https://www.trans.bg/search?q=driver', name: 'TRANS.BG', kind: 'board'};
 const job = {title: 'Шофьор', url: 'https://www.trans.bg/job/1', company: 'Acme', place: 'София', date: '2026-11-13'};
@@ -60,4 +61,17 @@ test('Gitar on #4306: a Stop before the ask sends nothing', async () => {
   const {post, sent} = answers([{status: 200, json: {go: true}}]);
   assert.equal((await markSeams(post).ask(item, stop.signal)).go, false);
   assert.equal(sent.length, 0);
+});
+
+test('under the relay (codex.mjs) the mark is asked through it: the child sends no token, the relay signs with the run\'s own and passes the body as sent', async () => {
+  const seen = [];
+  const fetchImpl = async (url, init = {}) => { seen.push({url, auth: init.headers?.authorization || null, body: init.body || null});
+    return url.includes('id-token') ? {ok: true, status: 200, json: async () => ({value: 'run-token'})} : {ok: true, status: 200, json: async () => ({go: true}), text: async () => '{"go":true}'}; };
+  const post = await brokerPost({JOBADABRA_BOARD_MARK_URL: 'http://127.0.0.1:9/board-read'}, fetchImpl);
+  assert.deepEqual(await post({op: 'reserve', page: item.url}), {status: 200, json: {go: true}});
+  assert.deepEqual(seen.at(-1), {url: 'http://127.0.0.1:9/board-read', auth: null, body: JSON.stringify({op: 'reserve', page: item.url})}, 'no token in the child');
+  const env = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://gh.example/id-token?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 't', AI_BROKER_URL: 'https://broker.example'};
+  assert.deepEqual(await boardForward('{"op":"reserve"}', {env, fetchImpl}), {status: 200, body: '{"go":true}'});
+  assert.deepEqual(seen.at(-1), {url: 'https://broker.example/board-read', auth: 'Bearer run-token', body: '{"op":"reserve"}'});
+  assert.equal((await boardForward('{}', {env: {}, fetchImpl})).status, 503, 'no run token in the relay: a refusal, so the caller skips');
 });
