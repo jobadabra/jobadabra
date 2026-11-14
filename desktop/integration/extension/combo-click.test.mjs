@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {PAGE_FILES} from '../../../extension/page-files.js';
-import {clickCombo} from '../../../extension/combo-click.js';
+import {ASKING_MAX, PATIENCE, clickCombo} from '../../../extension/combo-click.js';
 
 const MENU = delay => `<body><form><label for="rtw">* Do you have the right to work here?</label>
   <input id="rtw" role="combobox" aria-expanded="false" style="width:240px"><div id="menu" hidden>
@@ -249,4 +249,17 @@ test('a menu whose AI pick takes 26.7 s (the plan path, measured) is still picke
     const {picked, capped} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0, choose, now});
     assert.deepEqual({picked, capped, value: await p.evaluate(() => document.getElementById('rtw').value)}, {picked: true, capped: false, value: SENTENCES.plain.want});
   } finally { await browser.close(); }
+});
+
+// Gitar on #4310: a search box can ask the AI 3-4 times (page/fill-menus.js searchFor, typeToSearch). With the AI's time left out of `hard`, the menu's own
+// clock must still end it: the AI gets at most ASKING_MAX a menu, and flow.js STEP_MS.combo is built from it, so the outer limit never fires mid-pick.
+test('a menu that keeps asking the AI (45 s a pick) ends by its own AI budget, never by the outer limit', async () => {
+  let t = 0, picks = 0;
+  const now = () => t, sleep = async ms => { t += ms; };
+  const page = async func => { t += 10; const src = func.toString(); if (src.includes('ArmedCount')) return 1; if (src.includes('window.__jobadabraNeed;')) return {kind: 'choose', choices: ['A', 'B']}; return null; };
+  const choose = async () => { picks++; t += 45000; return ''; };
+  const out = await clickCombo({page, click: async () => {}, spot: {x: 1, y: 1}, choose, now, sleep});
+  assert.equal(out.capped, true);
+  assert.ok(t <= PATIENCE.hard + ASKING_MAX + 45000, `took ${t} ms over ${picks} picks`);
+  assert.ok(picks <= Math.ceil(ASKING_MAX / 45000) + 1, `${picks} picks`);
 });

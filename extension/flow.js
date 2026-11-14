@@ -9,7 +9,7 @@ import {KEY, sessionOf} from './tab-identity.js';
 import {attachDebugger, detachDebugger} from './stop-state.js';
 import {StepTimeout, within} from './step-bound.js';
 import {askEnded, askStarted} from './ladder/silence.js';
-import {clickCombo} from './combo-click.js';
+import {ASKING_MAX, PATIENCE, clickCombo} from './combo-click.js';
 import {selectForReplacement} from './text-replace.js';
 import {keysFor} from './fill-verify.js';
 import {kitStance} from './tab-pages.js';
@@ -46,8 +46,9 @@ export function debuggerTurn(work) {
 }
 // Every awaited step of the clicks has a deadline, and a whole menu too: a control that never answers is given up on, the rest of the fill goes on (step-bound.js).
 // Why (#4298, 14 Nov 2026): the plan path's AI pick took 18.4-26.7 s a menu (20 s cut the 26.7 s one before its answer); combo-click.js leaves the AI's time out of its
-// 30 s cap, so the whole menu may take that cap plus two picks (a search box asks more than once).
-const STEP_MS = {attach: 8000, page: 8000, mouse: 8000, type: 8000, choose: 45000, combo: 35000 + 2 * 45000};
+// 30 s cap and gives it its own budget (ASKING_MAX), so the whole menu may take that cap, the budget and one pick that started just inside it.
+const STEP_MS = {attach: 8000, page: 8000, mouse: 8000, type: 8000, choose: 45000};
+STEP_MS.combo = PATIENCE.hard + 5000 + ASKING_MAX + STEP_MS.choose;
 // Menus given up on in this fill (a timeout, or the ceiling): a later pass does not wait on the same menu again, so one control costs the fill one wait, not one per pass (tab -> labels).
 const givenUp = new Map();
 export const forgetGivenUp = tabId => { givenUp.delete(tabId); };
