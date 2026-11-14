@@ -287,8 +287,8 @@ jobs:
             if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "$N" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1
             else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge "$ID" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1; fi
             python3 tools/persona-search/pair.py side "$out" "$(basename "$out" | sed -E 's/.*--(main|pr)-[0-9]+$/\1/')"
-            # Why (14 Nov 2026, owner via sa: "let's fix also this"): a low number said nothing about where the jobs went; one table per search (tools/persona-search/board_funnel.py), a report only: its exit code is ignored and it never reds a run.
-            python3 tools/persona-search/board_funnel.py "$out" > "$out/funnel.md" 2>/dev/null || true
+            # Why (14 Nov 2026, owner via sa: "let's fix also this"): a low number said nothing about where the jobs went; one table per search (tools/persona-search/board_funnel.py), a report only: a failure never reds the run and leaves funnel.err.
+            python3 tools/persona-search/board_funnel.py "$out" > "$out/funnel.md" 2> "$out/funnel.err" || echo "Funnel table failed for $(basename "$out"): see funnel.err in the artifact" >> "$GITHUB_STEP_SUMMARY"
             if [ -s "$out/funnel.md" ]; then { echo "<details><summary>Where the jobs were lost: $(basename "$out")</summary>"; echo; cat "$out/funnel.md"; echo; echo "</details>"; } >> "$GITHUB_STEP_SUMMARY"; fi
             printf '{"own_draft": %s}\n' "$OWN" > "$out/person.json"
           done
