@@ -103,6 +103,11 @@ class EuresModeTest(unittest.TestCase):
                 self.assertEqual(json.loads((out / 'row.json').read_text())['eures_on'], mode == 'on')
                 profiles.table(tmp, Path(tmp) / 'table.md')
                 self.assertIn(f'fresh installs, {word}):', (Path(tmp) / 'table.md').read_text())
+        with tempfile.TemporaryDirectory() as tmp:   # rows from two series in one folder are never labelled by one of them
+            profile_folder(tmp, 'b04', [2000] * 5, right=3, eures='on')
+            profile_folder(tmp, 'b06', [2000] * 5, right=3)
+            profiles.table(tmp, Path(tmp) / 'table.md')
+            self.assertIn('fresh installs, EURES mixed):', (Path(tmp) / 'table.md').read_text())
 
 
 if __name__ == '__main__':

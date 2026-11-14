@@ -190,8 +190,10 @@ def table(folder, out):
     """The run's table (markdown) from every profile's row.json under the folder, in id order; also written as rows.json beside it."""
     rows = sorted((json.loads(f.read_text(encoding='utf-8')) for f in Path(folder).rglob('row.json')), key=lambda r: r['id'])
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
+    modes = {bool(r.get('eures_on')) for r in rows}
+    eures_word = 'on' if modes == {True} else 'mixed' if len(modes) > 1 else 'off'   # Why (14 Nov 2026, Gitar on #4170): one EURES-on row must not label a folder that also holds EURES-off rows
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
-             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES {"on" if any(r.get("eures_on") for r in rows) else "off"}): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
+             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES {eures_word}): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
              '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read | boards that gave jobs | boards with relevant | boards refused | boards cut at the end | time ran out for | broker waits p90 | AI calls refused | longest short AI call | engine | judge |',
              '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
