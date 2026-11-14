@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.fake_gh_env import NO_GH_LOGS
+
 ROOT = Path(__file__).resolve().parents[3]
 BODY = 'Moves: p1 right jobs 0 → pending (1 run a side, same minute, usual difference 2)\n'
 GH = r'''#!/bin/bash
@@ -40,7 +42,7 @@ class PairNotStartedTest(unittest.TestCase):
     def lines(self, core='5000', fail_first=0, fail_text='HTTP 502'):
         (self.tmp / 'core').write_text(core)
         (self.tmp / 'runs').unlink(missing_ok=True)
-        env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'STUB': str(self.tmp), 'FAIL_FIRST': str(fail_first), 'FAIL_TEXT': fail_text,
+        env = {**os.environ, **NO_GH_LOGS, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'STUB': str(self.tmp), 'FAIL_FIRST': str(fail_first), 'FAIL_TEXT': fail_text,
                'SHIP_PAIR_RETRY_S': '0', 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': ''}
         code = f'. "{ROOT / "tools" / "pr-rest-lib.sh"}"; . "{ROOT / "tools" / "ship-pr.sh"}"; tools="{ROOT / "tools"}"; step() {{ echo "ship: [0s] $*"; }}; ship_pair_lines 9 o/r'
         done = subprocess.run(['bash', '-c', code], env=env, capture_output=True, text=True, timeout=60)
