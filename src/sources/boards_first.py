@@ -258,7 +258,6 @@ class Beside:
                         break
                     self.woken.wait(min(left, read_budget.BETWEEN_S))
                     self.woken.clear()
-                read_budget.pass_at(started=at)
                 with self.count:
                     read = list(self.read)
                 self.track = board_pass.Track()
