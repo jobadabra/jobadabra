@@ -48,6 +48,11 @@ SAID = {'limited': f'{SLOW_DOWN}: left alone for now', 'check': 'LinkedIn showed
         'blocked': 'LinkedIn: could not be read this time', 'cloud': 'LinkedIn: not read in this cloud run'}
 JOB_PAGE = re.compile(r'^https://(?:[a-z]{2,3}|www)\.linkedin\.com/jobs/view/(?:[\w%-]*?-)?(\d{6,})/?$')
 CARD = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')
+# Why (14 Nov 2026, two recorded pages, tests/fixtures/sources/linkedin_guest/job-page-*.html): a logged-out job page names its Apply control
+# public_jobs_apply-link-onsite when LinkedIn takes the application (Easy Apply) and public_jobs_apply-link-offsite when Apply leads to the employer's site.
+# LinkedIn's own page markup, read by LinkedIn's own reader (no AI judgment: the control says it); a page with neither stays unknown.
+APPLY_LINK = re.compile(r'public_jobs_apply-link-(onsite|offsite)')
+ROUTES = {'onsite': 'linkedin', 'offsite': 'employer'}
 
 
 
@@ -301,13 +306,25 @@ def read(search):
     return jobs
 
 
-def description(url):
-    """A LinkedIn job page's text ('' when it has none or LinkedIn sent it elsewhere); Later when LinkedIn may not be asked now (src/sources/describe.py keeps it for a later run)."""
+def apply_route(page):
+    """Where a LinkedIn job page's Apply goes: 'linkedin' (Easy Apply), 'employer' (the employer's site) or '' when the page does not say."""
+    found = APPLY_LINK.search(page or '')
+    return ROUTES[found.group(1)] if found else ''
+
+
+def posting(url):
+    """A LinkedIn job page's (text, apply route): ('', '') when it is not a job page or LinkedIn sent it elsewhere; Later when LinkedIn may not be asked now
+    (src/sources/describe.py keeps it for a later run)."""
     found = JOB_PAGE.match(str(url or ''))
     if not found:
-        return ''
+        return '', ''
     final, text = _get(JOB_URL.format(id=found.group(1)))   # the window counts it once sent, whatever comes back (Gitar on #3995)
     if not urllib.parse.urlsplit(final).path.startswith('/jobs/view/'):
-        return ''
+        return '', ''
     body = re.search(r'<div\b[^>]*class="[^"]*\bshow-more-less-html__markup\b[^"]*"[^>]*>(.*?)</div>', text, re.S)
-    return ats.plain(body.group(1))[:ats.DESCRIPTION_LIMIT] if body else ''
+    return (ats.plain(body.group(1))[:ats.DESCRIPTION_LIMIT] if body else ''), apply_route(text)
+
+
+def description(url):
+    """A LinkedIn job page's text ('' when it has none or LinkedIn sent it elsewhere); Later when LinkedIn may not be asked now."""
+    return posting(url)[0]

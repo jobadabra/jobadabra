@@ -58,7 +58,8 @@ CREATE INDEX IF NOT EXISTS jobs_state_idx ON jobs(state);
 """
 
 
-NEWER = (('posted_at', 'TEXT'), ('description', 'TEXT'), ('identity', 'TEXT'))   # columns added after the first jobs files: an older file gets them at its next open
+NEWER = (('posted_at', 'TEXT'), ('description', 'TEXT'), ('identity', 'TEXT'), ('apply_route', 'TEXT'))   # columns added after the first jobs files: an older file gets them at its next open
+# apply_route: where a job is applied to, as its own page says: 'linkedin' (LinkedIn's Easy Apply), 'employer' (the employer's site), '' not known (src/sources/linkedin_guest.py apply_route).
 
 
 def _missing(db):

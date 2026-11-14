@@ -79,7 +79,7 @@ REFUSED_DAYS = 7
 MIN_TEXT = 400   # shorter: a cookie notice, an error or a login page, not a posting
 
 
-_ROUTE = threading.local()   # the route that read the last page on this thread (src/sources/read_routes.py), set by page_text and fetch
+_ROUTE = threading.local()   # the route that read the last page on this thread (src/sources/read_routes.py), set by page_text and fetch; .apply: where its Apply goes, when the page said
 
 
 class Refused(Exception):
@@ -142,7 +142,7 @@ def page_text(url, opener=None):
 
 def fetch(url, client=None):
     """The posting's text, from its own API or page; '' when the page has none; Refused when the site refuses an automated visit."""
-    _ROUTE.route = None
+    _ROUTE.route, _ROUTE.apply = None, ''
     match = SMARTRECRUITERS.search(url or '')
     if match:
         _ROUTE.route = 'api'
@@ -150,7 +150,8 @@ def fetch(url, client=None):
     from . import linkedin_guest
     if linkedin_guest.job_page(url):   # at LinkedIn's pace, in turn with its search pages, within its 10-minute window (spec 2026-11-13-linkedin-guest-search-design.md)
         _ROUTE.route = 'main'
-        return linkedin_guest.description(url)
+        text, _ROUTE.apply = linkedin_guest.posting(url)
+        return text
     host = urlsplit(url or '').hostname or ''
     if host.endswith('jobs.ch'):
         page = (client or boards.Client()).get(url)
@@ -221,20 +222,20 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
     todo = [item for item in todo if item not in linkedin] + linkedin[:linkedin_guest.left()]
 
     def one(item):
-        _ROUTE.route = None
+        _ROUTE.route, _ROUTE.apply = None, ''
         try:
             text = fetcher(item[1])
             if fetcher is fetch:   # how this site's text was read: shared with other installs (src/sources/read_routes.py)
                 read_routes.record(item[1], _ROUTE.route if text else 'browser_only', now)
-            return item, text, None
+            return item, text, None, _ROUTE.apply
         except Exception as error:  # noqa: BLE001 — one posting failing never stops the others
             if isinstance(error, Refused) and fetcher is fetch:
                 read_routes.record(item[1], 'refused', now)
-            return item, '', error
+            return item, '', error, ''
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(slots.carry(one), todo))
     seen = Counter()
-    for (job_id, url), text, error in results:
+    for (job_id, url), text, error, route in results:
         kind = _outcome(error, text)
         seen[kind] += 1
         if kind in ('waiting', 'refused', 'empty'):   # waiting: tried again at the pace the site asked; empty: a page drawn by scripts, a browser shows it
@@ -245,6 +246,8 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             db.execute("UPDATE jobs SET state='expired' WHERE id=?", (job_id,))
         elif kind == 'filled':
             db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
+            if route:   # only a route the page named; one that names none never clears it (ea's "LinkedIn account" chip: spec 2026-11-13-linkedin-easy-apply-design.md)
+                db.execute('UPDATE jobs SET apply_route=? WHERE id=?', (route, job_id))
     filled, gone, failed, empty, later = (seen[kind] for kind in ('filled', 'gone', 'failed', 'empty', 'later'))
     db.commit()
     if fetcher is fetch:

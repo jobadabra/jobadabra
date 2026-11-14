@@ -1,8 +1,10 @@
 """LinkedIn's public (logged-out) job search on the person's own computer (src/sources/linkedin_guest.py; spec docs/superpowers/specs/2026-11-13-linkedin-guest-search-design.md).
-Recorded pages only (tests/fixtures/sources/linkedin_guest: a cards page and a job page recorded on 13 Nov 2026, LinkedIn's empty end); a stand-in site answers every
+Recorded pages only (tests/fixtures/sources/linkedin_guest: a cards page and a job page recorded on 13 Nov 2026, LinkedIn's empty end, an Easy Apply job page and an
+employer-site job page recorded on 14 Nov 2026, trimmed to the Apply control and the text); a stand-in site answers every
 request and counts it, so no test reaches linkedin.com. The stand-in clock moves on each sleep and request; nothing waits for real."""
 import io
 import os
+import sqlite3
 import tempfile
 import unittest
 import urllib.error
@@ -11,8 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
-from src import time_budget
-from src.sources import describe, host_pace, linkedin_guest, read_budget, reader_rows
+from src import pool_served, store, time_budget
+from src.sources import describe, host_pace, linkedin_guest, read_budget, reader_rows, visits
 
 FIXTURES = os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures', 'sources', 'linkedin_guest')
 SEARCH = {'role_keywords': ['Site Reliability Engineer'], 'locations': {'top_tier': ['Geneva']}}
@@ -251,6 +253,43 @@ class GuestTest(unittest.TestCase):
         self.site(lambda url: ('redirect', 'https://www.linkedin.com/jobs/search?x=1', CARDS))
         self.assertEqual(linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998755/'), '')
 
+
+    def test_a_job_page_says_whether_linkedin_or_the_employer_takes_the_application(self):
+        """ea's "LinkedIn account" chip (spec 2026-11-13-linkedin-easy-apply-design.md) needs the found row to say Easy Apply; recorded 14 Nov 2026."""
+        self.assertEqual(linkedin_guest.apply_route(fixture('job-page-easy-apply.html')), 'linkedin')
+        self.assertEqual(linkedin_guest.apply_route(fixture('job-page-employer-site.html')), 'employer')
+        self.assertEqual(linkedin_guest.apply_route(fixture('job-page.html')), '', 'a page that names neither stays unknown, never a guess')
+        self.site(lambda url: fixture('job-page-easy-apply.html'))
+        text, route = linkedin_guest.posting('https://www.linkedin.com/jobs/view/4489915925/')
+        self.assertEqual(route, 'linkedin')
+        self.assertGreater(len(text), 200, 'the text is read from the same page, one request')
+
+    def test_the_route_lands_on_the_found_row_with_its_text_and_a_later_page_naming_none_keeps_it(self):
+        tmp = Path(self.dir.name)
+        for patch in (mock.patch.object(visits, 'STORE', tmp / 'visits.json'), mock.patch('src.paths.DATA', tmp),
+                      mock.patch.object(pool_served, 'STORE', tmp / 'pool_served.json'), mock.patch.object(linkedin_guest, 'on', lambda env=None: True)):
+            patch.start()
+            self.addCleanup(patch.stop)
+        pages = {'4489915925': 'job-page-easy-apply.html', '4490552642': 'job-page-employer-site.html', '4484998755': 'job-page.html'}
+        site = self.site(lambda url: fixture(pages[url.rstrip('/').rsplit('/', 1)[1]]))
+        db = sqlite3.connect(':memory:')
+        db.execute('CREATE TABLE jobs (id INTEGER PRIMARY KEY, url TEXT, state TEXT, description TEXT, first_seen_at TEXT, apply_route TEXT)')
+        now = datetime(2026, 11, 14, 3, 30, tzinfo=timezone.utc)
+        db.executemany('INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?)', [
+            (1, 'https://www.linkedin.com/jobs/view/4489915925/', 'open', '', now.isoformat(timespec='seconds'), None),
+            (2, 'https://www.linkedin.com/jobs/view/4490552642/', 'open', '', now.isoformat(timespec='seconds'), None),
+            (3, 'https://www.linkedin.com/jobs/view/4484998755/', 'open', '', now.isoformat(timespec='seconds'), 'linkedin')])
+        describe.backfill(db, now=now)
+        self.assertEqual(len(site.requests), 3, 'one request a job: the route comes with the text')
+        rows = {row[0]: row[1:] for row in db.execute('SELECT id, apply_route, length(description) > 200 FROM jobs')}
+        self.assertEqual(rows, {1: ('linkedin', 1), 2: ('employer', 1), 3: ('linkedin', 1)})
+
+    def test_an_older_jobs_file_gets_the_route_column_at_its_next_open(self):
+        path = Path(self.dir.name) / 'jobs.db'
+        store.connect(path).close()
+        db = sqlite3.connect(path)
+        self.assertIn('apply_route', {row[1] for row in db.execute('PRAGMA table_info(jobs)')})
+        db.close()
 
 class GateTest(unittest.TestCase):
     def test_the_row_is_on_only_where_the_desktop_app_set_the_flag(self):
