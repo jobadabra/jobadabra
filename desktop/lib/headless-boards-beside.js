@@ -48,8 +48,8 @@ export function memoryWatch(file, {look = LOOK_MS, sleep = nap, stat = name => f
   return {mark, changed};
 }
 
-/** -> {step(signal, onLine)} for lib/search-beside.js. `deps` lets a test inject the browser maker, the engine run and the CDP opener. */
-export function boardsSeams(storage, {makeBrowser = boardReadBrowser, run = pipeline.run, openCdp, port = Number(process.env.JOBADABRA_PORT || 47111)} = {}) {
+/** -> {step(signal, onLine)} for lib/search-beside.js. `deps` lets a test inject the browser maker, the engine run and the CDP opener; CI's runner adds ask/told (lib/headless-boards.js). */
+export function boardsSeams(storage, {makeBrowser = boardReadBrowser, run = pipeline.run, openCdp, ask = null, told = null, port = Number(process.env.JOBADABRA_PORT || 47111)} = {}) {
   const queue = async () => {
     const {code, stdout} = await run(storage, ['src.desktop', 'headless-boards']).catch(() => ({code: 1, stdout: ''}));
     try { return code === 0 ? JSON.parse(String(stdout).trim().split('\n').pop()).sites || [] : []; } catch { return []; }
@@ -68,7 +68,7 @@ export function boardsSeams(storage, {makeBrowser = boardReadBrowser, run = pipe
     const memory = memoryWatch(path.join(storage.path('data'), 'found_boards.json'));
     await memory.mark();   // before the first ask: a board refused while it runs is seen as a change
     try {
-      return await boardsStep({browser: own, start: () => own.start({port, token: extensionToken(storage)}), queue, changed: s => memory.changed(s, ended), begin, judge, outcome,
+      return await boardsStep({browser: own, start: () => own.start({port, token: extensionToken(storage)}), queue, changed: s => memory.changed(s, ended), begin, judge, outcome, ask, told,
         ...(openCdp ? {openCdp} : {}), tee: onLine, signal});
     } finally {
       if (!(await own.dispose())) appLog('job-boards', 'the board read browser\'s folder was not removed; the next read removes it', {folder: FOLDER});

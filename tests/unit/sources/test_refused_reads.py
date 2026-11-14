@@ -160,3 +160,18 @@ class LongCheckPageTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SharedMarkReuseTest(RefusedReadsTest):
+    """CI's shared mark (owner, 14 Nov 2026: "Once per search page (Recommended)"): a page another CI search read today comes back as cards, read with nothing fetched."""
+
+    def test_cards_are_read_as_the_page_s_jobs_and_the_listing_carries_their_public_fields_only(self):
+        cards = [{'title': 'Truck driver C+E', 'url': 'https://www.trans.bg/job/1', 'place': 'Sofia', 'company': 'Acme Logistics'},
+                 {'title': 'Driver', 'url': 'https://www.trans.bg/job/2', 'place': '', 'company': ''}]
+        with mock.patch('urllib.request.urlopen', side_effect=AssertionError('nothing is fetched')):
+            result = refused_reads.outcome('https://www.trans.bg/search?q=driver', 200, '', final='https://www.trans.bg/search?q=driver', now=NOW, step='headless', cards=cards)
+        self.assertEqual((result['state'], result['jobs']), ('read', 2))
+        self.assertEqual(sorted(job['url'] for job in result['listing']), ['https://www.trans.bg/job/1', 'https://www.trans.bg/job/2'])
+        self.assertEqual(set(result['listing'][0]), {'title', 'url', 'company', 'place', 'date'})
+        first = next(job for job in result['listing'] if job['url'].endswith('/1'))
+        self.assertEqual((first['place'], first['company']), ('Sofia', 'Acme Logistics'))

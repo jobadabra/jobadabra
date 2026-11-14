@@ -85,7 +85,18 @@ const line = (name, answer) => {
 };
 
 // One board in its turn: today's share spent for it first, its page loaded, the engine's answer counted and said. -> false when the share is used (the step ends).
-async function readTurn(item, {browser, openCdp, begin, judge, outcome, signal, now, sleep, tee}, total, tried, begun) {
+async function readTurn(item, {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee}, total, tried, begun) {
+  const name = item.name || new URL(item.url).hostname;
+  // CI only (tools/persona-search/beside.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)"): `ask` says whether this search may send the request or
+  // reuses the jobs another CI search read on this page today (cards, nothing fetched); no answer is a skip. The app passes no `ask`: its path is unchanged.
+  const verdict = ask ? await ask(item, signal).catch(() => ({go: false, why: 'the shared CI mark did not answer: not read'})) : {go: true};
+  if (!verdict.go) {
+    tried.add(item.url);
+    const reused = verdict.cards ? await outcome({url: item.url, status: 200, html: '', title: '', final: item.url, step: 'headless', cards: verdict.cards}).catch(() => null) : null;
+    if (reused) { total.jobs += reused.jobs || 0; total.fits += reused.fits || 0; }
+    tee(reused ? `Job boards: ${name}: ${reused.jobs || 0} job(s) another CI search read today, nothing sent` : `Job boards: ${name}: ${verdict.why || 'not read'}`);
+    return true;
+  }
   if (!(await begin(item).catch(() => false))) { tee(WORDS.spent); return false; }   // spent before the page loads: a read killed mid-way is not repeated today
   tried.add(item.url);
   begun();
@@ -93,7 +104,7 @@ async function readTurn(item, {browser, openCdp, begin, judge, outcome, signal, 
   if (signal?.aborted) return true;
   const page = got?.page || {url: item.url, status: 0, html: '', title: '', final: item.url};
   const answer = await outcome({...page, step: 'headless', ...(got?.state ? {judged: got.state} : {})}).catch(() => null);   // not judged (a busy AI): no verdict is made up
-  const name = item.name || new URL(item.url).hostname;
+  if (told && answer) await told(item, answer).catch(() => {});   // CI only: the shared mark keeps how the read ended
   if (!answer) { tee(`Job boards: ${name}: not read (no answer from the engine)`); return true; }
   total.read += 1; total.jobs += answer.jobs || 0; total.fits += answer.fits || 0;
   tee(line(name, answer));
@@ -124,13 +135,14 @@ async function startBrowser(browser, start, tee) {
  * Read the refused boards the engine queued, one at a time, in the owned browser. Every seam is injected: browser {ready, send, targetSocket}, start(), queue() -> [{url, name, kind}],
  * changed(signal) -> true once the board memory changed since the last ask, false at Stop or the press's deadline (none: the queue is asked once),
  * begin(item) -> true when the engine spent today's share for it (before its page loads), judge(page) -> page_state or null, outcome(page) -> the engine's answer, openCdp.
+ * CI only: ask(item, signal) -> {go} or {go: false, why} or {go: false, cards} (jobs another CI search read there today), told(item, answer) after a read; the app passes neither.
  * A board the press's deadline or Stop did not reach waits for the next press (nothing is spent or kept for it). The engine owns what each verdict means (refused_reads.outcome).
  * Invariants: at most MAX_BOARDS opened a press, an address at most once a press, the browser starts only when a board is due.
  * -> {state: 'off'|'no-browser'|'failed'|'done'|'stopped', jobs, fits?, read?, of? (the boards opened)}.
  */
-export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
+export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, ask = null, told = null, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
   if (signal?.aborted) return {state: 'stopped', jobs: 0};
-  const total = {jobs: 0, fits: 0, read: 0}, tried = new Set(), seams = {browser, openCdp, begin, judge, outcome, signal, now, sleep, tee};
+  const total = {jobs: 0, fits: 0, read: 0}, tried = new Set(), seams = {browser, openCdp, begin, judge, outcome, ask, told, signal, now, sleep, tee};
   let started = false, going = true;
   // Why (13 Nov 2026, night 43313523472): asked once at second 0, a person's first press had nothing queued: its boards refuse the plain reader
   // at ~30 s (p1 Jobs.bg at 28 s, p3 Jobat at 33 s); the engine keeps each refusal as it happens (board_ideas.keep_board), so the queue is asked again then

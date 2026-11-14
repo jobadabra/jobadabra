@@ -5,6 +5,7 @@
 // Its browser gets no flag beyond the app's own (honest user agent, --enable-automation) and talks only to a stand-in loopback server here, never the app's port 47111.
 import http from 'node:http';
 import path from 'node:path';
+import {brokerPost, markSeams} from './board-mark.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const lib = file => import(path.join(ROOT, 'desktop', 'lib', file));
@@ -23,9 +24,13 @@ export async function besideFor(storage, dir, exec) {
   // The owned browser's extension is told an app address: this stand-in answers it, so nothing of the read reaches the person's running app.
   const app = http.createServer((request, response) => { request.resume(); request.on('end', () => { response.writeHead(200, {'content-type': 'application/json', 'access-control-allow-origin': '*'}); response.end('{"ok":true,"jobs":[]}'); }); });
   await new Promise(resolve => app.listen(0, '127.0.0.1', resolve));
-  const {step} = boardsSeams(storage, {run: exec, port: app.address().port});
+  // Why (14 Nov 2026, owner via AskUserQuestion, session rb: "Once per host per day, all CI (Recommended)", "Once per search page (Recommended)"): every CI search is a fresh
+  //   install, so the app's per-install limits would let CI ask one refusing page many times a day; the broker's mark (board-mark.mjs) lets one CI search read it, the rest reuse.
+  const {ask, told} = markSeams(await brokerPost(), {ci: Boolean(process.env.GITHUB_ACTIONS)});
+  const {step} = boardsSeams(storage, {run: exec, port: app.address().port, ask, told});
   let result = null;
-  const boards = async (signal, onLine) => (result = await step(signal, onLine));
+  // Why (14 Nov 2026, rb): `ended` (the engine's steps are over) is passed on as the app does (search-beside.js withBeside); without it the step waited for the deadline.
+  const boards = async (signal, onLine, ended) => (result = await step(signal, onLine, ended));
   const score = (fits, onLine) => exec(storage, visitsArgs(storage, fits), onLine);
   return {
     press: (steps, onLine) => { result = null; return withBeside(storage, onLine, null, steps, {step: null, boards, score}); },
