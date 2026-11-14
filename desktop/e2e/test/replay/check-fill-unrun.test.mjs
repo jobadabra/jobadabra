@@ -23,7 +23,7 @@ test('no case left unrun: no second browser', async () => {
   assert.equal(calls, 0);
 });
 
-test('a case the second browser also never ran stays "not run", and a short second answer keeps the first result (Gitar on #4142)', async () => {
+test('a case the second browser also never ran stays "not run", and a short second answer keeps the first result (Gitar on #4142, reopened as #4148)', async () => {
   const items = [{name: 'a'}, {name: 'b'}, {name: 'c'}];
   const first = [right('a'), retired('b'), retired('c')];
   const twice = await runUnrun(items, first, async list => [retired(list[0].name), right(list[1].name)]);
@@ -31,4 +31,13 @@ test('a case the second browser also never ran stays "not run", and a short seco
   assert.equal(twice[2].ok, true);
   const short = await runUnrun(items, first, async () => []);
   assert.deepEqual(short, first, 'no answer for a case: its first result stays');
+});
+
+test('a second browser that fails to start keeps the first results, and each case it never ran says why (Gitar on #4148)', async () => {
+  const items = [{name: 'a'}, {name: 'b'}];
+  const first = [right('a'), retired('b')];
+  const out = await runUnrun(items, first, async () => { throw new Error('replay browser startup: no answer in 120000 ms'); });
+  assert.equal(out[0], first[0]);
+  assert.equal(out[1].retired, true);
+  assert.match(out[1].failures.at(-1), /^second browser failed: replay browser startup/);
 });

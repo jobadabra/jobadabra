@@ -173,7 +173,7 @@ async function pressStep(tab, step) {
     const seen = await panel.getByRole('button').evaluateAll(list => list.map(one => `${one.textContent.trim().slice(0, 30)}${one.checkVisibility() ? '' : ' (hidden)'}${one.disabled ? ' (disabled)' : ''}`).filter(Boolean));
     // Why (14 Nov 2026, main red at 691d7224, runs 43527732560 and 43530467683): the panel read "Ready" after the page's Next, and the red could not say whether the next step was
     // not shown, shown and empty (the panel wrong) or already filled; the page's own visible required fields say which, ahead of the buttons (the case's error is cut at 200 characters).
-    // A page gone mid-press (navigated, closed) makes the probe itself fail: said as text, so the panel's own error below is always the one thrown (Gitar on #4142).
+    // A page gone mid-press (navigated, closed) makes the probe itself fail: said as text, so the panel's own error below is always the one thrown (Gitar on #4142, reopened as #4148).
     const required = await tab.locator('[required]').evaluateAll(list => list.filter(one => one.checkVisibility()).map(one => (['checkbox', 'radio'].includes(one.type) ? one.checked : !!one.value))).then(
       list => `${list.length} visible required, ${list.filter(filled => !filled).length} empty`,
       probe => `required fields not read (${String(probe?.message || probe).slice(0, 60)})`);

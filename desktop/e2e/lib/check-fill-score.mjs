@@ -39,15 +39,22 @@ export const replayedNothing = (results, verdicts) => !results.length || verdict
 
 /**
  * The cases a retired browser never ran ("not run: browser retired after …") have no verdict, so they run once more in a fresh browser. `replay(items)` -> their results in
- * the same order. -> `results` with theirs replaced; one the second browser also never ran stays "not run" (a second fatal case is a real red).
+ * the same order. -> `results` with theirs replaced; one the second browser also never ran stays "not run" (a second fatal case is a real red). Never throws: a second
+ * browser that fails (to start, or at all) leaves the first results, and each case it never ran says why in its own failures (Gitar on #4142, reopened as #4148).
  * Why (14 Nov 2026, main red at 691d7224, runs 43527732560 and 43530467683): one case's failed panel press retired the shared browser and the 56 cases still queued were
  * counted wrong (81/140, main 137/140) though none of them ran; the alone re-run (at most 6) could not reach them.
  */
 export async function runUnrun(items, results, replay) {
   const unrun = items.map((_, i) => i).filter(i => results[i]?.retired);
   if (!unrun.length) return results;
-  const again = await replay(unrun.map(i => items[i]));
   const out = [...results];
+  let again;
+  try { again = await replay(unrun.map(i => items[i])); }
+  catch (error) {
+    const why = `second browser failed: ${String(error?.message || error).replace(/\s+/g, ' ').slice(0, 160)}`;
+    for (const i of unrun) out[i] = {...results[i], failures: [...results[i].failures, why]};
+    return out;
+  }
   unrun.forEach((i, k) => { if (again[k]) out[i] = again[k]; });
   return out;
 }
