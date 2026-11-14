@@ -2,7 +2,7 @@
 // CI's side of the broker's board mark (tools/persona-search/board-mark.mjs; owner, 14 Nov 2026: "Once per search page (Recommended)", "For good (Recommended)").
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {brokerPost, markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
+import {OWN_MAX_MS, OWN_STEP_MS, brokerPost, markSeams, toCard} from '../../../../tools/persona-search/board-mark.mjs';
 import {boardForward} from '../../../../tools/persona-search/codex.mjs';
 
 const item = {url: 'https://www.trans.bg/search?q=driver', name: 'TRANS.BG', kind: 'board'};
@@ -66,6 +66,16 @@ test('a pair side waits for its own run\'s read of the page and gets the same ca
   assert.equal(naps.length, 2);
   const own = answers([{status: 200, json: {go: false, state: 'reading', own: true}}, {status: 200, json: {go: false, state: 'stopped'}}]);
   assert.match((await markSeams(own.post, {sleep}).ask(item)).why, /turned CI's browser away before/, 'the other side was stopped: this side skips, never opens');
+});
+
+test('Gitar on #4355: a pair side whose other side never reports stops waiting after the longest read and skips, never opens', async () => {
+  const naps = [];
+  const {post, sent} = answers([{status: 200, json: {go: false, state: 'reading', own: true}}]);
+  const verdict = await markSeams(post, {sleep: async ms => { naps.push(ms); }}).ask(item);
+  assert.equal(verdict.go, false);
+  assert.match(verdict.why, /did not report its read within 90 s/);
+  assert.equal(naps.length * OWN_STEP_MS, OWN_MAX_MS, 'waited exactly the longest read');
+  assert.equal(sent.length, naps.length + 1);
 });
 
 test('the own-read wait ends with the press: a Stop or the deadline during the wait opens nothing and asks no more', async () => {

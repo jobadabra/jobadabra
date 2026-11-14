@@ -45,6 +45,7 @@ class RefusingBoards(unittest.TestCase):
     def test_the_pair_reads_refusing_boards_only_when_both_sides_wait_for_their_own_pairs_read(self):
         step = (ROOT / '.github' / 'workflows' / 'search-pair.yml').read_text().split('for k in $(seq 1 "$RUNS"); do', 1)
         self.assertIn('''grep -q 'OWN_STEP_MS' "side-$side/tools/persona-search/board-mark.mjs"''', step[0])
+        self.assertIn('''grep -q -- '--beside' "side-$side/tools/persona-search/run.mjs"''', step[0], 'Gitar on #4355: the side must also take the flag')
         self.assertIn('"${beside[@]}"', step[1].split('codex.mjs --', 1)[1].split('\n', 1)[0], 'both sides get the same flag in their one draw line')
         self.assertIn('OWN_STEP_MS', (ROOT / 'tools' / 'persona-search' / 'board-mark.mjs').read_text(), 'the name the workflow looks for')
 

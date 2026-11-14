@@ -264,7 +264,7 @@ jobs:
           #   of one pair get the same cards"): --beside reads the boards that refuse plain reading in Jobadabra's honest browser, once a page a day across all CI (the broker's mark);
           #   a side that comes second to a page its own pair is reading waits for those jobs (board-mark.mjs OWN_STEP_MS). A branch from before that wait would skip instead, so
           #   --beside is on only when both sides have it: until then the pair reads as before, the same on both sides.
-          beside=(--beside); for side in main pr; do grep -q 'OWN_STEP_MS' "side-$side/tools/persona-search/board-mark.mjs" 2>/dev/null || beside=(); done
+          beside=(--beside); for side in main pr; do grep -q 'OWN_STEP_MS' "side-$side/tools/persona-search/board-mark.mjs" 2>/dev/null && grep -q -- '--beside' "side-$side/tools/persona-search/run.mjs" 2>/dev/null || beside=(); done
           echo "Refusing boards in Jobadabra's browser: ${beside[*]:-off (a side has no own-read wait)}"
           for k in $(seq 1 "$RUNS"); do
             for side in main pr; do
