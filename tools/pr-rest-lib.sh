@@ -27,6 +27,7 @@ pr_get() {
   etag="$(head -n 1 "$key" 2>/dev/null)"; [ -z "$etag" ] || h=(-H "If-None-Match: $etag")
   out="$(gh api -i ${h[@]+"${h[@]}"} "$1" 2>/dev/null | tr -d '\r')"   # gh exits 1 on a 304: the status line decides
   code="$(head -n 1 <<<"$out" | awk '{print $2}')"
+  printf '%s' "$code" > "$key.status" 2>/dev/null   # for pr_last_status: a caller that must tell "absent" (404) from an outage
   case "$code" in
     304) [ -n "$etag" ] && tail -n +2 "$key" ;;
     200) etag="$(sed -n 's/^[Ee][Tt][Aa][Gg]: //p' <<<"$out" | head -n 1)"
@@ -37,6 +38,10 @@ pr_get() {
     *) return 1 ;;
   esac
 }
+
+# pr_last_status <api path>: the HTTP status of the last pr_get of that path (404, 403, 200, 304; empty when none yet or unreachable). pr_get runs in a command substitution, so its status travels in a file.
+# Why (14 Nov 2026, Gitar on #4162): a deleted repository variable is a 404, and a watcher must read that as "off", not as the network blip it keeps the last answer for.
+pr_last_status() { cat "${PR_REST_CACHE:-${TMPDIR:-/tmp}/pr-rest-cache}/$(printf '%s' "$1" | tr -c 'A-Za-z0-9' _).status" 2>/dev/null; }
 
 # pr_view <repo> <n> [full]: the PR like `gh pr view --json number,url,title,state,mergeable,headRefOid,headRefName,mergeCommit` (state OPEN|MERGED|CLOSED,
 # mergeable MERGEABLE|CONFLICTING|UNKNOWN, labels: the label names). "full" adds comments, reviews and commits in the same shape (3 more reads, free while unchanged).

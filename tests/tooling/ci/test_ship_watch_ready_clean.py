@@ -27,7 +27,7 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads='', claude=None):
+    def watch(self, mergestates, twins='', labels='Gitar: approved', reviews=None, heads='', claude=None, variables=None):
         """One look per line of mergestates, then the PR closes. Every look: Gitar approved, the gate green (newest row), no draft."""
         self.log.write_text('ship: opened\n')
         looks = len(mergestates)
@@ -37,6 +37,8 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
             (self.tmp / name).write_text(text)
         if reviews is not None:
             (self.tmp / 'reviews.json').write_text(json.dumps(reviews))
+        if variables is not None:   # the variable per look (true | false | 404), after the PR read of that look
+            (self.tmp / 'variables').write_text('\n'.join(variables) + '\n')
         if claude is not None:   # the repository variable CLAUDE_REVIEW_ENABLED (REST body); None = no such variable (404)
             (self.tmp / 'rest').mkdir(exist_ok=True)
             (self.tmp / 'rest' / 'repos_o_r_actions_variables_CLAUDE_REVIEW_ENABLED').write_text(json.dumps({'name': 'CLAUDE_REVIEW_ENABLED', 'value': claude}))
@@ -86,6 +88,14 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
             self.assertTrue(any('READY' in line for line in lines), (claude, lines))
         self.assertFalse(any('READY' in line for line in self.watch(['clean', 'clean'], labels='Claude: not reviewed,Gitar: approved', heads=SHA, claude='true')), 'on: the Claude rule holds it')
         self.assertFalse(any('READY' in line for line in self.watch(['clean', 'clean'], labels='Claude: not reviewed,Gitar: reviewing', heads=SHA)), 'off: Gitar still has to approve')
+
+    def test_a_deleted_variable_turns_a_running_watcher_to_gitar_only_at_once(self):
+        """Gitar on #4162: a watcher that read "true" and then finds the variable deleted (404) is off, not "keep the last answer" (that is for outages)."""
+        labels = 'Claude: not reviewed,Gitar: approved'
+        lines = self.watch(['clean', 'clean', 'clean'], labels=labels, heads=SHA, variables=['true', '404', '404'])
+        self.assertEqual([line for line in lines if 'READY' in line], [f'ship: READY #7 {SHA[:7]}'], lines)
+        lines = self.watch(['clean', 'clean', 'clean'], labels=labels, heads=SHA, variables=['true', 'true', 'true'])
+        self.assertFalse(any('READY' in line for line in lines), 'on: the Claude rule holds it')
 
     def test_a_computing_merge_state_holds_ready_and_does_not_re_arm_it(self):
         lines = self.watch(['clean', 'unknown', 'clean'])
