@@ -1,5 +1,6 @@
 // How check:fill scores one replayed case like the form benchmark (right / wrong / empty / not reached) and compares a run with main's stored numbers. Pure; guard: e2e/test/check-fill.test.mjs.
 // Why (27 Oct 2026, owner): "We fixed the form filling hundreds of times and it's still regressing": a session needs one pass/fail line before any PR, not a CI wait.
+// Job: keep the scorecard
 
 export const BUCKETS = ['right', 'wrong', 'empty', 'not reached'];
 // A check kind that names a box left unfilled, a wrong value, or a page the fill never got to; first match in this order wins (a wrong value is worse than an empty box).
@@ -35,3 +36,25 @@ export function compare(base, now) {
 
 /** A run whose harness replayed nothing (no result, or every case stopped at an error or isolation line) is not a finding about the filler: check:fill fails it as a harness error. */
 export const replayedNothing = (results, verdicts) => !results.length || verdicts.every(one => one.bucket === 'not reached' && one.failures.some(line => /^(error|isolation)/.test(line)));
+
+/**
+ * The cases a retired browser never ran ("not run: browser retired after …") have no verdict, so they run once more in a fresh browser. `replay(items)` -> their results in
+ * the same order. -> `results` with theirs replaced; one the second browser also never ran stays "not run" (a second fatal case is a real red). Never throws: a second
+ * browser that fails (to start, or at all) leaves the first results, and each case it never ran says why in its own failures (Gitar on #4142, reopened as #4148).
+ * Why (14 Nov 2026, main red at 691d7224, runs 43527732560 and 43530467683): one case's failed panel press retired the shared browser and the 56 cases still queued were
+ * counted wrong (81/140, main 137/140) though none of them ran; the alone re-run (at most 6) could not reach them.
+ */
+export async function runUnrun(items, results, replay) {
+  const unrun = items.map((_, i) => i).filter(i => results[i]?.retired);
+  if (!unrun.length) return results;
+  const out = [...results];
+  let again;
+  try { again = await replay(unrun.map(i => items[i])); }
+  catch (error) {
+    const why = `second browser failed: ${String(error?.message || error).replace(/\s+/g, ' ').slice(0, 160)}`;
+    for (const i of unrun) out[i] = {...results[i], failures: [...results[i].failures, why]};
+    return out;
+  }
+  unrun.forEach((i, k) => { if (again[k]) out[i] = again[k]; });
+  return out;
+}

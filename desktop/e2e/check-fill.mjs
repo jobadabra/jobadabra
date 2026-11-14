@@ -11,7 +11,7 @@ import {loadCases} from './lib/page-replay.mjs';
 import {loadZoo} from './lib/widget-zoo.mjs';
 import {replayInTabs} from './lib/replay-browser.mjs';
 import {readSlow} from './lib/replay-slow.mjs';
-import {bucketOf, compare, replayedNothing, summarize} from './lib/check-fill-score.mjs';
+import {bucketOf, compare, replayedNothing, runUnrun, summarize} from './lib/check-fill-score.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2), flag = name => (args.includes(name) ? args[args.indexOf(name) + 1] : '');
@@ -19,7 +19,8 @@ const only = flag('--only'), started = Date.now();
 const slow = new Set(readSlow().slow), seconds_ = JSON.parse(fs.readFileSync(path.join(HERE, 'case-seconds.json'), 'utf8')).seconds, QUICK_MAX = 6;   // Why (27 Oct 2026, owner's ask): a session's loop is under 2 min on a loaded Mac; the measured-fast half of the pages keeps that
 const items = [...loadZoo().map(one => ({...one, set: 'zoo'})), ...loadCases().filter(one => !slow.has(one.name) && (args.includes('--all') || (seconds_[one.name] ?? 99) <= QUICK_MAX)).map(one => ({...one, set: 'recorded'}))].filter(one => one.name.includes(only));
 let results = [], error = '';
-try { results = await replayInTabs(items, {tabs: Number(process.env.JP_REPLAY_TABS || 4), extensionDir: process.env.REAL_EXTENSION_DIR || undefined}); } catch (e) { error = String(e?.message || e).replace(/\s+/g, ' ').slice(0, 200); }
+const replayOpts = {tabs: Number(process.env.JP_REPLAY_TABS || 4), extensionDir: process.env.REAL_EXTENSION_DIR || undefined};
+try { results = await replayInTabs(items, replayOpts); results = await runUnrun(items, results, list => replayInTabs(list, replayOpts)); } catch (e) { error = String(e?.message || e).replace(/\s+/g, ' ').slice(0, 200); }   // a case a retired browser never ran gets its one run (lib/check-fill-score.mjs runUnrun)
 // Why (27 Oct 2026, as desktop/integration/extension/recorded-pages.test.mjs): a case that fails among parallel tabs counts only if it fails alone too; a case main already had not right is not re-run. A pass alone is said as FLAKY.
 // Why (owner, 27 Oct 2026: "Main, red on regression"): main's build compares with the baseline its last green run wrote (--baseline, an artifact) and writes the next one (--write).
 //   No baseline yet (the first run, an expired artifact): the run only counts, it never goes red on a guess.
