@@ -44,10 +44,10 @@ const CANONICAL = [
 const trace = CANONICAL.map(([label, type, required, filled, reason]) => ({ label, type, required: !!required, outcome: filled ? 'filled' : 'left', reason }));
 // The panel reads the same page as entries: {required, filled, el.type}; every control is there, optional ones too.
 const entries = trace.map((row) => ({ required: row.required, filled: row.outcome === 'filled', ai: row.reason.startsWith('Claude'), el: { type: row.type } }));
-const panelCount = () => window.__jobadabraRequiredCount(entries.map((entry) => ({ required: entry.required, filled: entry.filled, type: entry.el.type })));
+const panelCount = () => window.__jobadabraRequiredCount(entries.map((entry) => ({ required: entry.required, filled: entry.filled, type: entry.el.type, blocks: entry.ai })));
 
 test('the panel counts every required question the page marks, consents and own-words included, the upload slot aside', () => {
-  assert.deepEqual(panelCount(), { required: 18, filled: 9, left: 9 });
+  assert.deepEqual(panelCount(), { required: 18, filled: 9, pending: 0, total: 18, left: 9 });
 });
 
 test('optional fields Claude filled are never counted as required', () => {
@@ -62,4 +62,10 @@ test('the panel loads the shared count before review.js and review.js reads it',
   const review = fs.readFileSync(new URL('../../extension/review.js', import.meta.url), 'utf8');
   assert.match(review, /__jobadabraRequiredCount/);
   assert.match(review, /\['PanelI18n', 'RequiredCount'/, 'a partial injection is named, not thrown (the helper guard lists it)');
+});
+
+test('one count owns total and left: an empty optional answer Claude wrote joins both, a filled one and a plain optional never do', () => {
+  const rows = [{ required: true, filled: true, type: 'text' }, { required: false, blocks: true, filled: false, type: 'text' }, { required: false, blocks: true, filled: true, type: 'text' }, { required: false, filled: false, type: 'text' }];
+  assert.deepEqual(window.__jobadabraRequiredCount(rows), { required: 1, filled: 1, pending: 1, total: 2, left: 1 });
+  assert.deepEqual(window.__jobadabraRequiredCount([{ required: false, blocks: true, filled: false, type: 'text' }]), { required: 0, filled: 0, pending: 1, total: 1, left: 1 }, 'optional-only: not "No required fields" while Ready waits');
 });
