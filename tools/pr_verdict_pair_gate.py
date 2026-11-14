@@ -70,7 +70,7 @@ def run_of(row):
     return found.group(1) if found else ''
 
 
-def said(repo, sha, pulls, files, state, why, gh):
+def apply(repo, sha, pulls, files, state, why, gh):
     """-> (state, why, run) after the row's word; `run` is the pair's run id when the row changed the verdict and names its run, else ''.
     Only for the PR's current open head in this repository whose files match SEARCH_FILES, and only when `state` is success.
     Why (14 Nov 2026, owner on #4347: "shows pending, but when I click, shows finished" · "why I don't see the search pair running when I click" · "can we fix it?"): a verdict the pair holds linked to
@@ -88,8 +88,3 @@ def said(repo, sha, pulls, files, state, why, gh):
         print(f'search pair row not read ({type(error).__name__}): {str(error)[:200]}; the verdict is unchanged')
         return state, why, ''
     return (word[0], word[1][:140], run_of(row)) if word else (state, why, '')
-
-
-def apply(repo, sha, pulls, files, state, why, gh):
-    """-> (state, why): said() without the run."""
-    return said(repo, sha, pulls, files, state, why, gh)[:2]
