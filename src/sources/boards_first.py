@@ -7,7 +7,7 @@ keeps only its best sites (src/sources/read_budget.py short). The full board rea
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. Every Find jobs run starts them
 at second 0 as a lane of their own (Beside), ending at the run's end, not at the employer sites' read cut (lanes 4a); a first run's own board
 list (src/first_jobs.py board_jobs) is read in the same lane. Tests: tests/unit/sources/test_boards_first.py, tests/unit/sources/test_board_lane_clock.py.
-Standalone _pass/last_pass are prepared here; part 4 starts and connects them in production."""
+The pass worker judges jobs received before pass_at; daily_search.keep_late_boards owns its final cache hand-over."""
 from ..press import budget, stage, step_yield
 from ..press.run import Run
 
@@ -54,11 +54,14 @@ class Beside:
         self.count, self.left = threading.Lock(), len(reads)
         self.urls = set()   # the links handed board by board: a list that returns copies of them hands none twice
         self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
-        self.read, self.track, self.done_pass = [], None, None
+        self.read, self.track, self.done_pass, self.pass_error = [], None, None, None
         self.passed, self.woken, self.now = (threading.Event() for _ in range(3))
         self.listed_urls = set()
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
+        # Why (14 Nov 2026, owner: "Judge in search + show both (Recommended)"): scoring can hold the cache owner past the judging clock.
+        if read_budget.pass_at() is not None:
+            self.threads.append(threading.Thread(target=slots.carry(self._pass), name='boards-pass', daemon=True))
         for thread in self.threads:
             thread.start()
 
@@ -162,9 +165,12 @@ class Beside:
             self._put(rest)
 
     def _put(self, found):
-        from . import feeds
+        from . import feeds, read_budget
+        at = read_budget.pass_at()
         with self.count:
-            self.read += found
+            # Why (14 Nov 2026): a delayed pass worker must not judge a page that arrived after its scheduled cutoff.
+            if at is None or read_budget.seconds_left(at):
+                self.read += found
         feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)
         self._queue(found)
 
@@ -237,11 +243,11 @@ class Beside:
         return self._in_list_order(self.matched)
 
     def _pass(self):
-        """Judge a snapshot into answer stores; part 4 starts this worker in production. No cache writes happen here."""
+        """Judge the in-time snapshot into answer stores alongside the search; the cache-owner thread keeps and lists its answers."""
         from . import board_pass, read_budget
         caught = None
         try:
-            # Why (#4315, #4367): guard the timed pass lifecycle; failures retain their plan, while an untimed call starts no judge.
+            # Why (#4315, #4371): guard the timed lifecycle; every exit without Done names its failure, even before plan publication.
             with stage.guard('board pass') as caught:
                 while True:
                     at = read_budget.pass_at()
@@ -252,21 +258,22 @@ class Beside:
                         break
                     self.woken.wait(min(left, read_budget.BETWEEN_S))
                     self.woken.clear()
+                read_budget.pass_at(started=at)
                 with self.count:
                     read = list(self.read)
                 self.track = board_pass.Track()
                 self.done_pass = board_pass.judge(read, self.track)
         finally:
-            if caught or (self.track is not None and self.track.plan is not None and self.done_pass is None):
+            if caught or (self.track is not None and self.done_pass is None):
                 import sys
                 error = sys.exc_info()[1]
-                why = caught.reason if caught else type(error).__name__ if error is not None else 'no result'
-                print(f'Warning: the board pass failed: {why}', flush=True)
+                self.pass_error = caught.reason if caught else type(error).__name__ if error is not None else 'no result'
+                print(f'Warning: the board pass failed: {self.pass_error}', flush=True)
             self.passed.set()
 
     def last_pass(self, feed_db, on_jobs):
         """Explicit cache-owner hand-over: recover available answers, list each URL once, and settle only final rows.
-        Part 4 connects this to the search; every wait here uses its existing clock."""
+        Called by daily_search at the last hand-over; every wait uses the existing search clock."""
         from . import board_pass, read_budget, waiting_jobs
         at, end = read_budget.pass_at(), read_budget.run_end()
         if at is not None and not self.done.is_set() and read_budget.seconds_left(at):
@@ -291,8 +298,11 @@ class Beside:
             waiting_jobs.listed(feed_db, settled)
             for line in lines:
                 print(line, flush=True)
-        else:
+        elif self.pass_error is None and (at is None or self.track is None):
             print('Board pass: not run: ' + ('the search has no time budget' if at is None else 'it had not begun by the deadline'), flush=True)
+        elif not self.passed.is_set():
+            print('Board pass: still running: no plan published by the deadline', flush=True)
+        # Why (#4371): the worker owns the failure reason and warning, including pre-track failures; never relabel them as not begun.
         if end is not None and not self.done.is_set() and read_budget.seconds_left(end):
             print("Job boards: still being read; the search waits for them to its own end", flush=True)
             self.take(feed_db, on_jobs, until=end)
