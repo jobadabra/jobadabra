@@ -14,6 +14,7 @@ import {paintFindCardFirst, renderFindCard, showFindRefused, wireFindCard} from 
 import {$, message, savedAgo} from './core.js';
 import {refreshSessions, sessionJob, sessionList} from './sessions.js';
 import {sayRefused, toastMessage} from './startup.js';
+import {afterAdded, clearOpenJob} from './job-added.js';
 import {releaseOrder, scoreQueueLine} from './score-queue.js';
 import {refusal} from '../refusal.js';
 import {hostStats, snapshot} from '../intel.js';
@@ -59,18 +60,17 @@ const BEFORE_APPLYING = new Set(['', 'Saved', 'Kit ready']);
 export const startedApplying = (job = null) => jobsChanged(job, job && BEFORE_APPLYING.has(job.stage || '') ? {stage: 'Applying'} : {});
 
 // Sites that often show a sign-in page instead of the posting (src/notion/ledger.py WALLED): read like any page, with fields for the text in case.
-// After "Add a job" / "Applied elsewhere" worked: the result line gets an "Open job" link that closes the dialog and opens that job's drawer.
+// After "Add a job" / "Applied elsewhere" worked: the dialog closes, a toast says the result and the job's drawer opens (renderer/pages/job-added.js); with
+// `stay` (Applied elsewhere asks for the posting's text) it stays open with an "Open job" button in its actions row.
 // The list is read again first, so the drawer gets the row the list shows; a job past the list's limit opens from the result alone.
-async function linkToJob(dialogId, messageId, result) {
+async function linkToJob(dialogId, result, title, stay = false) {
   const added = result.job;
   await loadJobs();
   if (!added?.jobUrl) return;
   const job = (shared.allJobs || []).find(row => row.url === added.jobUrl || (added.url && row.notion_url === added.url))
     || {url: added.jobUrl, title: added.title, notion_url: added.url};
-  const open = document.createElement('button');
-  open.type = 'button'; open.className = 'link'; open.textContent = t('pagesJobsFinal.openJob');
-  open.addEventListener('click', () => { $(dialogId).close(); openJobPanel(job); });
-  $(messageId).append(' ', open);
+  afterAdded({dialog: $(dialogId), job, openJob: openJobPanel, button: () => document.createElement('button'), label: t('pagesJobsFinal.openJob'), stay,
+    say: () => toastMessage(t(title), result.text, {view: 'jobs'}, 'good')});
 }
 
 const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.fyi|reddit\.com)$/i;
@@ -297,6 +297,7 @@ export async function init() {
   wireExport();
   $('import-open').addEventListener('click', () => {
     message('import-message', '');
+    clearOpenJob($('import-dialog'));
     $('import-go').disabled = false;
     $('import-dialog').showModal();
     $('import-url').focus();
@@ -304,6 +305,7 @@ export async function init() {
   $('import-go').addEventListener('click', async event => {
     event.preventDefault();
     const url = $('import-url').value.trim();
+    clearOpenJob($('import-dialog'));
     if (!/^https?:\/\//.test(url)) { message('import-message', t('pagesJobsFinal.pasteLink'), 'error'); return; }
     $('import-go').disabled = true;
     message('import-message', t('pagesJobsFinal.readingScoring'), 'waiting');
@@ -313,7 +315,7 @@ export async function init() {
     if (!result.ok) return;
     $('import-url').value = '';
     setFilters(['open']);
-    await linkToJob('import-dialog', 'import-message', result);
+    await linkToJob('import-dialog', result, 'pagesJobsFinal.jobAdded');
   });
   // Applied elsewhere: tracked in Notion like /add, then shown in the list as Applied.
   const setAppliedOrigin = value => $('applied-origin').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.origin === value));
@@ -324,6 +326,7 @@ export async function init() {
     $('applied-when').value = today;
     $('applied-when').max = today;  // no future dates
     message('applied-message', '');
+    clearOpenJob($('applied-dialog'));
     $('applied-go').disabled = false;
     $('applied-dialog').showModal();
     $('applied-url').focus();
@@ -336,6 +339,7 @@ export async function init() {
   $('applied-go').addEventListener('click', async event => {
     event.preventDefault();
     const url = $('applied-url').value.trim();
+    clearOpenJob($('applied-dialog'));
     if (!/^https?:\/\//.test(url)) { message('applied-message', t('pagesJobsFinal.pasteLink'), 'error'); return; }
     $('applied-go').disabled = true;
     message('applied-message', t('pagesDynamicJobs.m250', {"storeName": storeName()}), 'waiting');
@@ -352,14 +356,14 @@ export async function init() {
     if (/not scored yet/.test(result.text)) {   // the page's text was not read: ask for it here, the same Track it adds the fit score
       $('applied-manual').hidden = false;
       message('applied-message', result.text, 'ok');
-      await linkToJob('applied-dialog', 'applied-message', result);
+      await linkToJob('applied-dialog', result, 'pagesJobsFinal.applicationTracked', true);
       return;
     }
     $('applied-url').value = ''; $('applied-approx').checked = false; setAppliedOrigin('outbound');
     ['applied-title', 'applied-company', 'applied-text'].forEach(id => { $(id).value = ''; });
     $('applied-manual').hidden = true;
     setFilters(['applied']);  // show it where it now is
-    await linkToJob('applied-dialog', 'applied-message', result);
+    await linkToJob('applied-dialog', result, 'pagesJobsFinal.applicationTracked');
   });
   wireLead(toastMessage);
   wireAdd();

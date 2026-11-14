@@ -89,7 +89,8 @@ def run(db, url, *, stores, read_profile=None, client=None, stats=None, now=None
             cost.add(stats.setdefault('score', {}), score.DEFAULT_MODEL, usage)
     item['fit'] = fit
     title, company = item['title'], item.get('company') or ''
-    line = f"Added · {title} — {company} · fit {fit['score']}/100, tier {fit['tier']}"
+    # Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Drop \"tier C\""): the tier letter is jargon; the fit score says it
+    line = f"Added · {title} — {company} · fit {fit['score']}/100"
     # The same Open match a search writes, by the search's own sync (Notion: every scoring column, its page cache in db).
     created = stores.matches.get(url) is None
     stores.matches.sync(db, [item], partial=True)
