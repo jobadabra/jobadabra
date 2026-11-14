@@ -57,6 +57,7 @@ test('switching LinkedIn jobs off turns Easy Apply off for good; LinkedIn jobs b
   assert.equal(storage.mine.easyApply.on, false, 'the saved switch itself is off, not only read as off');
   assert.equal(storage.mine.easyApply.warnedAt, NOW.toISOString());
   assert.deepEqual(linkedin.saveSession(storage, [{name: 'li_at', value: 'fake-token', domain: '.linkedin.com'}], {keychain}), {ok: true});
+  assert.deepEqual(linkedin.turnOn(storage), {ok: true}, 'the press that asked turns LinkedIn jobs on (a sign-in turns no switch on)');
   assert.equal(linkedin.state(storage).on, true);
   assert.equal(state(storage).on, false, 'LinkedIn jobs on again: Easy Apply stays off until the person turns it on');
   const fresh = store(linkedinOn());
