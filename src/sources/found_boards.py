@@ -67,15 +67,15 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
     recipe it leaves replays with no model next time. early: the first-jobs slice; in the boards' lane it then goes on as the full read (board_pages.held)."""
     from .. import read_methods
     with read_methods.reading(board.get('host') or board.get('search_url'), 'ai_board') as read:
-        fetch = board_pages.once(fetch) if early else fetch   # the read that goes on asks the slice's pages again: from memory
-        jobs, state, route = _read(board, search, fetch, route, early, show)
+        fetch, ai = board_pages.once(fetch) if early else fetch, {'asks': 0, 'words': set()}   # the read that goes on asks the slice's pages again: from memory, and the AI page reader's tally is the board read's (Gitar, #4180)
+        jobs, state, route = _read(board, search, fetch, route, early, show, ai)
         why = board_pages.held(state, route) if early else None   # Why (ab, 14 Nov 2026, c12 Graz): the full read outside the lane read nothing
         if why:
             print(f"Job boards: {board.get('name') or board.get('host')}: next pages and other words not asked ({why})", flush=True)
         elif early:
             print(f"Job boards: {board.get('name') or board.get('host')}: first jobs handed; the read goes on with its other words and next pages", flush=True)
             with stage.guard('found boards: read on') as caught:   # a failure here keeps the slice's jobs and verdict
-                more, after, _ = _read(board, search, fetch, None, False, show)
+                more, after, _ = _read(board, search, fetch, None, False, show, ai)
                 jobs, state = jobs + more, after if after == 'browser' else state   # a refusal on the way on is kept as one (never asked again)
             if caught:
                 print(f"Warning: {board.get('name') or board.get('host')}: its read did not go on: {caught.reason}: {caught.error}", flush=True)
@@ -83,8 +83,10 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)
 
 
-def _read(board, search, fetch, route, early, show=None):
-    jobs, state, asked_routes, asks, asked_term = [], 'empty', False, 0, None
+def _read(board, search, fetch, route, early, show=None, ai=None):
+    """ai: {'asks': the AI page reader's reads so far, 'words': the words it read a page for}, one per board read (read_board), so a word's page
+    is read by the AI once and AI_ASKS holds for the whole read."""
+    jobs, state, asked_routes, ai = [], 'empty', False, {'asks': 0, 'words': set()} if ai is None else ai
     told = fetch   # the fetch this read was given: its rounds are told on it (board_rounds.py), also after a rendered page replaces `fetch` below
     listing = show if board.get('rendered') and show is not None else None   # the list pages after their scripts ran; job pages are fetched as usual
     layout = board_layout.Layout(board)   # Why (13 Nov 2026, owner): a measured board's served layout names its job cards; no AI question per link
@@ -141,11 +143,12 @@ def _read(board, search, fetch, route, early, show=None):
                         return jobs, board_yield.refused(error), None
                     fetch, how = show, 'read after its scripts ran'   # this board's other searches and next pages are built by scripts too
                     found = layout.read(page, url, fetch, parts.part)
-            if not found and asks < AI_ASKS and term != asked_term:   # an open, readable page no free step reads: the AI reads it (its caps), and the
-                asks, asked_term = asks + 1, term                      # recipe it leaves reads it free from then on (owner, 18 Oct 2026; page_recipes.py).
+            if not found and ai['asks'] < AI_ASKS and term not in ai['words']:   # an open, readable page no free step reads: the AI reads it (its caps), and the
+                ai['asks'] += 1                                                  # recipe it leaves reads it free from then on (owner, 18 Oct 2026; page_recipes.py).
+                ai['words'].add(term)
                 with parts.part('AI reader'):
                     found, how = layout.learn(page, url, careers._asked(url, page, [], fetch)), 'the AI read the page'   # An empty answer (no jobs for these words) asks again on the next words' page
-                asks = AI_ASKS if found else asks                      # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
+                ai['asks'] = AI_ASKS if found else ai['asks']          # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
             on_page, why = len(found or []), []   # the round line counts the first page apart from its next pages (Gitar, #3952)
             if found and not early:   # the next pages of these results, while they still give relevant jobs (board_pages.py)
                 found = found + board_pages.more(url, page, found, fetch, lambda markup, link, fetch=fetch: layout.read(markup, link, fetch),
