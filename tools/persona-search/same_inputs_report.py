@@ -55,19 +55,23 @@ for s in SIDES:
     never[s] = sum(1 for st in stages[s].values() if all(x == 'read' for x in st))
 L = {s: set(listed[s]) for s in SIDES}
 # Why (14 Nov 2026, sa, owner's pair rule): "the search's time was up before Claude Code had a free slot" (src/ai/providers/cli_base.py) is the engine's own clock rule, hit alike by both sides, not a fault: it is a count per side, flagged only when the sides differ by more than 3.
-# A pair is NOT VALID for any other failed call (plan refused, no valid JSON, no answer in N s) and for one whose text is not in the log (a build without the same-inputs text capture).
+# A pair is NOT VALID for any other failed call (plan refused, no valid JSON, no answer in N s) and for one whose text is not in the log (a build without the same-inputs text capture): that case is named apart, with its own reason.
+# Why (Gitar on #4309): contract.detail also logs failed web searches and feed reads (visits_jobpages.py, feeds.py), not only AI calls, so these are "failed calls"; both sides see such failures alike, and a pair with one is still NOT VALID (its sides did not run the same steps).
 from src.ai.providers.cli_base import CLOCK_UP as CLOCK  # noqa: E402  (the engine owns the words of its clock rule)
+TEXT = re.compile(r'Technical: [^:]*: \w+(?: \([^)]*\))?: \S')   # "<what>: <Class> (<facts>): <the error's own text>": the text follows the class and its facts
 failed = {}
 for s in SIDES:
     texts = [open(os.path.join(d, f), errors='replace').read() for d, _, files in os.walk(os.path.join(work, s)) for f in files if f == 'run-1.log']
-    failed[s] = [line for text in texts for line in text.splitlines() if 'Technical: ' in line]   # every line contract.detail writes is a failed AI call, whatever its exception class (RuntimeError, JSONDecodeError, an SDK error)
+    failed[s] = [line for text in texts for line in text.splitlines() if 'Technical: ' in line]   # every line contract.detail writes, whatever its exception class (RuntimeError, JSONDecodeError, an SDK error)
 clock = {s: [line for line in failed[s] if CLOCK in line] for s in SIDES}
-other = {s: [line for line in failed[s] if CLOCK not in line] for s in SIDES}
+notext = {s: [line for line in failed[s] if CLOCK not in line and not TEXT.search(line)] for s in SIDES}
+other = {s: [line for line in failed[s] if CLOCK not in line and TEXT.search(line)] for s in SIDES}
 gap = abs(len(clock['a']) - len(clock['b']))
-verdict = 'NOT VALID' if any(other.values()) else 'valid, clock-rule gap over 3 (flag)' if gap > 3 else 'valid'
-print(f'{pid}: {verdict}: AI calls failed A {len(failed["a"])} (clock rule {len(clock["a"])}, other {len(other["a"])}), B {len(failed["b"])} (clock rule {len(clock["b"])}, other {len(other["b"])})')
+verdict = 'NOT VALID' if any(other.values()) or any(notext.values()) else 'valid, clock-rule gap over 3 (flag)' if gap > 3 else 'valid'
+why = ' (text not captured: a build without the same-inputs text capture, cause unknown)' if any(notext.values()) and not any(other.values()) else ''
+print(f'{pid}: {verdict}{why}: failed calls (AI, web search, feed reads) A {len(failed["a"])} (clock rule {len(clock["a"])}, other {len(other["a"])}, no text {len(notext["a"])}), B {len(failed["b"])} (clock rule {len(clock["b"])}, other {len(other["b"])}, no text {len(notext["b"])})')
 for s in SIDES:
-    for line in other[s][:3]:
+    for line in (other[s] + notext[s])[:3]:
         print(f'  failed {s.upper()} (not the clock rule): {line[:200]}')
 print(f'{pid}: LISTED both / only A / only B: {cells(L["a"], L["b"])}')
 print(f'{pid}: READ   both / only A / only B: {cells(*({u for u in stages[s]} for s in SIDES))}   (read, never judged: A {never["a"]}, B {never["b"]})')
