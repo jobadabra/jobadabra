@@ -27,10 +27,10 @@ def run(args, db, search, out=print):
                     done[0] = min(waiting, done[0] + len(batch))
                     out('Check queue: ' + json.dumps({'waiting': waiting, 'done': done[0]}))
                 out('Check queue: ' + json.dumps({'waiting': waiting, 'done': 0}))
-                _, items = waiting_jobs.judge(feed_db, search, time_budget.wall(), out=out, land=landed)
+                # Why (#3979): the store takes the jobs before their rows leave the waiting list; a failed import keeps them waiting
+                _, items = waiting_jobs.judge(feed_db, search, time_budget.wall(), out=out, land=landed,
+                                              keep=lambda jobs: store.import_watch_report(db, {'jobs': jobs}))
                 listed = len(items)
-        if listed:
-            store.import_watch_report(db, {'jobs': items})
     if caught.error:
         out(f'Warning: the jobs your last search had no time for were not checked ({caught.reason}); they wait for the next queue')
     out('Check queue: done')
