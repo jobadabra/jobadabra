@@ -8,7 +8,7 @@
 # Guard: tests/test_gh_graphql_log.py.
 # Why (owner's coordinator mac-95, 14 Nov 2026, rb: the shared 5,000-an-hour REST token hit 0 three times on 13 Nov and nothing could say which caller spent it; measured ~5,750 calls/h): REST calls are logged
 #   too, so the next outage names its caller. GH_REST_LOG (default ~/.cache/jobadabra/gh-rest.log; "off": none), one line each: UTC time, session, caller, folder, call class (ids and shas folded: repos/o/r/pulls/N), HTTP status
-#   or "-" when the call did not print its headers. Only `gh api -i` (every conditional read of tools/pr-rest-lib.sh) is run with its output held to read the status; its output and exit code pass through unchanged.
+#   "-" when the call did not print its headers, "?" while a held call has not returned (its line is replaced by the one with the same call id, column 7). Only `gh api -i` (every conditional read of tools/pr-rest-lib.sh) is run with its output held to read the status; its output and exit code pass through unchanged.
 #   A 304 is free of the limit and is counted apart. Count: tools/gh-rest-report.sh.
 # Why (28 Oct 2026, load 158): the marker sits in the first lines; grepping the whole file read the real gh (a 40 MB program, ~2.5 s under load) on every call. Only the head is read.
 JOBADABRA_GH_SHIM=1   # Stable marker: skip every worktree copy when resolving the real executable.
@@ -22,13 +22,13 @@ done
 log="${GH_GRAPHQL_LOG:-$HOME/.cache/jobadabra/gh-graphql.log}"
 # GitHub's CLI answers these through GraphQL: every pr / issue / repo / project / label / status command and `gh api graphql`; run, workflow, release, secret and api <path> are REST.
 case "${1:-}" in pr|issue|repo|project|label|status) graphql=1 ;; api) graphql="$(printf '%s\n' "$@" | grep -qx graphql && echo 1)" ;; *) graphql="" ;; esac
-# shim_log <file> <command identity> <last column>: appends one line, UTC time, session, caller, folder, identity, last column (GraphQL: the reason; REST: the HTTP status).
+# shim_log <file> <command identity> <last column> [call id]: appends one line, UTC time, session, caller, folder, identity, last column (GraphQL: the reason; REST: the HTTP status), then the call id when given.
 shim_log() {
   local who caller
   . "$here/../session-name.sh" 2>/dev/null && who="$(session_name)" || who="?"
   caller="$(ps -o command= -p "$PPID" 2>/dev/null | awk '{for (i = 1; i <= NF && i <= 2; i++) {n = split($i, p, "/"); printf "%s%s", (i > 1 ? " " : ""), p[n]}}')"
   mkdir -p "$(dirname "$1")" 2>/dev/null
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "${caller:-?}" "$(basename "$PWD")" "$2" "$3" >> "$1" 2>/dev/null
+  printf '%s\t%s\t%s\t%s\t%s\t%s%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "${caller:-?}" "$(basename "$PWD")" "$2" "$3" "${4:+$'\t'$4}" >> "$1" 2>/dev/null
 }
 [ -n "$graphql" ] && [ "$log" != off ] && shim_log "$log" "${1:-} ${2:-}" "${GH_GRAPHQL_WHY:-}"
 # REST calls: `gh api <path>` and run / workflow / release / secret (GraphQL ones were logged above).
@@ -46,8 +46,9 @@ if [ -z "$graphql" ] && [ "$rest_log" != off ]; then
   esac
   if [ -n "$kind" ]; then
     if [ "$kind" = api ] && printf '%s\n' "$@" | grep -qxE -- '-i|--include' && held="$(mktemp 2>/dev/null)"; then
+      id="$$@$(date -u +%s)"; shim_log "$rest_log" "$class" "?" "$id"   # Why (Gitar on #4151): a call killed or timed out before gh returns is still counted; the line below replaces it (same id).
       "$real" "$@" >"$held"; rc=$?
-      shim_log "$rest_log" "$class" "$(head -n 1 "$held" | tr -d '\r' | awk '{print $2}')"; cat "$held"; rm -f "$held"
+      st="$(head -n 1 "$held" | tr -d '\r' | awk '{print $2}')"; shim_log "$rest_log" "$class" "${st:--}" "$id"; cat "$held"; rm -f "$held"
       exit "$rc"
     fi
     shim_log "$rest_log" "$class" "-"
