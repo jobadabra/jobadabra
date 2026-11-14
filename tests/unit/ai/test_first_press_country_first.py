@@ -99,11 +99,12 @@ class TheCountrysBoardsStartBeforeTheFieldAnswers(unittest.TestCase):
 
     def test_no_country_board_waits_for_the_field(self):
         self.country = []
-        out = {}
+        out, seen = {}, []
         with mock.patch('builtins.print'):
             first_jobs.propose_early(SEARCH)
-            threading.Timer(0.3, self.field_release.set).start()
+            threading.Timer(0.3, lambda: (seen.append(len(self.reads)), self.field_release.set())).start()
             out['later'] = first_jobs.board_jobs(lambda line: None, SEARCH)
+        self.assertEqual(seen, [0], 'no board was read before the field answered')
         self.assertEqual(self.reads[0][0], ['f0.test'], 'with no country board the field boards are the read')
 
 
