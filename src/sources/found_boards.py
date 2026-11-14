@@ -382,6 +382,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             name = spare_item[0]['name']
         return first
 
+    one = _claims.releasing(one, early)   # every item read (a spare, a board a later lane started) gives its own claim back when it raises (Gitar, #4157)
     one_or_spare = _claims.releasing(one_or_spare, early)   # a read that raised has read nothing: its claim goes back (board_claims.py)
 
     def keep(read_item, result, after=None):   # after: the board this one was read in place of

@@ -46,12 +46,14 @@ class Claims:
         """`read(read_item)` that gives back the item's claim when it raises: a read that failed has read nothing, so another lane may read the board.
         A read cut at the search's time is not given back: it is still being read (found_boards: its result goes to late_reads)."""
         def run(read_item):
+            read_ended = False   # a flag and `finally`, not a catch-all (tests/guards/rules/test_catch_alls_only_shrink.py)
             try:
-                return read(read_item)
-            except BaseException:
-                if early and (self.held.get(read_item[0]['host']) or (0, 0))[1] is None:
+                result = read(read_item)
+                read_ended = True
+                return result
+            finally:
+                if not read_ended and early and (self.held.get(read_item[0]['host']) or (0, 0))[1] is None:
                     self.held.pop(read_item[0]['host'], None)
-                raise
         return run
 
     def first(self, boards, early=True):

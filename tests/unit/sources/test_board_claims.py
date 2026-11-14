@@ -175,6 +175,21 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         self.read([board('ALO.bg')])
         self.assertEqual([name for name, _ in self.reads], ['alo.bg', 'ALO.bg'])
 
+    def test_a_spare_that_raised_gives_back_its_claim_and_the_refusing_boards(self):
+        """Gitar on #4157 (round 3): releasing wrapped only the primary read; a spare read in its place that raised kept its own claim."""
+        def read_board(board, search, fetch, route=None, early=False, show=None):
+            self.reads.append(board['name'])
+            if board['name'] == 'spare':
+                raise RuntimeError('the spare fails')
+            return ([], 'browser', None) if board['name'] == 'refuses' else ([{'title': 'LKW Fahrer', 'url': f"https://{board['host']}/1"}], 'ok', None)
+        with mock.patch.object(found_boards, 'read_board', read_board), mock.patch('builtins.print', lambda *a, **k: None):
+            with self.assertRaises(RuntimeError):
+                found_boards.read(SEARCH, [board('refuses', 'a.example')], early=True, web=False, workers=2, spare=[board('spare', 'b.example')],
+                                  is_relevant=list, dead=set(), fetch=self.fetch)
+            found_boards.read(SEARCH, [board('Spare', 'b.example'), board('Refuses', 'a.example')], early=True, web=False, workers=2, is_relevant=list,
+                              dead=set(), fetch=self.fetch)
+        self.assertEqual(self.reads, ['refuses', 'spare', 'Spare', 'Refuses'], 'both claims were given back, so a later lane read both')
+
     def test_a_stale_finished_entry_is_not_handed_to_the_full_read(self):
         """One owner of the 60-minute lapse (Claims._live): take, free and hand_over."""
         found_boards._early['alo.bg'] = (time.monotonic() - found_boards.EARLY_MINUTES * 60 - 1, {'https://www.alo.bg/': '<html>old</html>'})
