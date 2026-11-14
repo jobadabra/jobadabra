@@ -9,8 +9,8 @@ const SIMPLE = {eligible: true, captcha: false, login: false, accountCreation: f
 const NOW = new Date('2026-11-07T10:00:00Z');
 
 function make({record = {id: 'r1', apply_readiness: ''}, read = SIMPLE, match = async asked => Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 0}]))} = {}) {
-  const calls = {kit: [], read: 0, store: []};
-  const readiness = createReadiness({storage: {}, clock: () => NOW,
+  const calls = {kit: [], read: 0, store: [], logged: []};
+  const readiness = createReadiness({storage: {}, clock: () => NOW, log: (area, words) => calls.logged.push(words),
     prepareKit: async (code, name) => { calls.kit.push([code, name]); return {ok: true}; },
     readForm: async () => { calls.read += 1; return read; }, match,
     call: async (_, entity, method, kwargs) => { calls.store.push([entity, method, kwargs]); if (method === 'get') return record; record = {...record, ...kwargs.fields}; return record; }});
@@ -169,6 +169,7 @@ test('a check\'s step log is kept with its stored check, so "Took" and the log s
   const none = make({record: {id: 'r2', apply_readiness: ''}});
   assert.equal(await none.readiness.keepSteps(JOB.url, steps), false);
   assert.equal(none.calls.store.filter(([, method]) => method === 'update').length, 0);
+  assert.deepEqual(none.calls.logged, ['readiness: no stored check to keep the steps with'], 'a log not kept says so, so a missing log after a restart is explained (Gitar on #4353)');
   assert.ok(calls.store.some(([, method]) => method === 'update'));
 });
 
