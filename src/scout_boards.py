@@ -321,6 +321,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
         candidates = scout_board_candidates.choose(db, reported, country) if by_cells else []
         taken, candidates = scout_board_cells.share(list(again), candidates) if by_cells else (list(again), candidates)   # half the places each, the unused half to the other
+        if by_cells:
+            out(scout_board_cells.due_line(country, again, taken))   # what is due and what this pass reads of it (es discovery 43544069411 re-read nothing and said nothing)
         proposed = _first(taken, candidates, found, proposed, scout_board_homes.named(search, ideas, homes))
         read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
         began, kept, unread, counts, final, addresses, ran = clock(), [], [], [], [], [], set()

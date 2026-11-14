@@ -253,7 +253,6 @@ def discover(db, run=None, out=print, today=None):
         return []
     country, families, again = turn
     from . import scout_board_candidates
-    out(cells.due_line(db, country, again))   # what is due to be read again, in order, before the pass reads (es discovery 43544069411 re-read nothing and said nothing)
     kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out, reported=scout_board_candidates.fetch(out))   # the boards installs reported (site GET ?boards=1, the Scout's key)
     cells.record(db, country, families, kept, today, again=again)
     out(cells.rule_line(db, today))   # the number of facts still measured under an older rule, after this pass's re-reads

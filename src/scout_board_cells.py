@@ -69,9 +69,9 @@ def stale(db, today):
                  if gone <= read_at and (read_at < old or counts is None or (rules.get((host, country)) or 0) < scout_board_counts.LISTED_RULE)
                  and str(tried.get(f'{host}|{country}') or '') < recent)
     out = {}
-    for _, _, country, host, url in due:
+    for served, _, country, host, url in due:
         out.setdefault(country, []).append({'name': host, 'host': host, 'search_url': url, 'countries': [pool_tags.COUNTRIES.get(country, country)],
-                                            'kinds': ['any'], 'source_kind': 'sector'})   # sector: a measured listing page may have no {role}
+                                            'kinds': ['any'], 'source_kind': 'sector', 'served': -served})   # served: the count that ranked it (due_line prints it)   # sector: a measured listing page may have no {role}
     return out
 
 
@@ -86,12 +86,12 @@ def share(again, candidates, places=None):
     return list(again)[:half + max(0, half - len(candidates))], list(candidates)[:half + max(0, half - len(again))]
 
 
-def due_line(db, country, again, shown=12):
-    """One log line before the pass reads: how many facts of `country` are due to be read again and the first `shown` in the order the pass takes them, each with its best served count: `Board pass: re-reads due in es: 3; first: airlinejobs.com (53), ...`.
-    Why (14 Nov 2026, es discovery 43544069411, sa for the owner: "the six re-reads in order with their old counts"): the pass printed only the boards it read, so a pass that re-read nothing looked the same as one that re-read the right ones."""
-    best = {(host, code): max((counts or {}).values(), default=0) for host, code, _, _, _, counts in _facts(db)}
-    first = ', '.join('%s (%d)' % (board['host'], best.get((board['host'], country), 0)) for board in again[:shown])   # no nested f-string quotes: 3.11 reads this file too
-    return f'Board pass: re-reads due in {country}: {len(again)}' + (f'; first: {first}' if again else '')
+def due_line(country, again, taken, shown=12):
+    """One log line after share() cut the re-reads to the pass's places: how many facts of `country` are due, the ones this pass reads (`taken`, in order, each with the served count that ranked it) and how many wait:
+    `Board pass: re-reads due in es: 9; read now: airlinejobs.com (53), ...; waiting: 3`.
+    Why (14 Nov 2026, es discovery 43544069411, sa for the owner: "the six re-reads in order with their old counts"): the pass printed only the boards it read, so a pass that re-read nothing looked the same as one that re-read the right ones (Gitar on #4169: printed after share, from the counts stale ranked by)."""
+    read = ', '.join('%s (%d)' % (board['host'], board.get('served', 0)) for board in taken[:shown])
+    return f'Board pass: re-reads due in {country}: {len(again)}' + (f'; read now: {read}; waiting: {len(again) - len(taken)}' if again else '')
 
 
 def rule_line(db, today=None):
