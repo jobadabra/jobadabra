@@ -40,10 +40,11 @@ def judge_once():
         return gate_judge.complete({r['n']: {**r, 'ai': getattr(reply, 'model', '') or '?'} for r in data['jobs']}, jobs)
 
     gate_judge.PERSONAS = [profiles.for_judge(p) for p in profiles.PROFILES]
-    verdict = gate_judge.judge(profiles.IDS.index(pid) + 1, [dict(row, _side=s) for s in SIDES for row in side[s]], asker=ask)
-    rows = [{k: v for k, v in r.items() if k != 'answers'} for r in verdict['rows']]
-    json.dump({'rows': rows, 'agreement': verdict['agreement']}, open(os.path.join(work, 'judged.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-    return {gate_judge.key(r) for r in verdict['rows'] if r['role'] == 'yes' and r['place'] == 'yes'}, gate_judge.key
+    # judge_pooled is the pair's one pass over the union (a job on both lists has one verdict); only the asker differs: this one speaks to the plan's Claude Code, not the broker
+    verdicts = gate_judge.judge_pooled(profiles.IDS.index(pid) + 1, [('main', side['a']), ('pr', side['b'])], asker=ask)
+    rows = [{k: v for k, v in r.items() if k != 'answers'} for verdict in verdicts for r in verdict['rows']]
+    json.dump({'rows': rows, 'agreement': verdicts[0]['agreement']}, open(os.path.join(work, 'judged.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    return {gate_judge.key(r) for r in rows if r['role'] == 'yes' and r['place'] == 'yes'}, gate_judge.key
 
 
 listed = {s: {j.get('url') or f"{j['title']}|{j['company']}": j for j in side[s]} for s in SIDES}
@@ -56,13 +57,17 @@ L = {s: set(listed[s]) for s in SIDES}
 print(f'{pid}: LISTED both / only A / only B: {cells(L["a"], L["b"])}')
 print(f'{pid}: READ   both / only A / only B: {cells(*({u for u in stages[s]} for s in SIDES))}   (read, never judged: A {never["a"]}, B {never["b"]})')
 if '--no-judge' not in sys.argv:
-    right, key = judge_once()
-    K = {s: {key(r) for r in side[s]} for s in SIDES}
-    R = {s: K[s] & right for s in SIDES}
-    print(f'{pid}: RIGHT  both / only A / only B: {cells(R["a"], R["b"])}   (right A {len(R["a"])}, B {len(R["b"])}; listed A {len(K["a"])}, B {len(K["b"])})')
-    for s, o in (('a', 'b'), ('b', 'a')):
-        for k in sorted(R[s] - R[o]):
-            print(f'  right only {s.upper()}: {k[0][:50]} | {k[1][:24]} | {k[2][:24]}')
+    try:
+        right, key = judge_once()
+    except Exception as error:   # an unreadable or partial judge answer is a failure the report shows, never a half-filled RIGHT row
+        print(f'{pid}: RIGHT  judge failed ({type(error).__name__}: {str(error)[:160]}); LISTED and READ above stand, no RIGHT cell')
+    else:
+        K = {s: {key(r) for r in side[s]} for s in SIDES}
+        R = {s: K[s] & right for s in SIDES}
+        print(f'{pid}: RIGHT  both / only A / only B: {cells(R["a"], R["b"])}   (right A {len(R["a"])}, B {len(R["b"])}; listed A {len(K["a"])}, B {len(K["b"])})')
+        for s, o in (('a', 'b'), ('b', 'a')):
+            for k in sorted(R[s] - R[o]):
+                print(f'  right only {s.upper()}: {k[0][:50]} | {k[1][:24]} | {k[2][:24]}')
 for s in SIDES:
     for d, _, files in os.walk(os.path.join(work, s)):
         if 'run-1.log' in files:

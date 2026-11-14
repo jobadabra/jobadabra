@@ -54,9 +54,9 @@ function tree(ref) {
 }
 
 /** run.mjs for the person in `dir`, output under `out`; resolves {code, seconds}. */
-function run(dir, out, tag, extra) {
+function run(dir, out, tag, extra, runEnv = env) {
   const log = fs.openSync(path.join(out, 'run.out'), 'w'), began = Date.now();
-  const child = spawn('node', [path.join(dir, 'tools/persona-search/run.mjs'), 'draw', out, '--tag', tag, ...extra], {cwd: dir, env, stdio: ['ignore', log, log]});
+  const child = spawn('node', [path.join(dir, 'tools/persona-search/run.mjs'), 'draw', out, '--tag', tag, ...extra], {cwd: dir, env: runEnv, stdio: ['ignore', log, log]});
   return new Promise(resolve => child.on('close', code => resolve({code, seconds: Math.round((Date.now() - began) / 1000)})));
 }
 const prepare = out => {
@@ -71,7 +71,8 @@ if (!keep) process.on('exit', () => fs.rmSync(path.join(work, 'shared'), {recurs
 execFileSync('python3', ['tools/persona-search/profiles.py', 'cv', id, path.join(work, 'cv')], {cwd: ROOT, env, stdio: 'ignore'});
 const draft = path.join(work, 'draft'); fs.mkdirSync(draft, {recursive: true}); prepare(draft);
 console.log(`${id}: the one strategy draft and board proposal, made with A (~1 min)`);
-const drafted = await run(dirs.a, draft, 'si-draft', ['--presses', '0', '--fresh', '--propose']);
+const unshared = Object.fromEntries(Object.entries(env).filter(([name]) => !/^JOBADABRA_TAPE_SHARED/.test(name)));   // the draft's own asks must not seed the shared folder: A would then refetch what B is served (#4267 review)
+const drafted = await run(dirs.a, draft, 'si-draft', ['--presses', '0', '--fresh', '--propose'], unshared);
 if (drafted.code !== 0 || !fs.existsSync(path.join(draft, 'draw/draft.json'))) { console.error(`no draft: see ${draft}/run.out`); process.exit(1); }
 const install = side => path.join(tmp, `jp-persona-draw-si-${side}`);
 fs.cpSync(install('draft'), path.join(work, 'draftdata'), {recursive: true});   // the sides' starting install: a replay of one side starts from it
@@ -84,6 +85,8 @@ const searched = await Promise.all(['a', 'b'].map(side => {
   const out = path.join(work, side); fs.mkdirSync(out, {recursive: true}); prepare(out);
   return run(dirs[side], out, `si-${side}`, [...(presses === '2' ? ['--presses', '2'] : ['--presses', '1', '--first-only']), '--draft', path.join(draft, 'draw/draft.json')]);
 }));
+const ids = ['a', 'b'].map(side => { try { return fs.readFileSync(path.join(install(side), 'data', 'install_id'), 'utf8').trim(); } catch { return ''; } });
+if (ids[0] && ids[0] === ids[1]) console.error(`${id}: A and B drew the same install id (${ids[0]}), 1 pair in 20: they share one index budget, so run the pair again`);
 for (const [i, side] of ['a', 'b'].entries()) {
   const out = path.join(work, side);
   execFileSync('python3', ['-c', 'import sys; sys.path.insert(0, "tools/persona-search"); import gate; gate.extract(sys.argv[1], sys.argv[2], include_urls=True)', path.join(install(side), 'data/jobs.sqlite'), path.join(out, 'jobs.json')], {cwd: ROOT, stdio: 'inherit'});
