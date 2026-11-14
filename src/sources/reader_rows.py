@@ -82,10 +82,8 @@ def _linkedin_read(run, search):
     """LinkedIn's public search (src/sources/linkedin_guest.py read), looked up at call time like the others; a job its employer's known feed lists is kept under the
     employer's address (src/sources/employer_copy.py), so Apply opens the employer's page."""
     from . import employer_copy, linkedin_guest
-    from .. import employer_index
-    from ..features import disabled
     jobs = linkedin_guest.read(search)
-    return employer_copy.prefer_employer(jobs, [] if disabled('index') else employer_index.load()) if jobs else jobs
+    return employer_copy.from_row(jobs) if jobs else jobs
 
 
 def _linkedin_on(env):
