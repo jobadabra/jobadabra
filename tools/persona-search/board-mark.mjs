@@ -4,6 +4,8 @@
 // The app never loads this file: its own limits are src/sources/refused_reads.py. No answer from the broker is a skip: CI never reads a refusing page on a guess.
 import {BROKER_URL, runToken} from '../../desktop/e2e/lib/broker-client.mjs';
 
+/** One call to the mark, through the relay (its own 30 s) or straight: past this the call fails and the page is skipped (Gitar on #4344: never a hung search). */
+export const MARK_CALL_MS = 35_000;
 const SKIP = {
   stopped: 'turned CI\'s browser away before, so no CI search opens it again',
   waiting: 'asked CI to slow down today; not opened again until tomorrow (UTC)',
@@ -22,13 +24,13 @@ export const toCard = job => ({title: job.title, url: job.url, place: job.place 
 export async function brokerPost(env = process.env, fetchImpl = fetch) {
   // Why (14 Nov 2026, rb): CI's searches run under tools/persona-search/codex.mjs, which keeps the run token and signs the mark's calls (boardForward); no token here
   if (env.JOBADABRA_BOARD_MARK_URL) return async body => {
-    const answer = await fetchImpl(env.JOBADABRA_BOARD_MARK_URL, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
+    const answer = await fetchImpl(env.JOBADABRA_BOARD_MARK_URL, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body), signal: AbortSignal.timeout(MARK_CALL_MS)});
     return {status: answer.status, json: await answer.json().catch(() => ({}))};
   };
   const token = await runToken(env, fetchImpl).catch(() => null);
   if (!token) return null;
   return async body => {
-    const answer = await fetchImpl(`${BROKER_URL(env)}/board-read`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'jobadabra-ci'}, body: JSON.stringify(body)});
+    const answer = await fetchImpl(`${BROKER_URL(env)}/board-read`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'jobadabra-ci'}, body: JSON.stringify(body), signal: AbortSignal.timeout(MARK_CALL_MS)});
     return {status: answer.status, json: await answer.json().catch(() => ({}))};
   };
 }

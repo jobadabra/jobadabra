@@ -63,15 +63,21 @@ export function timedRelay({env = process.env, ask = askBroker, now = Date.now, 
   };
 }
 
+/** How long one call to the broker's board mark may take before the page is skipped. */
+export const BOARD_MARK_MS = 30_000;
+
 /**
  * The broker's board mark for the child (tools/persona-search/board-mark.mjs): the request body as sent, signed here with this run's token, which never reaches the child.
  * Why (14 Nov 2026, rb): the child has no run token (runOnCodex drops it), so every refusing board page was skipped as "no shared CI mark"; only POST /board-read passes.
  * -> {status, body}.
  */
 export async function boardForward(text, {env = process.env, fetchImpl = fetch} = {}) {
+  // Why (Gitar on #4344): the relay keeps the token, so it signs only the mark's two calls on an http(s) page, nothing else the child or a local caller sends
+  let call; try { call = JSON.parse(text); } catch { call = null; }
+  if (!['reserve', 'report'].includes(call?.op) || !/^https?:\/\//.test(String(call?.page || ''))) return {status: 400, body: JSON.stringify({error: 'only reserve or report of an http(s) page'})};
   const token = await runToken(env, fetchImpl).catch(() => null);
   if (!token) return {status: 503, body: JSON.stringify({error: 'no run token in the relay'})};
-  const answer = await fetchImpl(`${BROKER_URL(env)}/board-read`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'jobadabra-ci'}, body: text});
+  const answer = await fetchImpl(`${BROKER_URL(env)}/board-read`, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'jobadabra-ci'}, body: text, signal: AbortSignal.timeout(BOARD_MARK_MS)});   // a silent broker is a refusal (the page is skipped), never a hung search (Gitar on #4344)
   return {status: answer.status, body: await answer.text()};
 }
 

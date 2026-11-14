@@ -65,15 +65,21 @@ test('Gitar on #4306: a Stop before the ask sends nothing', async () => {
 
 test('under the relay (codex.mjs) the mark is asked through it: the child sends no token, the relay signs with the run\'s own and passes the body as sent', async () => {
   const seen = [];
-  const fetchImpl = async (url, init = {}) => { seen.push({url, auth: init.headers?.authorization || null, body: init.body || null});
+  const fetchImpl = async (url, init = {}) => { seen.push({url, auth: init.headers?.authorization || null, body: init.body || null, bounded: init.signal instanceof AbortSignal});
     return url.includes('id-token') ? {ok: true, status: 200, json: async () => ({value: 'run-token'})} : {ok: true, status: 200, json: async () => ({go: true}), text: async () => '{"go":true}'}; };
   const post = await brokerPost({JOBADABRA_BOARD_MARK_URL: 'http://127.0.0.1:9/board-read'}, fetchImpl);
   assert.deepEqual(await post({op: 'reserve', page: item.url}), {status: 200, json: {go: true}});
-  assert.deepEqual(seen.at(-1), {url: 'http://127.0.0.1:9/board-read', auth: null, body: JSON.stringify({op: 'reserve', page: item.url})}, 'no token in the child');
+  assert.deepEqual(seen.at(-1), {url: 'http://127.0.0.1:9/board-read', auth: null, body: JSON.stringify({op: 'reserve', page: item.url}), bounded: true}, 'no token in the child, a bounded call');
   const env = {ACTIONS_ID_TOKEN_REQUEST_URL: 'https://gh.example/id-token?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 't', AI_BROKER_URL: 'https://broker.example'};
-  assert.deepEqual(await boardForward('{"op":"reserve"}', {env, fetchImpl}), {status: 200, body: '{"go":true}'});
-  assert.deepEqual(seen.at(-1), {url: 'https://broker.example/board-read', auth: 'Bearer run-token', body: '{"op":"reserve"}'});
-  assert.equal((await boardForward('{}', {env: {}, fetchImpl})).status, 503, 'no run token in the relay: a refusal, so the caller skips');
+  const reserve = JSON.stringify({op: 'reserve', page: item.url});
+  assert.deepEqual(await boardForward(reserve, {env, fetchImpl}), {status: 200, body: '{"go":true}'});
+  assert.deepEqual(seen.at(-1), {url: 'https://broker.example/board-read', auth: 'Bearer run-token', body: reserve, bounded: true});
+  assert.equal((await boardForward(reserve, {env: {}, fetchImpl})).status, 503, 'no run token in the relay: a refusal, so the caller skips');
+  const before = seen.length;
+  for (const text of ['{"op":"peek","page":"https://a.example/x"}', '{"op":"reserve","page":"file:///etc/passwd"}', 'not json', '{"op":"report"}']) {
+    assert.equal((await boardForward(text, {env, fetchImpl})).status, 400, `the relay signs only the mark's two calls: ${text}`);
+  }
+  assert.equal(seen.length, before, 'nothing refused is sent or signed (Gitar on #4344)');
 });
 
 test('CI\'s board browser drops the sandbox only on Linux, by the harness\'s one rule (Gitar on #4333)', async () => {
