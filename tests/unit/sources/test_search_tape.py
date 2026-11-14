@@ -48,7 +48,10 @@ class TapeTest(unittest.TestCase):
 
 class WaitScaleTest(TapeTest):
     def slept(self, scale, seconds=10):
-        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_WAIT_SCALE': scale}), mock.patch.object(search_tape.time, 'sleep') as sleep:
+        # Why (14 Nov 2026, flaky: CI run 43610372773 recorded [10.0, 0.05, 0.05, ...] for [10]; the file has not changed since 8 Nov): patching search_tape.time.sleep patches the process-wide time.sleep,
+        #   so a sleep(0.05) from any other thread alive in the shard's process (a poll loop an earlier test left running) was recorded as a wait of ours. Only search_tape's own reference to time is replaced.
+        sleep = mock.Mock()
+        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_WAIT_SCALE': scale}), mock.patch.object(search_tape, 'time', mock.Mock(sleep=sleep)):
             search_tape._wait(seconds)
         return [call.args[0] for call in sleep.call_args_list]
 
