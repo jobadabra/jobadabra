@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -92,13 +93,44 @@ def environment(folder, site, token, base=None, started=None):
     return env
 
 
-def new_matches(before, after):
-    """The matches the run added (by url), best fit first, as the result post carries them."""
+# Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Yes, both PRs (Recommended)"): a cloud-found job opened on the Mac with "This job has no saved description" and every
+# fact "Not stated": only url, title, company, fit and reason travelled. The match's facts (its store columns' own words) and the posting the run read now go with it;
+# the site keeps these named fields only, each capped (jobadabra-web shared/hosted.js POSTING_MAX).
+FACTS = ('location', 'work_mode', 'posted', 'salary', 'contract', 'seniority', 'languages', 'apply_route')
+POSTING = ('description', 'source', 'source_kind')
+
+
+def new_matches(before, after, postings=None):
+    """The matches the run added (by url), best fit first, as the result post carries them, each with its facts and, from `postings` (read_postings), its posting."""
     known = {m.get('url') for m in before}
     fresh = [m for m in after if m.get('url') not in known and m.get('url')]
     fresh.sort(key=lambda m: -(m.get('fit') or 0))
+    text = lambda v: ', '.join(map(str, v)) if isinstance(v, list) else str(v or '')   # languages is a list in the store, a string on the wire
     return [{'job': m['url'], 'title': m.get('title') or '', 'company': m.get('company') or '', 'url': m['url'], 'fit': m.get('fit') or 0,
-             'line': (m.get('reason') or '')[:300]} for m in fresh[:MAX_MATCHES] if m.get('title')]
+             'line': (m.get('reason') or '')[:300],
+             **{k: text(m.get(k)) for k in FACTS if m.get(k)}, **{k: v for k, v in ((postings or {}).get(m['url']) or {}).items() if k in POSTING and v}}
+            for m in fresh[:MAX_MATCHES] if m.get('title')]
+
+
+def postings(urls):
+    """{url: {description, source, source_kind}} from this install's jobs file, for the urls it holds (run with the engine's environment)."""
+    from . import store
+    from .paths import jobs_db
+    found = {}
+    with store.connect(jobs_db()) as db:
+        for url in urls:
+            row = db.execute("""SELECT jobs.description, sources.name source, sources.kind source_kind FROM jobs LEFT JOIN sources ON sources.id=jobs.source_id
+                                WHERE jobs.canonical_key IN (?, ?) OR jobs.url=?""", store.job_keys(url)).fetchone()
+            if row:
+                found[url] = {k: row[k] or '' for k in POSTING}
+    return found
+
+
+def read_postings(env, urls):
+    """postings(urls) as the engine would read them with `env` (the run's own folder)."""
+    code = 'import json, sys; from src import hosted_run; print(json.dumps(hosted_run.postings(json.load(sys.stdin))))'
+    out = subprocess.run([sys.executable, '-c', code], env=env, input=json.dumps(list(urls)), capture_output=True, text=True, check=True)
+    return json.loads(out.stdout.strip().splitlines()[-1])
 
 
 def read_matches(env):
@@ -106,6 +138,15 @@ def read_matches(env):
     code = 'import json; from src import store_access; s = store_access.open_run(); print(json.dumps(s.matches.list(), default=str))'
     out = subprocess.run([sys.executable, '-c', code], env=env, capture_output=True, text=True, check=True)
     return json.loads(out.stdout.strip().splitlines()[-1])
+
+
+def postings_or_none(env, urls):
+    """read_postings, or {} when it fails: the postings are extras, so a failed read still posts the run's jobs (as before #4248) and says why."""
+    try:
+        return read_postings(env, urls)
+    except (subprocess.SubprocessError, OSError, ValueError) as error:
+        print(f'hosted run: postings not read, jobs sent without them: {type(error).__name__}: {error}', file=sys.stderr)
+        return {}
 
 
 def run(site, token, folder, search=None):
@@ -120,7 +161,8 @@ def run(site, token, folder, search=None):
             before = read_matches(env)
             done = (search or (lambda e: subprocess.run([sys.executable, '-m', 'src', 'daily', *SEARCH_ARGS], env=e, timeout=14 * 60).returncode))(env)
             if done == 0:
-                matches = new_matches(before, read_matches(env))
+                after = read_matches(env)
+                matches = new_matches(before, after, postings_or_none(env, [m.get('url') for m in after if m.get('url') not in {b.get('url') for b in before}]))
                 status = 'ok'
                 push_state(site, token, folder)
         except (subprocess.SubprocessError, OSError, ValueError) as error:
@@ -180,6 +222,36 @@ def serve(port=8080):
     server.server_close()   # no new calls; each accepted call (a run included) answers the Worker before the process ends
 
 
+def facts_of(match):
+    """The store columns of an inbox match (FACTS), in the store's own shapes: languages back to a list."""
+    found = {k: match[k] for k in FACTS if match.get(k)}
+    if 'languages' in found:
+        found['languages'] = [part.strip() for part in str(found['languages']).split(',') if part.strip()]
+    return found
+
+
+def keep_posting(url, match):
+    """The posting of an inbox match into this Mac's jobs file (the drawer's Description tab and facts read it: src/desktop_jobs.py posting), through the one writer.
+    Invariants: a row the Mac already holds for this url keeps what it stored (only its empty description, posted date and route are filled); a job the store
+    calls the same as another site's posting is not written onto that posting (store.same_job keeps the first copy)."""
+    from . import store
+    from .paths import jobs_db
+    from .stores.matches_sync import route_key
+    route = route_key(match.get('apply_route'))
+    with store.connect(jobs_db()) as db:
+        row = db.execute('SELECT id FROM jobs WHERE canonical_key IN (?, ?) OR url=?', store.job_keys(url)).fetchone()
+        if row:
+            for column, value in (('description', match.get('description')), ('posted_at', match.get('posted')), ('apply_route', route)):
+                if value:
+                    db.execute(f"UPDATE jobs SET {column}=? WHERE id=? AND COALESCE({column}, '') = ''", (value, row['id']))
+            return
+        item = {'url': url, 'title': match['title'], 'company': match.get('company') or '',
+                **{key: match[wire] for key, wire in (('location', 'location'), ('work_mode', 'work_mode'), ('description', 'description'), ('date_posted', 'posted')) if match.get(wire)}}
+        job, _ = store.upsert_job(db, item, match.get('source') or 'Always on', '', match.get('source_kind') or 'job board')
+        if route and (db.execute('SELECT url FROM jobs WHERE id=?', (job,)).fetchone() or {'url': ''})['url'] == url:
+            db.execute('UPDATE jobs SET apply_route=? WHERE id=?', (route, job))
+
+
 def merge(path):
     """The app's side (`--merge inbox.json`): matches that arrived while the Mac was off go into this Mac's own store as Open rows, unless the search already has the job.
     -> how many were added. The Mac's store stays the primary copy; the hosted copy is a cache (spec §2)."""
@@ -191,7 +263,13 @@ def merge(path):
         if not url or not match.get('title') or stores.matches.get(url):
             continue
         stores.matches.upsert({'url': url, 'title': match['title'], 'company': match.get('company') or '', 'fit': match.get('fit') or 0,
-                               'reason': match.get('line') or '', 'status': 'Open'})
+                               'reason': match.get('line') or '', 'status': 'Open', **facts_of(match)})
+        # Why (Gitar on #4248): the app moves its inbox position past the whole batch once merge ends well (desktop/lib/hosted-search.js pullInbox), so a
+        # job skipped here is lost and a crash blocks every later job: the match is always saved, and a posting that could not be written is said, not fatal.
+        try:
+            keep_posting(url, match)
+        except (sqlite3.Error, OSError) as error:
+            print(f'hosted merge: {url}: posting not saved: {type(error).__name__}: {error}', file=sys.stderr)
         added += 1
         clean = lambda text: str(text or '').replace('|', '/').replace('\n', ' ').strip()   # the log line's own separator
         lines.append(f"New job: {clean(match['title'])} | {clean(match.get('company'))} | {url} | {int(match.get('fit') or 0)}")
