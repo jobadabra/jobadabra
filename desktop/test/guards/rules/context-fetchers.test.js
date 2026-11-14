@@ -156,6 +156,24 @@ test('a github "paths" ref reads the file history from git, and refuses an optio
   }
 });
 
+// Why (xc, 14 Nov 2026, Gitar on #4238): the push gate's red was a slow `git log`; a git that hangs must end as "unavailable" within the tool's
+// time limit, never hold the caller. A shell script stands in for git, so not on Windows.
+test('a github "paths" read whose git hangs ends as "unavailable" within the time limit', {skip: process.platform === 'win32' && 'a shell-script git'}, async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'slow-git-'));
+  const saved = process.env.PATH;
+  try {
+    fs.writeFileSync(path.join(bin, 'git'), '#!/bin/sh\nexec sleep 30\n', {mode: 0o755});
+    process.env.PATH = `${bin}${path.delimiter}${saved}`;
+    const started = Date.now();
+    const out = await github.fetch('paths tools/context/lib.mjs', {env, cwd: bin, limits: {maxBytes: 24576, maxItems: 5, timeoutMs: 300}});
+    assert.match(out.notes, /^unavailable/);
+    assert.ok(Date.now() - started < 5000, 'the read gives up at the given limit (300 ms), not a fixed one of its own');   // 5 s: only a margin for a loaded Mac
+  } finally {
+    process.env.PATH = saved;
+    fs.rmSync(bin, {recursive: true, force: true});
+  }
+});
+
 test('a long thread keeps its newest comments, not its oldest (GitHub lists oldest first)', async () => {
   const thread = Array.from({length: 30}, (_, i) => ({body: `comment number ${i}`, created_at: '2026-11-01'}));
   const out = await github.fetch('#7', {env, limits: {maxBytes: 24576, maxItems: 5, timeoutMs: 1000}, fetchImpl: web({}, thread).fetchImpl});
