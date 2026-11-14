@@ -12,3 +12,11 @@ test('each add dialog that gets a result with a job ends in linkToJob, and the h
   for (const name of dialogs) assert.match(source, new RegExp(`linkToJob\\('${name}-dialog', result, `), `${name} dialog links its result`);
   assert.match(source, /afterAdded\(\{dialog: \$\(dialogId\), job, openJob: openJobPanel/);
 });
+
+test('each call site passes its own toast title, and only Applied elsewhere\'s "not scored yet" keeps the dialog open', () => {
+  const calls = [...source.matchAll(/linkToJob\('(\w+)-dialog', result, '([\w.]+)'(, true)?\)/g)].map(m => [m[1], m[2], Boolean(m[3])]);
+  assert.deepEqual(calls, [['import', 'pagesJobsFinal.jobAdded', false], ['applied', 'pagesJobsFinal.applicationTracked', true], ['applied', 'pagesJobsFinal.applicationTracked', false]]);
+  assert.match(source, /if \(\/not scored yet\/\.test\(result\.text\)\) \{[^}]*linkToJob\('applied-dialog', result, 'pagesJobsFinal\.applicationTracked', true\);\s*return;/, 'the stay call is inside the not-scored branch');
+  assert.match(source, /say: \(\) => toastMessage\(t\(title\), result\.text/, 'the toast carries the call site\'s title and the result text');
+  assert.match(source, /await loadJobs\(\)\.catch\(/, 'a failed list read does not stop the close and toast');
+});

@@ -65,7 +65,7 @@ export const startedApplying = (job = null) => jobsChanged(job, job && BEFORE_AP
 // The list is read again first, so the drawer gets the row the list shows; a job past the list's limit opens from the result alone.
 async function linkToJob(dialogId, result, title, stay = false) {
   const added = result.job;
-  await loadJobs();
+  await loadJobs().catch(() => {});   // a failed list read still closes, toasts and opens the drawer from the result alone
   // A worked add whose result names no job still closes and toasts; only the drawer and the button need the job.
   const job = !added?.jobUrl ? null : (shared.allJobs || []).find(row => row.url === added.jobUrl || (added.url && row.notion_url === added.url))
     || {url: added.jobUrl, title: added.title, notion_url: added.url};
