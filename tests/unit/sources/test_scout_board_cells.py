@@ -11,18 +11,18 @@ import unittest
 from datetime import date, timedelta
 from unittest import mock
 
-from src import pool_tags, scout, scout_board_cells as cells, scout_boards, scout_cells
+from src import pool_tags, scout, scout_board_cells as cells, scout_board_counts, scout_boards, scout_cells
 
 TODAY = date(2026, 11, 12)
 FAMILIES = list(pool_tags.FAMILIES)
 
 
-def fact(db, host, country, families, read_at=TODAY, jobs=5, right=scout_boards.MIN_RIGHT):
-    """A kept fact: each family has `right` jobs (None: a fact kept before 13 Nov 2026, with no count per family)."""
+def fact(db, host, country, families, read_at=TODAY, jobs=5, right=scout_boards.MIN_RIGHT, rule=scout_board_counts.LISTED_RULE):
+    """A kept fact: each family has `right` jobs (None: a fact kept before 13 Nov 2026, with no count per family), measured under `rule` (None: before the rules were numbered)."""
     scout_boards.ensure(db)
-    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs, rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                (host, country, f'https://{host}/jobs?q={{role}}', ','.join(families), jobs, read_at.isoformat(),
-                None if right is None else json.dumps({family: right for family in families})))
+                None if right is None else json.dumps({family: right for family in families}), rule))
 
 
 def cover(db, countries, read_at=TODAY):
@@ -136,6 +136,83 @@ class Pick(unittest.TestCase):
         self.assertEqual(cells.pick(self.db, TODAY, named=cells.parse('sk:nursing_care,si:kitchen,sk:teaching'))[:2], ('sk', ['nursing_care', 'teaching']))
 
 
+class FactRule(unittest.TestCase):
+    """A fact says under which rule it was measured; a fact of an older rule is read again (Design: src/scout_board_counts.py LISTED_RULE)."""
+    FAMILY = 'electrical_mechanical'
+
+    def setUp(self):
+        self.db = sqlite3.connect(':memory:')
+
+    def due(self, country='es'):
+        return [board['host'] for board in cells.stale(self.db, TODAY).get(country, [])]
+
+    def test_a_fact_measured_before_the_rule_is_due_and_after_a_list_read_it_carries_the_rule(self):
+        recent = TODAY - timedelta(days=2)
+        fact(self.db, 'before.example', 'es', [self.FAMILY], recent, right=53, rule=None)   # a count of 53 read from a list, kept with no mark
+        fact(self.db, 'current.example', 'es', [self.FAMILY], recent, right=53)
+        self.assertEqual(self.due(), ['before.example'], 'the fact at the current rule read 2 days ago is not due; the one before the rule is')
+        scout_board_counts.keep_fact(self.db, {'host': 'before.example', 'url': 'https://before.example/', 'families': [self.FAMILY], 'local_jobs': 60,
+                                               'family_jobs': {self.FAMILY: 53}, 'listed_families': [self.FAMILY]}, 'es', (TODAY - timedelta(days=30)).isoformat(), TODAY.isoformat())
+        row = self.db.execute("SELECT listed_families, rule FROM scout_board_facts WHERE host = 'before.example'").fetchone()
+        self.assertEqual((scout_board_counts.listed_of(row[0]), row[1]), ([self.FAMILY], scout_board_counts.LISTED_RULE))
+        self.assertEqual(self.due(), [], 'measured again under the rule: it waits for its refresh like any other')
+
+    def test_a_memory_kept_before_the_rule_gets_the_column_and_every_fact_of_it_is_due(self):
+        self.db.execute('CREATE TABLE scout_board_facts (host TEXT NOT NULL, country TEXT NOT NULL, url TEXT NOT NULL, families TEXT NOT NULL, local_jobs INTEGER NOT NULL, read_at TEXT NOT NULL, '
+                        'browser INTEGER NOT NULL DEFAULT 0, layout TEXT, family_jobs TEXT, listed_families TEXT, PRIMARY KEY (host, country))')
+        self.db.execute("INSERT INTO scout_board_facts VALUES ('kept.example', 'es', 'https://kept.example/', 'x', 9, ?, 0, NULL, ?, NULL)", (TODAY.isoformat(), json.dumps({self.FAMILY: 5})))
+        self.assertEqual(self.due(), ['kept.example'])
+        self.assertIsNone(self.db.execute('SELECT rule FROM scout_board_facts').fetchone()[0])
+
+    def test_the_oldest_read_goes_first_and_a_re_read_waits_its_days(self):
+        for n, host in enumerate(('c.example', 'a.example', 'b.example')):
+            fact(self.db, host, 'es', [self.FAMILY], TODAY - timedelta(days=n + 1), rule=None)
+        self.assertEqual(self.due(), ['b.example', 'a.example', 'c.example'])
+        cells.record(self.db, 'es', [self.FAMILY], [], TODAY, again=cells.stale(self.db, TODAY)['es'][:1])
+        self.assertEqual(self.due(), ['a.example', 'c.example'], 'the one read again waits REREAD_DAYS, the next oldest is next')
+
+    def test_facts_at_an_older_rule_are_counted_in_one_line(self):
+        fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
+        fact(self.db, 'new.example', 'es', [self.FAMILY])
+        fact(self.db, 'gone.example', 'es', [self.FAMILY], TODAY - timedelta(days=scout_boards.FACT_DAYS + 1), rule=None)   # dropped by the site: not counted
+        self.assertEqual(cells.rule_line(self.db, TODAY), 'Board pass: facts at an older rule: 1 of 2')
+
+
+class Share(unittest.TestCase):
+    """The pass has MAX_BOARDS places: re-reads of old-rule facts and reported candidates split them in half, the unused half goes to the other (Design: src/scout_board_cells.py share)."""
+    def boards(self, prefix, count):
+        return [{'host': f'{prefix}{n}.example'} for n in range(count)]
+
+    def test_twenty_and_twenty_read_six_and_six(self):
+        again, picked = cells.share(self.boards('old', 20), self.boards('rep', 20))
+        self.assertEqual((len(again), len(picked)), (6, 6))
+        self.assertEqual([board['host'] for board in again], [f'old{n}.example' for n in range(6)], 'the order each list came in stays: the oldest read first')
+
+    def test_two_old_facts_leave_ten_places_to_the_reported_boards(self):
+        again, picked = cells.share(self.boards('old', 2), self.boards('rep', 20))
+        self.assertEqual((len(again), len(picked)), (2, 10))
+
+    def test_without_reported_boards_the_whole_pass_re_reads(self):
+        again, picked = cells.share(self.boards('old', 20), [])
+        self.assertEqual((len(again), len(picked)), (scout_boards.MAX_BOARDS, 0))
+
+    def test_few_reported_boards_leave_their_unused_places_to_the_re_reads(self):
+        again, picked = cells.share(self.boards('old', 20), self.boards('rep', 4))
+        self.assertEqual((len(again), len(picked)), (8, 4), 'the default reserve is 4 reported boards: the re-reads take the other eight')
+
+    def test_the_pass_reads_the_split_and_stamps_only_the_re_reads_it_read(self):
+        old = [{'name': f'old{n}.example', 'host': f'old{n}.example', 'search_url': f'https://old{n}.example/?q={{role}}', 'countries': ['Spain'], 'kinds': ['any'], 'source_kind': 'sector'} for n in range(20)]
+        reported = [{'host': f'rep{n:02d}.example', 'countries': ['es'], 'installs': 1, 'local': 0} for n in range(20)]   # the pass orders them by host when nothing else differs
+        read, db = [], sqlite3.connect(':memory:')
+        with mock.patch.dict('os.environ', {'SCOUT_BOARD_RESERVE': '20'}):
+            scout_boards.run(db, ideas=lambda search: [], google=lambda *args: [], out=lambda line: None, named='es', families=['electrical_mechanical'], again=old, reported=reported,
+                             read_board=lambda board, search, *rest: read.append(board['host']) or ([], 'ok', None), words=lambda db, country, families: {})
+        self.assertEqual(read, [f'old{n}.example' for n in range(6)] + [f'rep{n:02d}.example' for n in range(6)], 'six re-reads, then six reported boards')
+        cells.record(db, 'es', ['electrical_mechanical'], [], TODAY, again=old)
+        waiting = set(scout_cells._meta(db, cells.REREAD, {}))
+        self.assertEqual(waiting, {f'old{n}.example|es' for n in range(6)}, 'the 14 re-reads the pass had no place for are not stamped: they are due next pass')
+
+
 class Words(unittest.TestCase):
     """12 Nov 2026, owner, asked via AskUserQuestion: "Scout asks once per country (Recommended)": a local board is searched in its country's language."""
     def setUp(self):
@@ -219,6 +296,20 @@ class OwnDatabase(unittest.TestCase):
         own.commit()
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
         self.assertEqual(cells.seed(sqlite3.connect(':memory:'), os.path.join(os.path.dirname(self.own_path), 'none.sqlite'), out=lambda line: None), 0)
+
+    def test_seeded_facts_keep_every_column_the_rule_included(self):
+        # the same class as the lane merge (Gitar on #4136): a copy path that lists the columns by hand drops the one added last
+        with sqlite3.connect(self.scout_path) as scout_db:
+            scout_db.execute("UPDATE scout_board_facts SET browser = 1, layout = '{\"item\": \"li\"}', listed_families = '[\"kitchen\"]', rule = ?", (scout_board_counts.LISTED_RULE,))
+        own = sqlite3.connect(self.own_path)
+        cells.seed(own, self.scout_path, out=lambda line: None)
+        columns = [row[1] for row in own.execute('PRAGMA table_info(scout_board_facts)')]
+        have = dict(zip(columns, own.execute('SELECT * FROM scout_board_facts').fetchone()))
+        with sqlite3.connect(self.scout_path) as scout_db:
+            want = dict(zip(columns, scout_db.execute(f'SELECT {", ".join(columns)} FROM scout_board_facts').fetchone()))
+        self.assertEqual(have, want)
+        self.assertEqual(have['rule'], scout_board_counts.LISTED_RULE)
+        self.assertEqual({name for name, value in have.items() if value is None}, set(), 'every column of the sample row is filled, so a dropped one shows')
 
     def test_a_board_the_scout_s_browser_was_stopped_at_stays_stopped_in_discovery_on_every_run(self):
         # a refusal is final (CLAUDE.md, refused sites); the stop is written by the Scout's own writer (src/scout_boards.py seed_final), not by hand

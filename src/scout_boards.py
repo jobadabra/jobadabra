@@ -84,6 +84,8 @@ def ensure(db):
         db.execute('ALTER TABLE scout_board_facts ADD COLUMN family_jobs TEXT')
     if 'listed_families' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 13 Nov 2026: no count marked as read from a list
         db.execute('ALTER TABLE scout_board_facts ADD COLUMN listed_families TEXT')
+    if 'rule' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 14 Nov 2026: measured under no numbered rule (NULL), read again once
+        db.execute('ALTER TABLE scout_board_facts ADD COLUMN rule INTEGER')
     db.execute('CREATE TABLE IF NOT EXISTS scout_browser_final (host TEXT PRIMARY KEY, why TEXT NOT NULL, at TEXT NOT NULL)')
 
 
@@ -318,7 +320,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
         candidates = scout_board_candidates.choose(db, reported, country) if by_cells else []
-        proposed = _first(list(again), candidates, found, proposed, scout_board_homes.named(search, ideas, homes))
+        taken, candidates = scout_board_cells.share(list(again), candidates) if by_cells else (list(again), candidates)   # half the places each, the unused half to the other
+        proposed = _first(taken, candidates, found, proposed, scout_board_homes.named(search, ideas, homes))
         read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
         began, kept, unread, counts, final, addresses, ran = clock(), [], [], [], [], [], set()
         reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
@@ -327,7 +330,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         from .ai import page_reader
         ai_boards = (PAGE_CALLS // found_boards.AI_ASKS) if reader is not None and (reader != 'auto' or page_reader.usable()) else 0   # no reader: no second fetch
         try:
-            known, skipped = {item['host'] for item in again}, []
+            known, skipped = {item['host'] for item in taken}, [item['host'] for item in again[len(taken):]]   # a re-read with no place waits like one with no time: not stamped, due next pass
             for board in proposed:
                 if known and board['host'] not in known:
                     began, known = clock(), set()   # the re-reads are done: the new boards' time starts here

@@ -10,6 +10,12 @@ from collections import Counter
 
 from . import pool_tags
 
+LISTED_RULE = 1      # the rule a fact is measured under: 1 = a count read from the board's own list is marked `listed` (#4067); a fact with no rule (NULL) was measured before it
+# A fact carries the number of the rule it was measured under (scout_board_facts.rule, written by keep_fact), and a fact below LISTED_RULE is read again
+# (src/scout_board_cells.py stale()). A future change of HOW a fact is measured bumps THIS integer: that is the mechanism for every later rule, not a one-off.
+# Why (14 Nov 2026, sa for the owner: "A, build it now, test first; B is refused (it would empty searches)"): a fact measured under an old rule was served as if measured under the
+# new one (airlinejobs.com es: 53 from a list, served as searched); `listed_families` is stored only when a count was read from a list, so "no mark" meant both "measured before the rule"
+# and "measured under it, nothing listed", and nothing re-measured the fact before its 20-day refresh.
 MIN_RIGHT = 3        # jobs of ONE role family, located in the country, before a board is proven for that family (the site checks it again)
 KIND_BATCH = 50      # titles a kinds-of-work question holds (the places' batch is the same size)
 MAX_TITLES = 200     # distinct titles one board's jobs are asked about: 4 questions a board at most (src/scout_boards.py KIND_CALLS)
@@ -76,10 +82,10 @@ def keep_fact(db, fact, country, fresh, stamp):
     # Why (13 Nov 2026, owner via sa): a count read from the board's own list is marked `listed`, so a searched count is ranked before it (jobadabra #4045); the mark goes with the
     # family's count: a family this pass measured takes this pass's mark, the others keep theirs.
     listed = sorted((set(listed_of(held[2] if held else None)) - set(fact.get('family_jobs', {}))) | set(fact.get('listed_families', ())))
-    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families, rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser'))),
                 json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1],
-                json.dumps(listed) if listed else None))
+                json.dumps(listed) if listed else None, LISTED_RULE))   # the row's rule is that of its latest read; counts an earlier pass kept for other families stay as kept
 
 
 def kinds_line(host, counted, families, unasked, by_family):
