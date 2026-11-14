@@ -112,11 +112,15 @@ def _site(host):
     return '.'.join((host or '').lower().split('.')[-2:])
 
 
+def folded(text):
+    """A place text with accents and case removed: 'Zürich' -> 'zurich'."""
+    import unicodedata
+    return unicodedata.normalize('NFKD', (text or '').lower()).encode('ascii', 'ignore').decode()
+
+
 def _city(text):
     """A place's first part, accents and case removed: 'Zürich, Switzerland' and 'Zurich' are the same city."""
-    import unicodedata
-    plain = unicodedata.normalize('NFKD', (text or '').lower()).encode('ascii', 'ignore').decode()
-    return _words(plain.split(',')[0].split(';')[0].split(' - ')[0])
+    return _words(folded(text).split(',')[0].split(';')[0].split(' - ')[0])
 
 
 def cities_agree(one, other):

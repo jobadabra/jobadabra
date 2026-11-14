@@ -35,7 +35,7 @@ class EmployerCopy(unittest.TestCase):
         self.assertEqual(self.reads, [])
 
     def test_two_feed_jobs_with_that_title_are_not_guessed_between(self):
-        feed = [FEED[0], {**FEED[0], 'id': '9', 'url': 'https://job-boards.greenhouse.io/canonical/jobs/9', 'location': 'Home based - EMEA'}]
+        feed = [FEED[0], {**FEED[0], 'id': '9', 'url': 'https://job-boards.greenhouse.io/canonical/jobs/9', 'location': 'Remote - Anywhere'}]
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(feed), log=lambda line: None)
         self.assertEqual(job['url'], LINKEDIN['url'])
 
@@ -43,6 +43,30 @@ class EmployerCopy(unittest.TestCase):
         feed = [{**FEED[0], 'location': 'Office Based - London, UK'}]
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(feed), log=lambda line: None)
         self.assertEqual(job['url'], LINKEDIN['url'])
+
+    def test_a_remote_job_open_to_another_region_is_not_this_job(self):
+        for place in ('Remote - USA', 'Remote, Canada', 'Home Based - APAC'):
+            with self.subTest(place):
+                [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([{**FEED[0], 'location': place}]), log=lambda line: None)
+                self.assertEqual(job['url'], LINKEDIN['url'])
+
+    def test_a_remote_job_naming_linkedins_country_is_this_job(self):
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch([{**FEED[0], 'location': 'Remote, Switzerland'}]), log=lambda line: None)
+        self.assertEqual(job['url'], FEED[0]['url'])
+
+    def test_a_moved_job_carries_no_linkedin_apply_route(self):
+        [job] = employer_copy.prefer_employer([{**LINKEDIN, 'apply_route': 'linkedin'}], INDEX, fetch=self.fetch(FEED), log=lambda line: None)
+        self.assertEqual(job['url'], FEED[0]['url'])
+        self.assertNotIn('apply_route', job)
+
+    def test_an_employer_named_by_its_first_words_finds_its_feed(self):
+        [job] = employer_copy.prefer_employer([{**LINKEDIN, 'company': 'Canonical Group Ltd'}], [{'company': 'Canonical Group Limited UK', 'ats': 'greenhouse', 'slug': 'canonical'}],
+                                              fetch=self.fetch(FEED), log=lambda line: None)
+        self.assertEqual(self.reads, [('greenhouse', 'canonical')])
+
+    def test_no_feed_starts_after_the_read_cut(self):
+        [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(FEED), log=lambda line: None, past_cut=lambda: True)
+        self.assertEqual((job['url'], self.reads), (LINKEDIN['url'], []))
 
     def test_a_feed_that_fails_keeps_linkedin(self):
         [job] = employer_copy.prefer_employer([LINKEDIN], INDEX, fetch=self.fetch(None), log=lambda line: None)
@@ -57,13 +81,21 @@ class EmployerCopy(unittest.TestCase):
 
 
 class LinkedInRow(unittest.TestCase):
-    def test_linkedins_reader_row_hands_out_the_employers_address(self):
+    def read(self, disable=''):
         from unittest import mock
         from src.sources import reader_rows
         with mock.patch('src.sources.linkedin_guest.read', return_value=[LINKEDIN]), mock.patch('src.employer_index.load', return_value=INDEX), \
-                mock.patch('src.sources.ats.probe', return_value=FEED), mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': ''}):
+                mock.patch('src.sources.ats.probe', return_value=FEED) as probe, mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': disable, 'JOBADABRA_FIXTURE_DIR': ''}):
             [job] = reader_rows._linkedin_read(None, {})
-        self.assertEqual(job['url'], 'https://job-boards.greenhouse.io/canonical/jobs/5517891')
+        return job, probe.call_count
+
+    def test_linkedins_reader_row_hands_out_the_employers_address(self):
+        job, reads = self.read()
+        self.assertEqual((job['url'], reads), ('https://job-boards.greenhouse.io/canonical/jobs/5517891', 1))
+
+    def test_with_the_index_off_linkedins_row_reads_no_feed(self):
+        job, reads = self.read(disable='index')
+        self.assertEqual((job['url'], reads), (LINKEDIN['url'], 0))
 
 
 if __name__ == '__main__':

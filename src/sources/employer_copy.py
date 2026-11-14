@@ -9,7 +9,8 @@ import re
 from .. import store
 from . import ats
 
-MAX_EMPLOYERS = 5   # feeds read per press for LinkedIn's jobs: about a second each, inside the LinkedIn lane
+MAX_EMPLOYERS = 5   # feeds read per press for LinkedIn's jobs, inside the LinkedIn lane and before its read cut (src/sources/read_budget.py deadline)
+WORLDWIDE = r'\b(?:worldwide|anywhere)\b'   # a feed place open from every country
 
 
 def _company(name):
@@ -31,10 +32,13 @@ def feed_of(company, index):
 
 
 def _places_agree(listed, feed_place):
-    """LinkedIn's place and the feed job's agree: the same city (store.cities_agree), or the feed job is remote in its own words (src/sources/feeds.py _REMOTE_SYNONYMS:
-    'Home based - Worldwide' is open from the city LinkedIn listed it for)."""
-    from . import feeds   # at call time: feeds reads the search at import
-    return store.cities_agree(listed, feed_place) or bool(re.search(feeds._REMOTE_SYNONYMS, feed_place or '', re.I))
+    """LinkedIn's place and the feed job's agree: the same city (store.cities_agree), or the feed job is open worldwide or names the country LinkedIn listed it in
+    ('Home based - Worldwide', 'Remote, Switzerland' for 'Zurich, Zurich, Switzerland'). Why (Gitar on #4257): a remote job open to one region only ('Remote - USA') is
+    another posting, so any other remote place keeps LinkedIn's copy."""
+    if store.cities_agree(listed, feed_place):
+        return True
+    feed, country = store.folded(feed_place), store.folded((listed or '').rsplit(',', 1)[-1]).strip() if ',' in (listed or '') else ''
+    return bool(re.search(WORLDWIDE, feed) or (country and re.search(rf'\b{re.escape(country)}\b', feed)))
 
 
 def match(job, feed):
@@ -44,19 +48,27 @@ def match(job, feed):
     return same[0] if len(same) == 1 else None
 
 
-def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print):
+def _past_cut():
+    """True once the lane's read cut has passed (src/sources/read_budget.py deadline): no new feed starts then; False without a budget."""
+    from .. import time_budget
+    from . import read_budget
+    cut = read_budget.deadline()
+    return cut is not None and time_budget.now() >= cut
+
+
+def prefer_employer(jobs, index, fetch=None, limit=MAX_EMPLOYERS, log=print, past_cut=_past_cut):
     """`jobs` (LinkedIn's, as read) with each one its employer's feed lists under the employer's address, description and date; LinkedIn's place stays (it is the place
-    the job was listed for). `fetch(ats, slug)` -> jobs or None (src/sources/ats.py probe). A feed that fails or is past `limit` leaves its jobs as they were. -> a new list."""
+    the job was listed for). `fetch(ats, slug)` -> jobs or None (src/sources/ats.py probe). A feed that fails, is past `limit` or would start after the read cut leaves its jobs as they were; a moved job carries no LinkedIn apply route. -> a new list."""
     fetch = fetch or ats.probe   # looked up at call time, so a test's stand-in is the one read; None for a feed that is down, empty or changed shape
     feeds, out, moved = {}, [], 0
     for job in jobs:
         where = feed_of(job.get('company'), index)
-        if where and where not in feeds and len(feeds) < limit:
+        if where and where not in feeds and len(feeds) < limit and not past_cut():   # Why (Gitar on #4257): a slow feed never costs the LinkedIn jobs already read
             feeds[where] = list(fetch(*where) or ())   # a feed that is down or changed shape: LinkedIn's copy stays
         hit = match(job, feeds.get(where) or ()) if where else None
         if hit:
             moved += 1
-            job = {**job, 'id': hit['id'], 'url': hit['url'], 'description': hit.get('description') or job.get('description', ''),
+            job = {**{key: value for key, value in job.items() if key != 'apply_route'}, 'id': hit['id'], 'url': hit['url'], 'description': hit.get('description') or job.get('description', ''),
                    'date_posted': hit.get('date_posted') or job.get('date_posted', ''), 'notes': 'also on LinkedIn'}
         out.append(job)
     if moved:
