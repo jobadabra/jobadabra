@@ -1872,9 +1872,16 @@
       <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close" data-i18n-title="screenCommon.close" data-i18n-aria-label="screenCommon.close"><i data-icon="close"></i></button></div>
     <p class="dialog-lead" id="linkedin-lead"></p>
     <div class="alert tone-warn" id="linkedin-line-box"><i data-icon="info"></i><div><strong id="linkedin-line"></strong></div></div>
+    <!-- Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Ask, Chrome first (Recommended)"): the person picks how to sign in; Chrome first and preselected while the extension is connected -->
+    <div id="linkedin-ways" hidden>
+      <p class="dialog-lead"><strong id="linkedin-ways-title"></strong></p>
+      <div class="choice-list" role="radiogroup" aria-labelledby="linkedin-ways-title">
+        <label class="inline-label"><input type="radio" name="linkedin-way" value="chrome" id="linkedin-way-chrome"><span><b id="linkedin-way-chrome-title"></b><span class="muted" id="linkedin-way-chrome-note"></span></span></label>
+        <label class="inline-label"><input type="radio" name="linkedin-way" value="window" id="linkedin-way-window"><span><b id="linkedin-way-window-title"></b><span class="muted" id="linkedin-way-window-note"></span></span></label>
+      </div>
+    </div>
     <div class="dialog-foot">
       <button class="secondary" id="linkedin-no" value="cancel" formnovalidate></button>
-      <button class="secondary" id="linkedin-chrome" value="chrome" formnovalidate hidden></button>
       <button class="primary" id="linkedin-yes" value="default"></button>
     </div>
   </form>

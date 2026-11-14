@@ -9,12 +9,18 @@ export const LINE = t('helperFlow.linkedinWarning');
 const WHERE = t('helperFlow.linkedinWhere');
 const LEAD = t('helperFlow.linkedinLead', {where: WHERE});
 
+// The ways to sign in, shown in the dialog's choice (pages/linkedin-consent.js showWays).
+const WAYS = {title: t('helperFlow.linkedinWays'), chrome: t('helperFlow.linkedinWayChrome'), chromeNote: t('helperFlow.linkedinWayChromeNote'), chromeMissing: t('helperFlow.linkedinWayChromeMissing'),
+  window: t('helperFlow.linkedinWayWindow'), windowNote: t('helperFlow.linkedinWayWindowNote')};
 export const CONSENT = {
-  ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
-  'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
+  ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
+  'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
   // #3911: the way to renew a dead sign-in (⌘K, the card's Renew); its yes signs in here, the Chrome shortcut copies Chrome's.
-  renew: {title: t('pagesLinkedinServices.renewTitle'), lead: t('pagesLinkedinServices.renewLead'), line: '', yes: t('helperFlow.linkedinSignin'), no: t('pagesCommon.close'), chrome: t('helperFlow.linkedinChrome')},
+  renew: {title: t('pagesLinkedinServices.renewTitle'), lead: t('pagesLinkedinServices.renewLead'), line: '', yes: t('helperFlow.continue'), no: t('pagesCommon.close'), ways: WAYS},
+  // Why (owner, 14 Nov 2026: "make sure this popup make sense from all the states perspective"): Easy Apply's door (pages/easy-apply-consent.js, "LinkedIn jobs first") says why it asks for LinkedIn.
+  'easy-apply': {title: t('pagesLinkedinServices.easyFirstTitle'), lead: t('pagesLinkedinServices.easyFirstLead'), line: LINE, yes: t('helperFlow.continue'), no: t('helperState.notNow'), ways: WAYS},
   manage: {title: t('helperFlow.linkedinOn'), lead: t('helperFlow.linkedinManage'), line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
+  'manage-easy-apply': {title: t('helperFlow.linkedinOn'), lead: `${t('helperFlow.linkedinManage')} ${t('pagesLinkedinServices.manageEasyApply')}`, line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
 };
 
 /** The Suggestions entry while the switch is off; `view` is the window's read of the state (pages/linkedin-consent.js), `hidden`/`held` the keys answered Not now. */

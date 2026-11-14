@@ -283,7 +283,7 @@ test('the handler logs the popup outcome without a value, and the words for it p
   assert.deepEqual(await handlers.get('linkedinJobsSignIn')(), {ok: false, reason: 'popup-ended', error: undefined});
   assert.deepEqual(lines, [['linkedin-jobs', 'press', {path: 'window', outcome: 'popup-ended'}]]);
   const connected = signInEnded({ok: false, reason: 'popup-ended'}, {extension: true}), notYet = signInEnded({ok: false, reason: 'popup-ended'}, {extension: false});
-  assert.match(connected[1], /Google or Apple/); assert.match(connected[1], /Use my Chrome sign-in/);
+  assert.match(connected[1], /Google or Apple/); assert.match(connected[1], /Use my LinkedIn sign-in from Chrome/);
   assert.match(notYet[1], /Settings → Connections → Chrome extension/);
   assert.doesNotMatch(connected[1], /Settings → Connections → Chrome extension/, 'the shortcut is named only when it is there');
 });
