@@ -7,6 +7,7 @@ import {el} from '../components.js';
 import {button, card, group, iconRow, skeleton, stateCard} from './parts.js';
 import {accountOf, readinessOf} from '../apply-readiness-view.js';
 import {checkJob, readOf} from '../pages/jobs-triage.js';
+import {stepsOf} from '../readiness-steps.js';
 import {drawerActions} from './drawer-actions.js';
 
 const TONE = {good: 'good', warn: 'warn', bad: 'bad'};   // the chip's tone on a state card; anything else reads as info
@@ -32,7 +33,9 @@ export function readinessView(ctx, redraw) {
   if (!view.checked) return [stateCard({icon: 'search', title: t('pagesReadinessTab.notCheckedTitle'), text: t('pagesReadinessTab.notCheckedText'), actions: [checkButton(ctx, redraw, view.button)]})];
   const head = stateCard({icon: view.missing.length ? 'alert' : 'check-circle', tone: TONE[view.chip.tone] || 'info', title: view.chip.label, text: view.found, actions: [checkButton(ctx, redraw, view.button)]});
   const missing = view.missing.length ? view.missing : [t('pagesReadinessTab.nothingMissing')];
-  return [head, group(t('pagesReadinessTab.missing'), missing)];
+  // Why (14 Nov 2026, #4325, owner: "Each of them with seconds of how much it took. and then I should see the end result, the outcome"): the outcome first, then this window's steps of the check.
+  const steps = stepsOf(ctx.job.url).map(({words, seconds}) => `✓ ${words} · ${t('helperTail.triageStepSeconds', {count: seconds})}`);
+  return [head, group(t('pagesReadinessTab.missing'), missing), ...(steps.length ? [group(t('pagesReadinessTab.howItWent'), steps)] : [])];
 }
 
 const NEED = {'sign-in': ['shield', 'pagesReadinessTab.needSignIn'], create: ['user', 'pagesReadinessTab.needCreate'], none: ['check-circle', 'pagesReadinessTab.needNone'], unknown: ['info', 'pagesReadinessTab.needUnknown']};
