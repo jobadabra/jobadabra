@@ -41,8 +41,8 @@ export function cleanCookies(list) {
 export const signedIn = storage => linkedinSignedIn(storage.settings());
 
 /**
- * Store the copied session in the Keychain. It turns no switch on: the press that asked turns its own switch on once the sign-in is kept (renderer/pages/linkedin-consent.js,
- * pages/easy-apply-consent.js). -> {ok: true} | {ok: false, error}; the value is never in the answer.
+ * Store the copied session in the Keychain. It turns no switch on: the press that asked turns its own switch on once the sign-in is kept (the window's lib/linkedin-handlers.js,
+ * or the Chrome watch in renderer/pages/linkedin-consent.js). -> {ok: true} | {ok: false, error}; the value is never in the answer.
  */
 export function saveSession(storage, cookies, {keychain = realKeychain, now = Date.now} = {}) {
   const clean = cleanCookies(cookies);
@@ -57,7 +57,7 @@ export function saveSession(storage, cookies, {keychain = realKeychain, now = Da
 }
 
 /**
- * The extension's fresh copy at a Find jobs press (issue #2731). Only while the switch is on (a copy never arrives with it off). Cookies that pass: replace the Keychain item.
+ * The extension's fresh copy at a Find jobs press or its periodic look (issue #2731). Only while a sign-in is kept for either switch. Cookies that pass: replace the Keychain item.
  * No usable li_at (the person signed out in Chrome): the copy is deleted, because it mirrors Chrome ("deleted ... on sign-out", spec Safety) and the step then says no-session.
  * `held` false (the extension no longer holds the LinkedIn grants, so it read nothing): the Keychain is left as it is. -> {ok, kept?}; the value is never in the answer.
  */
@@ -65,7 +65,13 @@ export function refreshSession(storage, cookies, {keychain = realKeychain, held 
   if (!signedIn(storage)) return {ok: false, error: 'No LinkedIn sign-in is kept'};   // Gitar on #4271: Easy Apply alone keeps one too
   if (!held) { save(storage, {copiedAt: now()}); return {ok: true, kept: true}; }   // the extension answered: no new ask for 12 h (copyIsOld)
   const clean = cleanCookies(cookies);
-  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); save(storage, {signedIn: false, keptAt: undefined, copiedAt: undefined, ...(state(storage).on ? {signin: nextSignin(signinView(storage), 'signed-out'), signedOutByChrome: true} : {})}); return {ok: true, signedOut: true}; }   // the mark goes with the item (Gitar on #4271); On with nothing kept is Needs you, Sign in again (Gitar on #4283)
+  // Why (#4301): a Chrome sign-out needs the person whenever either saved switch uses the shared sign-in; losing it never writes a switch.
+  if (!clean) {
+    const used = state(storage).on || storage.settings().easyApply?.on === true;
+    keychain.remove(SERVICE, {account: ACCOUNT});
+    save(storage, {signedIn: false, keptAt: undefined, copiedAt: undefined, ...(used ? {signin: nextSignin(signinView(storage), 'signed-out'), signedOutByChrome: true} : {})});
+    return {ok: true, signedOut: true};
+  }
   const before = readSession({keychain})?.li_at;   // compared in memory only: a copy of the same sign-in is no new sign-in
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
   save(storage, {copiedAt: now(), ...(before !== clean.li_at ? {keptAt: new Date(now()).toISOString()} : {})});
@@ -117,9 +123,9 @@ export function forget(storage, {keychain = realKeychain} = {}) {
   save(storage, {signedIn: false, signin: undefined, signedOutByChrome: undefined, keptAt: undefined, copiedAt: undefined});
 }
 
-// Design (#3911, owner, 12 Nov 2026: "Why I don't get any notification or feedback"): "is the person's LinkedIn sign-in working" has ONE owner, settings.linkedinJobs.signin, moved only by a read's
-// verdict (noteRun -> nextSignin). States: ok (Working, or nothing read yet) | needs-you with one reason: missing (no copy kept), signed-out (LinkedIn showed its sign-in page), check (LinkedIn asked for a
-// check), empty (two reads in a row loaded no page). The step line, the notice, the Settings card and ⌘K all read signinView; the extension's copy at a press is no verdict (it feeds the read).
+// Design (#3911, owner, 12 Nov 2026: "Why I don't get any notification or feedback"): "is the person's LinkedIn sign-in working" has ONE owner, settings.linkedinJobs.signin, moved by a read's
+// verdict (noteRun -> nextSignin), or by a Chrome sign-out (refreshSession) and its next sign-in (saveSession). States: ok (Working, or nothing read yet) | needs-you with one reason: missing (no copy kept),
+// signed-out, check (LinkedIn asked for a check), empty (two reads in a row loaded no page). The step line, the notice, the Settings card and ⌘K read signinView; a copied sign-in is no read verdict.
 // Why (12 Nov 2026, #3911, evidence #3710 of 10 Nov): one empty read is not "dead": a working signed-in session also got all searches failed once (the reader could not read the results page), so only a 2nd in a row is Needs you.
 const NEEDS = {'no-session': 'missing', 'signed-out': 'signed-out', check: 'check'};
 const WORKING = {state: 'ok', why: '', empties: 0};

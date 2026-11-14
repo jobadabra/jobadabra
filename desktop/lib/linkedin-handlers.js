@@ -5,6 +5,7 @@ import {refresh as realRefresh} from './linkedin-refresh.js';
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
 import {easyApplyOn} from '../renderer/apply-settings-model.js';
+import {turnOn as turnOnEasyApply} from './easy-apply-switch.js';
 
 /** The extension's three calls. session: {cookies} from the consent page -> saved or refused; pending: tells the extension whether to give up its LinkedIn permissions and whether a Find jobs press
  *  wants a fresh copy now; refresh: that fresh copy (or {held: false}), after which the waiting press goes on (lib/linkedin-refresh.js). */
@@ -32,9 +33,9 @@ export function linkedinView(storage, deps = {}) {
 /**
  * Register the window's seven LinkedIn-jobs channels and the extension's three routes. In demo mode no store, Keychain, window or Chrome is touched. `signIn` opens the sign-in window
  * (lib/linkedin-signin-window.js) and answers {ok, cookies} | {ok: false, reason}; `openPage` opens the extension's consent page (browser-handlers.js) and answers {opened}. `log` writes the
- * press lines (never a cookie value).
+ * press lines (never a cookie value). `packaged` applies the same Easy Apply availability rule as its own handlers.
  */
-export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn, openPage, deps = {}, log = appLog}) {
+export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn, openPage, packaged = true, deps = {}, log = appLog}) {
   const routes = linkedinRoutes(storage, deps);
   server.setVisitRoute('/extension/linkedin-session', payload => routes.session(payload));
   server.setVisitRoute('/extension/linkedin-pending', () => routes.pending());
@@ -44,9 +45,11 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
   if (!DEMO) session.forgetUnused(storage, deps);   // a sign-in no switch uses is not kept past a start (Gitar on #4297)
   ipcMain.handle('linkedinJobsConnect', () => { if (DEMO) return {opened: true}; session.openSignin(storage); return openPage(); });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
-  // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain; the window then turns on the switch that asked (linkedinJobsOn, easyApplyOn). One line per press, never a value.
-  ipcMain.handle('linkedinJobsSignIn', async () => {
+  // Why (#4301, owner 14 Nov 2026): the asking switch is local to this window press, never stored for a later Chrome copy. Complete it before replying so a renderer close cannot lose the press.
+  ipcMain.handle('linkedinJobsSignIn', async (_, {turnOn} = {}) => {
+    if (turnOn === 'easy-apply' && (DEMO || packaged)) return {ok: false, reason: 'not-offered'};
     if (DEMO) return {ok: true};
+    if (turnOn !== undefined && turnOn !== 'jobs' && turnOn !== 'easy-apply') return {ok: false, reason: 'invalid-switch'};
     // Why (Gitar on #3080, 3 Nov 2026; 14 Nov 2026, owner: "Let's store them in Keychain/Credentials Manager (windows)"): the session is kept only in the Mac's Keychain or
     // Windows' Credential Manager (lib/keychain.js hasStore; an isolated run keeps its own file), never a file on disk, so a computer with neither (Linux) refuses before the window opens.
     if (!realKeychain.hasStore(deps.platform || process.platform) && !(deps.isolated ?? realKeychain.isolated())) {
@@ -55,6 +58,8 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
     }
     const got = await signIn();
     const saved = got.ok ? session.saveSession(storage, got.cookies, deps) : got;
+    if (saved.ok && turnOn === 'jobs') session.turnOn(storage);
+    if (saved.ok && turnOn === 'easy-apply') turnOnEasyApply(storage, {warned: true, packaged});
     log('linkedin-jobs', 'press', {path: 'window', outcome: saved.ok ? 'signed-in' : (got.ok ? 'not-kept' : got.reason)});
     return saved.ok ? {ok: true} : {ok: false, reason: got.ok ? 'not-kept' : got.reason, error: saved.error};
   });

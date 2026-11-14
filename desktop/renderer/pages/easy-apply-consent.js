@@ -34,7 +34,8 @@ export async function openEasyApply() {
   if (step === 'sign-in') {
     const kept = await openLinkedinConsent({mode: 'easy-apply'});   // its Continue is the warned yes; resolves once the sign-in came (the Chrome way waits for its copy)
     await refreshEasyApply().catch(() => {});
-    return kept ? turnOn(true) : undefined;   // Not now, closed, or the copy never came: Easy Apply stays off and its Turn on asks again
+    if (kept) say(t('pagesEasyApply.onTitle'), t('pagesEasyApply.onBody'), NO_PLACE.itself, 'good');   // the window handler (or the Chrome watch) already completed this press
+    return undefined;
   }
   if (step === 'renew') {   // on but inactive: the one sign-in again; the switch is already on, so it is active once the sign-in came
     await openLinkedinConsent({mode: 'renew'});
