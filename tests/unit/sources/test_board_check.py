@@ -101,14 +101,26 @@ class KindTests(unittest.TestCase):
         self.assertIn('Müller Spedition', self.asked[0][2])
         self.assertNotIn('Its list for', self.asked[0][2], 'a list page that is not there: the home page alone')
 
-    def test_a_dead_site_behind_a_short_list_page_is_still_gone(self):
-        # Why (#4205, Gitar): the frame check came before the home page, so a parked or dead site stayed in rotation
+    def test_a_dead_site_is_gone_even_when_its_link_is_a_list_page(self):
+        # Why (#4205, Gitar): the list page was judged before the home page, so a dead site stayed in rotation
         def fetch(url):
-            if url == 'https://haulier.example/':
-                raise urllib.error.URLError(socket.gaierror(8, 'nodename'))
-            return '<html><body><div id="root"></div></body></html>'
+            raise urllib.error.URLError(socket.gaierror(8, 'nodename'))   # no address: neither page loads
         self.assertEqual(self.kind(fetch, term='Fahrer'), 'gone')
         self.assertEqual(self.asked, [])
+
+    def test_a_list_page_that_loads_behind_a_missing_home_page_is_not_gone(self):
+        # Why (#4216, Gitar): a short list page that loaded proves the site is there; two such days would have dropped it
+        def fetch(url):
+            if url == 'https://haulier.example/':
+                raise http(404)
+            return '<html><body><p>0 Ergebnisse</p></body></html>'
+        self.assertIsNone(self.kind(fetch, term='Fahrer'))
+        self.assertEqual(self.asked, [])
+
+    def test_the_list_page_is_asked_in_the_board_s_learned_charset(self):
+        # Why (#4216, Gitar): the read asks a cp1251 board in cp1251; the judge must see that same list
+        self.assertEqual(board_check.listed({'search_url': 'https://b.example/jobs?q={role}&l={place}', 'charset': 'cp1251'}, 'шофьор'),
+                         'https://b.example/jobs?q=%F8%EE%F4%FC%EE%F0&l=')
 
     def test_a_refused_home_page_gives_no_verdict_from_the_list_page_alone(self):
         # Why (#4205, Gitar): a list-only 'other' would be kept for 30 days on one passing error

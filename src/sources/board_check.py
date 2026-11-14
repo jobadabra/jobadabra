@@ -103,8 +103,9 @@ def _quiet(fetch, address):
 
 
 def listed(board, term):
-    """The page the board's jobs are listed on: its link filled with `term` (a link without {role} is that page itself)."""
-    return board_paths.forms(board['search_url'], term)[0]
+    """The page the board's jobs are listed on: its link filled with `term` in the board's learned charset, as the read fills it (a link without
+    {role} is that page itself). No place: the judge asks what the site is, and a list for no place is its widest one."""
+    return board_paths.forms(board['search_url'], term, '', board.get('charset'))[0]   # Why (#4216, Gitar): a UTF-8 word on a cp1251 board lists other jobs
 
 
 def shown(front, listing, term):
@@ -146,8 +147,8 @@ def kind(board, fetch, term='', ask=None):
         return None, ''
     page = _list_page(board, fetch, term)
     front, lost = _front(board, fetch)
-    if not front.strip():   # Why (#4205, Gitar): a dead site is still 'gone'; a list page alone (home refused) is too weak to keep a verdict 30 days
-        return ('gone' if lost == 'gone' and (not page.strip() or careers._shell(page)) else None), page
+    if not front.strip():   # Why (#4205, #4216, Gitar): gone only when the list page gave nothing too; a list page alone is too weak for 30 days
+        return ('gone' if lost == 'gone' and not page.strip() else None), page
     if page.strip() and careers._shell(page):   # Why (#4198, Gitar): the read decides what needs a browser; here a frame is no verdict, never a visit
         return None, page
     if ask is None:
