@@ -62,8 +62,18 @@ def board_jobs(say=print, search=None, on_board=None):
         if len(top) < SLICE_BOARDS:   # the places left go to the boards the AI names meanwhile (propose_early), in this same read
             later = lambda: _named_meanwhile(board_ideas, search)
     else:
-        _wait_early(search)
-        proposed = _proposed(board_ideas, search)
+        # Why (14 Nov 2026, benchmark run 43642654233, Krakow chef): the slice waited for the field answer too (53 s) though the country's
+        # answer (37 s) fills the read's places (board_ideas._in_turn, owner 13 Nov "Country fills, field waits"): Pracuj.pl landed at
+        # 120 s, after the search's time. The country's boards start once they are in; the field's join the same read as `later`.
+        from .sources import read_budget
+        if _wait_early(search, part='country') is False and read_budget.past_cut():
+            return []   # the early country call is late or failed: nothing is asked again past the read cut (Gitar, #4412)
+        proposed = _proposed(board_ideas, search, field=False)
+        if proposed:
+            later = lambda: _named_meanwhile(board_ideas, search)
+        else:   # no country board: the field's are the read
+            _wait_early(search)
+            proposed = _proposed(board_ideas, search)
         top, spare = proposed[:SLICE_BOARDS], proposed[SLICE_BOARDS:2 * SLICE_BOARDS]
         if not top:
             return []
@@ -95,26 +105,43 @@ def propose_early(search=None):
     search = search or load_search_config()
     if len(board_ideas.proven(search, limit=SLICE_BOARDS)) >= SLICE_BOARDS:   # every place of the slice is taken: no board of the proposal would be read
         return None
-    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-proposal')
-    future = pool.submit(slots.carry(board_ideas.ideas, slots.FIRST), search)   # its boards are the slice's local boards
+    pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix='board-proposal')
+    country = pool.submit(slots.carry(board_ideas.ideas, slots.FIRST), search, field=False)   # its boards are the slice's local boards
+    future = pool.submit(slots.carry(_whole, slots.FIRST), board_ideas, search, country)
     pool.shutdown(wait=False)
     _early.clear()
-    _early.update(search=search, future=future)
+    _early.update(search=search, future=future, country=country)
     return future
 
 
-def _wait_early(search):
+def _whole(board_ideas, search, country):
+    """Ask the field's call here, beside the countries' one, and end when both have ended: their answers are cached, so the list built
+    when the boards are read (_named_meanwhile) asks the AI nothing again. Only the answers are taken early, never the list (#2218)."""
+    try:
+        board_ideas.field_ideas(search)
+    finally:   # a failed field call still waits for the countries' one, so no list is built while it runs
+        country.exception()
+
+
+def _wait_early(search, part='future'):
     """The early proposal of this same search ended (waited for until the read cut at most), so the slice's own ask finds its answers
-    cached instead of asking again; nothing for another search or none started. Taken once."""
-    future = _early.pop('future', None) if _early.get('search') == search else None
-    _early.clear()
+    cached instead of asking again; nothing for another search or none started. part: 'future' (the whole proposal, taken once) or
+    'country' (the countries' call only; the whole stays to be taken by the boards named later).
+    -> True when it ended in time, False when late or failed, None when there was none to wait for."""
+    if _early.get('search') != search:
+        _early.clear()
+        return None
+    future = _early.get(part)
+    if part == 'future':
+        _early.clear()
     if future is None:
-        return
+        return None
     from .sources import read_budget
     try:
         future.result(timeout=read_budget.seconds_left(read_budget.cut_at()))
+        return True
     except Exception:  # noqa: BLE001 — late or failed: the slice asks itself (a late answer is cached when it comes)
-        pass
+        return False
 
 
 def _named_meanwhile(board_ideas, search):
@@ -130,10 +157,11 @@ def _refused(board_ideas):
     return {host for host, entry in (board_ideas.load().get('boards') or {}).items() if entry.get('state') == 'browser'}
 
 
-def _proposed(board_ideas, search):
-    """The boards proposed for this search's countries that never refused us, in the proposal's order."""
+def _proposed(board_ideas, search, field=True):
+    """The boards proposed for this search's countries (and its field unless field=False) that never refused us, in the proposal's order."""
     refused = _refused(board_ideas)
-    return [board for board in board_ideas.ideas(search) if board.get('host') not in refused]
+    boards = board_ideas.ideas(search) if field else board_ideas.ideas(search, field=False)
+    return [board for board in boards if board.get('host') not in refused]
 
 
 def scored_fits(db):
