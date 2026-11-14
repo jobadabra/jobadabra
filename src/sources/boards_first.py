@@ -219,8 +219,9 @@ class Beside:
         return self._in_list_order(self.matched)
 
     def _in_list_order(self, matched):
-        """`matched` in the order the boards' groups list their jobs, whichever board ended first; jobs of a group still being read, or of
-        `listed`, after them in the order they came. The list's order, not a priority (src/press/rank.py orders what a person sees).
+        """`matched` in the order the boards' groups list their jobs, whichever board ended first; jobs of a group still being read, of
+        `listed`, or of a board's read-on (go_on: a second read, after the first-jobs step, in no group), after them in the order they came.
+        The list's order, not a priority (src/press/rank.py orders what a person sees).
         Why (#3892, 12 Nov 2026, its CI): handed board by board, the gather's jobs followed the threads' timing, and the boards' reader
         contract (tests/unit/sources/test_board_reader.py) reads that order."""
         with self.count:
