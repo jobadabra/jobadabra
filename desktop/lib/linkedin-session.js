@@ -4,6 +4,7 @@
 // Settings: settings.linkedinJobs = {on, asked, declined} (not settings.linkedin: that is the profile import's, lib/linkedin-oauth.js). Guard: test/unit/main/linkedin-session.test.js.
 import * as realKeychain from './keychain.js';
 import {log as appLog} from './log.js';
+import {SIGNIN_WAIT_MS} from '../renderer/apply-settings-model.js';
 
 export const SERVICE = realKeychain.TWIN_LINKEDIN_SESSION;   // one owner of the item's name: lib/keychain.js (Gitar on #4246)
 export const ACCOUNT = 'linkedin-jobs';
@@ -62,6 +63,14 @@ export function refreshSession(storage, cookies, {keychain = realKeychain, held 
 export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
+
+export const WANTED_MS = SIGNIN_WAIT_MS;   // Why (Gitar on #4271, #4283): a Chrome way left unfinished must not let a much later copy in; it lasts exactly as long as the window's own watch
+/** The Chrome way was opened: the extension's copy is taken while the window still waits for it. */
+export const openSignin = (storage, {now = Date.now} = {}) => save(storage, {signinOpenAt: now()});
+/** True while a Chrome way opened in the last WANTED_MS waits for its copy. */
+export const signinOpen = (storage, {now = Date.now} = {}) => now() - (Number(storage.settings().linkedinJobs?.signinOpenAt) || 0) <= WANTED_MS;
+/** The copy was kept (by the Chrome way or the window): the open Chrome way is done. */
+export const closeSignin = storage => save(storage, {signinOpenAt: undefined});
 
 /** Switch off: the Keychain item goes, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {

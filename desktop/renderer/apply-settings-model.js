@@ -64,6 +64,8 @@ export function rowApply(settings) {
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
 /** True once the person confirmed Full automation for the mode it is saved in; a change to another mode clears it. */
 export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
+// Why (Gitar on #4283): one horizon for the LinkedIn sign-in wait: the window watches this long and the main side takes the Chrome copy exactly as long (WANTED_MS), so a copy that comes after the window said "stayed off" is not kept.
+export const SIGNIN_WAIT_MS = 150000;
 /**
  * True when LinkedIn Easy Apply is on: its switch and LinkedIn jobs, which keeps the one sign-in it uses (settings.easyApply, settings.linkedinJobs). The one rule, read by lib/easy-apply-switch.js too.
  */
