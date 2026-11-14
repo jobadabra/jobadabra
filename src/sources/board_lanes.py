@@ -7,7 +7,7 @@ Design: one Lanes per found_boards.read; its states, owned here only: a board is
 quiet (reading, nothing sent for QUIET_S: its lane is given to the next board, the board is named in `freed`), ended (gave its lane back, once).
 A quiet board's thread is not stopped (Python cannot): if it ends before the search's cut its jobs are kept as any board's. No watcher thread and
 no timer: a board waiting for a lane looks for quiet ones each time it would wait. At most `n` boards read at once besides the quiet ones.
-One host, one read (claim): the search's early reads (the first-jobs slice's boards, the known boards' and the web search's groups) run side
+One host, one read (claim, the search's map: its clock opens it): the search's reads (the first-jobs slice's boards, the known boards' and the web search's groups) run side
 by side, each with its own lanes; a host one of them took is not read again by another in the same search (d03, 14 Nov 2026: delucru.md
 from the pack and DeLucru.md from the web search were read as two boards with two different search pages, and the two sides of an identical
 search listed different jobs).
@@ -86,37 +86,21 @@ def said(key):
     print(f"Job boards: {key} sent nothing for {QUIET_S} s; its lane went to the next board (#4255)", flush=True)
 
 
-def open_search(lane):
-    """The boards' lane `lane` of a new search began (boards_first.Beside): no host is taken yet. The claims are the run's, on its one clock
-    (time_budget.CLOCK, Run.clock): contract C1, no module state on the search path (tests/guards/rules/test_run_state_only_shrinks.py)."""
-    from .. import time_budget
-    time_budget.CLOCK.board_hosts = {'lane': lane, 'hosts': {}}
-
-
-def close_search(lane):
-    """`lane` ended: reads after it (the scout's, a test's) claim nothing."""
-    from .. import time_budget
-    if (time_budget.CLOCK.board_hosts or {}).get('lane') is lane:
-        time_budget.CLOCK.board_hosts = None
-
-
 def claim(host, read):
-    """True when `read` (any object naming one found_boards.read call) may read `host`: no other read of the open lane's search took it. No lane
-    open (a read outside Find jobs' lane, tests): every read is its own. dict.setdefault is one step under the GIL: two reads asking at once get
-    one owner."""
+    """True when `read` (any object naming one found_boards.read call) may read `host`: no other read of this search took it. The claims are the
+    search's, opened by its clock's start (src/press/clock.py, Run.clock; contract C1: no module state on the search path); no search clock (the scout,
+    tests): every read is its own. dict.setdefault is one step under the GIL: two reads asking at once get one owner."""
     from .. import time_budget
-    open_ = time_budget.CLOCK.board_hosts
-    if open_ is None:
-        return True
-    return open_['hosts'].setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)
+    hosts = time_budget.CLOCK.board_hosts
+    return True if hosts is None else hosts.setdefault(host, read) is read   # hosts come lowercase without www. (board_ideas._host)
 
 
 def release(host, read):
     """`read` gives `host` back: it got no lane and read nothing, so another read of the search may read it (Gitar, #4268)."""
     from .. import time_budget
-    open_ = time_budget.CLOCK.board_hosts
-    if open_ is not None and open_['hosts'].get(host) is read:
-        del open_['hosts'][host]
+    hosts = time_budget.CLOCK.board_hosts
+    if hosts is not None and hosts.get(host) is read:
+        del hosts[host]
 
 
 def read_in_lane(lanes, host, wait, read):

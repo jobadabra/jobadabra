@@ -89,7 +89,7 @@ class Clock:
         self._local = [0]
         self.FEED = budget.value('time_budget.FEED')   # local titles a call still sorts in scoring's share while the jobs waiting for a score keep their time: one batch feeds scoring (local_titles)
         self._lock = threading.Lock()
-        self.board_hosts = None   # {board host: the read that took it} while a search's boards' lane is open (src/sources/board_lanes.py claim)
+        self.board_hosts = None   # {board host: the read that took it} for the search start() began; None: no search, every read is its own
         self.SHARE = budget.group('time_budget.SHARE')
         self.PACE = budget.group('time_budget.PACE')   # job: read and scored, end to end; *_rounds: per round of calls
 
@@ -119,6 +119,9 @@ class Clock:
             self.STAGE_END = min(self.DEADLINE, self.BEGAN + self.part(stage))
         if seconds:
             budget_tape.new_search(name)
+        # Why (14 Nov 2026, owner, asked via AskUserQuestion: "The search owns it (Recommended)"): the boards' host claims live as long as the search, not
+        # a reader: the lane and the full read only claim (src/sources/board_lanes.py); a host asked once, read or refused, is never asked again in it.
+        self.board_hosts = {} if seconds else None   # start(None): no search (tests' cleanup), every read is its own
         self.score_first(False)
         self._end_pass = threading.local()
         self._said.clear()

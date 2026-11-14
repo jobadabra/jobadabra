@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from src.ai import board_ideas
+from src import time_budget
 from src.sources import board_lanes, careers, found_boards
 
 _READER = careers.READER
@@ -29,6 +30,11 @@ SEARCH = {'role_keywords': ['developer'], 'locations': {'top_tier': ['Chisinau']
 def board(n):
     return {'name': f'Board {n}', 'host': f'b{n}.example', 'search_url': f'https://b{n}.example/?q={{role}}', 'countries': ['Moldova'],
             'kinds': ['any'], 'source_kind': 'general'}
+
+
+def new_search():
+    """A search's claims, as its clock's start opens them (src/press/clock.py), without the rest of a start."""
+    time_budget.CLOCK.board_hosts = {}
 
 
 class AQuietBoardGivesItsLane(unittest.TestCase):
@@ -77,8 +83,8 @@ class OneHostOneRead(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        board_lanes.open_search(self)   # as boards_first.Beside does when a search's boards' lane starts
-        self.addCleanup(board_lanes.close_search, self)
+        new_search()
+        self.addCleanup(setattr, time_budget.CLOCK, 'board_hosts', None)
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(board_ideas, 'load', return_value={'boards': {}}),
                       mock.patch.object(board_ideas, 'save'), mock.patch.object(found_boards, '_dead', return_value=set()),
                       mock.patch.object(found_boards.board_employers, 'note'), mock.patch('builtins.print'),
@@ -149,11 +155,10 @@ class OneHostOneRead(unittest.TestCase):
     def test_every_board_first_or_spare_gives_its_lane_back_and_keeps_its_host_only_when_asked(self):
         """Design (#4273): one way in for every board (board_lanes.read_in_lane). After the read no lane is held; the host stays claimed when it
         was asked (read or refused: never asked twice in a search) and is given back when no lane came (nothing asked)."""
-        from src import time_budget
         for where in ('first', 'spare'):
             for outcome in ('read', 'refused', 'no lane'):
                 with self.subTest(where=where, outcome=outcome):
-                    board_lanes.open_search(self)
+                    new_search()
                     target, made = ('b1.example' if where == 'first' else 'b2.example'), []
 
                     class Spy(board_lanes.Lanes):
@@ -172,17 +177,28 @@ class OneHostOneRead(unittest.TestCase):
                         found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2)] if where == 'spare' else (), is_relevant=list,
                                           dead=set(), fetch=lambda url: '')
                     self.assertEqual([lanes.reading for lanes in made], [{}], 'no lane held after the read')
-                    self.assertEqual(target in time_budget.CLOCK.board_hosts['hosts'], outcome != 'no lane')
+                    self.assertEqual(target in time_budget.CLOCK.board_hosts, outcome != 'no lane')
 
     def test_a_new_search_reads_the_board_again(self):
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'))
         self.assertFalse(board_lanes.claim('delucru.md', 'read 2'))
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'), 'the read that took it keeps it (its own items of one host)')
-        board_lanes.open_search('the next search')
+        time_budget.start(60)   # the next search's clock: its own claims (owner, 14 Nov 2026: "The search owns it")
         self.assertTrue(board_lanes.claim('delucru.md', 'read 2'), 'the next search starts with no host taken')
-        board_lanes.close_search('the next search')
-        self.assertTrue(board_lanes.claim('delucru.md', 'read 3'), 'no lane open: the full read and the scout claim nothing')
+        time_budget.CLOCK.board_hosts = None
+        self.assertTrue(board_lanes.claim('delucru.md', 'read 3'), 'no search clock (the scout): every read is its own')
 
+    def test_the_full_read_skips_a_host_the_lane_read_after_the_lane_ended(self):
+        """Gitar on #4277: the lane's end closed the claims while the full read, started at second 0, still ran; the search owns them now."""
+        read = []
+
+        def read_board(b, search, fetch, route=None, early=False, show=None):
+            read.append(b['host'])
+            return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
+        with mock.patch.object(found_boards, 'read_board', read_board):
+            found_boards.read(SEARCH, [board(1)], early=True, workers=1, is_relevant=list, dead=set(), fetch=lambda url: '')   # the lane's read, then the lane ends
+            found_boards.read(SEARCH, [board(1), board(2)], workers=1, is_relevant=list, dead=set(), fetch=lambda url: '', web=False)
+        self.assertEqual(read, ['b1.example', 'b2.example'], 'b1.example read once in the search')
 
 if __name__ == '__main__':
     unittest.main()

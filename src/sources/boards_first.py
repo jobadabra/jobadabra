@@ -50,8 +50,6 @@ class Beside:
             self.step_ended.set()
         end = read_budget.run_end()
         reads = [(self._known, None)] + ([(lambda _wait: self._listed(listed), slots.FIRST)] if listed else [])   # the slice's boards kept its FIRST level
-        from . import board_lanes
-        board_lanes.open_search(self)   # one host, one read across the lane's reads (#4255's design: delucru.md and DeLucru.md read twice)
         self.count, self.left = threading.Lock(), len(reads)
         self.urls = set()   # the links handed board by board: a list that returns copies of them hands none twice
         self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
@@ -83,8 +81,6 @@ class Beside:
             self.left -= 1
             if not self.left:
                 self.done.set()
-                from . import board_lanes
-                board_lanes.close_search(self)
         self._notify()
 
     def go_on(self, read_on, name):
