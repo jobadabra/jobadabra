@@ -1,17 +1,21 @@
 """The PR verdict starts a search PR's before/after pair and keeps its "Search before/after" row on the PR's current head (companion of tools/pr-verdict.py, plan 3/5).
 Why (14 Nov 2026, owner via sa: "I want all the PRs like that, to start the pair by themselves, and to see the check at the PR level"; asked via AskUserQuestion: "Yes, only when search
 files change (Recommended)"): today only a PR shipped with tools/ship.sh and pending Moves lines gets a pair, and a push leaves the row on the old commit (#4175, #4180).
-Design: states / one owner / verdicts. Plan docs/superpowers/plans/2026-11-14-pr-checks-rows-and-pair.md.
-- ONE starter: this module, run by pr-verdict.py after each verdict write for the PR's current open head (same repository only; `actions: write` stays on that one job). tools/ship-search-hold.sh
-  no longer dispatches. The row's content is written only through pair_row.next_row (events `opened`, `carried`): no new state.
-- Verdicts for a head H of a PR whose files match SEARCH_FILES (tools/pr-body-check.py), in this order:
-    row already on H ("Search before/after", not the "unnamed" one)  -> nothing: once per head, whatever the PR number (a reopen keeps H and its row)
+Design: states / one owner / verdicts (14 Nov 2026, sa: four Gitar rounds on this file's row and start states = the design was wrong; no fifth patch). Plan docs/superpowers/plans/2026-11-14-pr-checks-rows-and-pair.md.
+- ONE writer: this module, run by pr-verdict.py after each verdict for the PR's CURRENT open head only (same repository; `actions: write` stays on that one job; the verdict's group is per commit, so one run
+  per head). An older head's verdict stops at the head check, so two heads of one PR never both start. tools/ship-search-hold.sh no longer dispatches.
+- States of a head's start row are pair_row's own, none new, written only through pair_row.next_row (events `opened`, `carried`): none -> `waiting` (a dispatch is on its way; the pair claims the row) -> the pair's
+  own running ... counted; or `unnamed`, whose title says why: "pair needed" / "pair limit" / "pair not started". `nothing` and `carried` are final.
+- The verdicts for a head H whose files match SEARCH_FILES (tools/pr-body-check.py), in this order:
+    row already on H, not `unnamed` / `waiting`                        -> nothing (once per head, whatever the PR number: a reopen keeps H and its row)
     the earlier measured head M moved to H by no search file          -> CARRY: "ran on <M7>, search files unchanged since: <its title>" (neutral link, no pair)
-    Moves says nothing and no person is named                         -> row "nothing" (green, the why): no pair, nothing to measure
-    no person named (pending Moves lines, or the last pair's people)  -> row "pair needed: name the people in the body's Moves lines"
-    4 pairs started for this PR in 24 h, or 3 failed tries on this head -> row "pair limit", with the command to start it by hand (two bounds, one source each: see CAP and FAIL_CAP)
-    otherwise                                                         -> row "pair queued", THEN the dispatch (a failed dispatch moves the row to "pair not started: <why>; <command>")
-- Never needed for a PR outside SEARCH_FILES. A fork PR gets nothing (current_open_head, tools/pr_verdict_rows.py).
+    Moves says nothing and no person is named                         -> row "nothing" (green, the why)
+    no person named                                                   -> row "pair needed" (no timer: the next check after the body is fixed starts it)
+    4 pairs started for this PR in a rolling 24 h                     -> row "pair limit"; it STARTS BY ITSELF at the first check after a place frees (the row says when), or by hand
+    3 failed dispatches on this head                                  -> row "pair limit"; nothing more by itself on this head, a new commit or a hand start
+    otherwise                                                         -> row "pair queued", THEN one dispatch (a failed one moves the row to "pair not started", tried again at a later check)
+- One timer, JUST: a dispatch tried in the last 3 minutes is not tried again (see JUST). Nothing else waits.
+- Never for a PR outside SEARCH_FILES. A fork PR gets nothing (current_open_head, tools/pr_verdict_rows.py).
 """
 import importlib.util
 import json
@@ -23,7 +27,10 @@ from datetime import datetime, timedelta
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROW = 'Search before/after'
 FAILED = 'pair not started'   # the title of a row whose dispatch failed: written by publish(), counted by failed_starts()
-JUST = timedelta(minutes=3)   # a dispatch is listed within seconds; a start tried this recently is not tried again
+# Why (14 Nov 2026, sa: the one remaining timer): a HANG GUARD for the gap between our dispatch and its run being listed (seconds), and for a failed dispatch that must not be hammered by the burst of verdicts
+#   one push causes. Inside it a `waiting` row, or a row left by a failed dispatch, is not started again; past it a `waiting` row with no run listed is a dispatch that never happened (a verdict cancelled
+#   between its row and its dispatch) and goes through the verdicts again. It decides nothing else: no other row waits on a clock.
+JUST = timedelta(minutes=3)
 CAP = (4, 24)   # pairs started per PR in this many hours: the BROKER bound (2 searches per person per pair), counted from the workflow's own runs, owner via sa 14 Nov 2026
 FAIL_CAP = 3    # failed dispatches per head: the RETRY bound (a failed dispatch costs the broker nothing but a quota that is out is not asked every 3 minutes for ever), counted from the head's own rows
 META = re.compile(r'<!-- search-pair-meta (\{.*?\}) -->')   # the pair comment's last line (tools/persona-search/pair.py table): the head it measured and its people
@@ -57,7 +64,7 @@ def people_of(pair, body, last):
 def decide(*, reach, row, last, delta, nothing, people, starts, failed, head, busy=False):
     """-> (action, why) for head `head`. action: none | carry | nothing | needed | capped | start. Pure: every input is read by publish().
     row: the head's existing "Search before/after" row's state name or None; last: {sha, people} of the last pair comment or None; delta: head_verdict's (moved, newer) for last.sha...head or None;
-    busy: the row is `waiting` and a pair of this PR is queued, running or under 3 min old, or the row is `unnamed` and under 3 min old (one retry per 3 min after a failed dispatch).
+    busy: JUST's one meaning: the row is `waiting` and a pair of this PR is queued, running or under 3 min old, or the row is one a failed dispatch left, under 3 min old.
     A row still `waiting` with no pair on its way is a dispatch that never happened (a verdict run cancelled between the row and the dispatch): it goes through the verdicts again."""
     if not reach:
         return 'none', 'no file the search reads'
@@ -79,16 +86,22 @@ def decide(*, reach, row, last, delta, nothing, people, starts, failed, head, bu
 
 
 def pairs_of(gh, repo, number, now):
-    """(starts in the last CAP[1] hours, runs queued, running or started within 3 min) for PR `number`: the workflow's run list, whose run names start `Search pair · #<n> `.
+    """(start times in the last CAP[1] hours, runs queued, running or started within JUST) for PR `number`: the workflow's run list, whose run names start `Search pair · #<n> `.
     Read from the workflow's runs created in the window (REST, paged), not the newest N of every PR: a busy day cannot push a PR's own runs out of the list (Gitar on #4221).
     A start is a run that is not the pair's own second run (its name ends ` · again`, search-pair.yml run-name): the cap counts heads started, not reruns."""
     since = now - timedelta(hours=CAP[1])
     lines = gh('api', '-X', 'GET', '--paginate', f'repos/{repo}/actions/workflows/search-pair.yml/runs', '-f', f"created=>={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", '-f', 'per_page=100',
                '--jq', '.workflow_runs[] | {createdAt: .created_at, displayTitle: .display_title, status}') or ''
     runs = [json.loads(line) for line in lines.splitlines() if line.strip()]   # one object per line, whatever the page
-    mine = [r for r in runs if str(r.get('displayTitle', '')).startswith(f'Search pair · #{number} ')]
-    return (sum(1 for r in mine if not str(r['displayTitle']).endswith(' · again') and datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= since),
-            sum(1 for r in mine if r.get('status') != 'completed' or datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= now - JUST))
+    mine = [(r, datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00'))) for r in runs if str(r.get('displayTitle', '')).startswith(f'Search pair · #{number} ')]
+    return (sorted(at for r, at in mine if not str(r['displayTitle']).endswith(' · again') and at >= since),
+            sum(1 for r, at in mine if r.get('status') != 'completed' or at >= now - JUST))
+
+
+def frees_at(times):
+    """When the cap has a place again: the start whose ageing out leaves CAP[0] - 1 starts, plus the window. None while under the cap."""
+    over = len(times) - CAP[0] + 1
+    return times[over - 1] + timedelta(hours=CAP[1]) if over > 0 else None
 
 
 def failed_starts(gh, repo, sha):
@@ -154,10 +167,11 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
             compare = {}
         delta = pair.head_verdict('OPEN', last['sha'], sha, compare)
     people = people_of(pair, body, last)
-    starts, active = pairs_of(gh, repo, number, now) if open_row and people else (0, 0)
+    times, active = pairs_of(gh, repo, number, now) if open_row and people else ([], 0)
+    starts = len(times)
     failed = failed_starts(gh, repo, sha) if state == 'unnamed' and people else 0   # only a retry has failed rows to count
     done_at = datetime.fromisoformat(old['completed_at'].replace('Z', '+00:00')) if old.get('completed_at') else None   # a completed row (unnamed) knows when; a queued one does not
-    busy = bool(active) if state == 'waiting' else done_at is not None and now - done_at < JUST
+    busy = bool(active) if state == 'waiting' else done_at is not None and now - done_at < JUST and str(old.get('title', '')).startswith(FAILED)   # a "pair needed" or "pair limit" row is never waited on
     action, why = decide(reach=reach, row=state, last=last, delta=delta, people=people, starts=starts, failed=failed, nothing=says_nothing(check, body), head=sha, busy=busy)
     print(f'search pair for #{number} {sha[:7]}: {action} ({why})')
     if dry_run or action == 'none':
@@ -170,28 +184,23 @@ def publish(repo, sha, pulls, files, gh, now, dry_run=False):
               'needed': lambda: {'kind': 'opened', 'verdict': 'unnamed', 'people': [], 'title': "pair needed: name the people in the body's Moves lines",
                                  'summary': "Add `Moves: p<n> <number> <before> -> pending (1 run a side, same minute, usual difference <d>)` for each person this change reaches (one could-hurt person too); the pair starts by itself on the next check."},
               'capped': lambda: {'kind': 'opened', 'verdict': 'unnamed', 'people': [],   # no people: a row with the failed tries' people would read as the same row (pair_row._place)
-                                 'title': f'pair limit: {why}; start it by hand',
-                                 'summary': f'Limit reached: {why} (at most {CAP[0]} pairs per PR in {CAP[1]} hours, each takes 2 AI searches per person from the broker; at most {FAIL_CAP} failed dispatches per commit). Start one by hand: `{command}`'},
+                                 'title': f'pair limit: {why}; ' + ('starts by itself once a place frees' if starts >= CAP[0] else 'start it by hand'),
+                                 'summary': (f'{starts} pairs were started for this PR in the last {CAP[1]} hours (the most is {CAP[0]}; each pair takes 2 AI searches per person from the broker). '
+                                             f'A place frees at {frees_at(times):%H:%M}Z, when the oldest of them is {CAP[1]} hours old: the first check after that starts the pair by itself. To start it now: `{command}`'
+                                             if starts >= CAP[0] else
+                                             f'The dispatch failed {failed} times on this commit (the most is {FAIL_CAP}). Nothing more starts by itself on this commit: push a new commit, or start it by hand: `{command}`')},
               'start': lambda: {'kind': 'opened', 'verdict': 'waiting', 'people': people, 'title': 'pair queued: starting',
                                 'summary': f'Before/after pair for {shown}, starting for this commit.'}}
     # the row first: a dispatch that fails then moves it, a PR never has none (Gitar on #4044/#4077)
     row_id = write_row(gh, repo, sha, pair_row, old, events[action]()) or str(old.get('id') or '')
     if action == 'start':
-        # Why (Gitar on #4228, try 3 on the cap): two verdicts of different heads of one PR can both read starts=3 before either dispatches (the verdict's group is per commit). Read the count again after the
-        #   row is written and before the dispatch: a rival whose run is already listed closes the gap. Residual, stated: a rival dispatched in the same second is not listed yet, so the bound is CAP[0],
-        #   plus at most one under that race (2 AI searches per person). Closing it needs one serial starter job per PR: parked, impact low (a cost overshoot of one pair, no wrong verdict).
-        again, _ = pairs_of(gh, repo, number, now)
-        if again >= CAP[0]:
-            why = f'{again} pairs started in {CAP[1]} h'
-            write_row(gh, repo, sha, pair_row, row_on(gh, repo, sha), events['capped']())
-            return 'capped'
         try:   # search-pair.yml's start job claims this row by its id (check_id), so one row exists per head
             # No --ref, on purpose (Gitar on #4228): this job runs in the default branch's context (workflow_run), so its checkout, pair.py/pair_row.py and this dispatch are all main's; a PR that edits
             #   search-pair.yml or pair_row.py is measured by main's copies and its own changes apply after the merge.
             gh('workflow', 'run', 'search-pair.yml', '-R', repo, '-f', f'pr={number}', '-f', f'people={json.dumps(people)}', '-f', f'check_id={row_id}')
         except Exception as error:   # gh printed its own words; the row says what to run
             write_row(gh, repo, sha, pair_row, row_on(gh, repo, sha), {'kind': 'opened', 'verdict': 'unnamed', 'people': people, 'title': f'{FAILED}: the dispatch failed; start it by hand',
-                                                                       'summary': f'`gh workflow run` failed ({type(error).__name__}); the next check tries once more after 3 min, or start it by hand: `{command}`'})
+                                                                       'summary': f'`gh workflow run` failed ({type(error).__name__}); a later check tries again after 3 minutes (at most {FAIL_CAP} times on this commit), or start it by hand: `{command}`'})
     return action
 
 

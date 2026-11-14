@@ -21,8 +21,7 @@ MOVES = 'Moves: p3 right jobs 0 → pending (1 run a side, same minute, usual di
 class Gh:
     """A stub `gh`: check rows of the head, pair runs, comments and dispatches; `log` keeps the order of writes and dispatches."""
 
-    def __init__(self, rows=(), runs=(), comments='', compare=None, fail_dispatch=False, rival=None):
-        self.rival = rival   # a run another verdict dispatches while this one writes its row
+    def __init__(self, rows=(), runs=(), comments='', compare=None, fail_dispatch=False):
         self.rows, self.runs, self.comments, self.compare, self.fail, self.log, self.dispatched, self.queries = [dict(r) for r in rows], list(runs), comments, compare or {}, fail_dispatch, [], [], []
 
     @staticmethod
@@ -47,7 +46,7 @@ class Gh:
         if 'filter=all' in text:
             return json.dumps([r.get('output[title]', '') for r in self.rows])
         if '/check-runs?per_page=100&check_name=' in text:
-            return json.dumps(self.rows[-1:])   # the API's default filter: the latest of that name
+            return json.dumps([{**r, 'title': r.get('output[title]', ''), 'summary': r.get('output[summary]', '')} for r in self.rows[-1:]])   # the API's default filter: the latest of that name
         if '/issues/' in text and text.rstrip().endswith('--jq') or '/comments' in text:
             self.queries.append(text)
             return self.comments
@@ -65,8 +64,6 @@ class Gh:
             row = {'id': 100 + len(self.rows), 'completed_at': NOW.isoformat().replace('+00:00', 'Z') if f.get('status') == 'completed' else None, **f}
             self.rows.append(row)
             self.log.append('row written')
-            if self.rival:
-                self.runs.append(self.rival)
             return json.dumps({'id': row['id']})
         return ''
 
@@ -154,21 +151,12 @@ class TheVerdictStartsThePair(unittest.TestCase):
         self.assertEqual(gh.dispatched, [])
         self.assertIn('pair limit', gh.rows[-1]['output[title]'])
         self.assertIn('gh workflow run', gh.rows[-1]['output[summary]'])
+        self.assertIn('starts by itself once a place frees', gh.rows[-1]['output[title]'])
+        self.assertIn('A place frees at 09:50Z', gh.rows[-1]['output[summary]'], 'the oldest start was 3 h 10 min ago (09:50Z), so it is 24 h old at 09:50Z tomorrow: the row says exactly when')
         reruns = Gh(runs=[run_of(60 * k + 10, again=bool(k % 2)) for k in range(4)])   # 2 starts and the pair's own 2 second runs: the cap counts heads started
         self.assertEqual(play(reruns), 'start')
         other = Gh(runs=[run_of(60 * k + 10, number=8) for k in range(4)] + [run_of(26 * 60)])   # another PR's pairs and one over a day old do not count
         self.assertEqual(play(other), 'start')
-
-    def test_a_rival_verdict_that_dispatched_while_this_one_wrote_its_row_is_counted_before_this_dispatches(self):
-        """Gitar on #4228: two verdicts of different heads of one PR can both read 3 starts. The count is read again between the row and the dispatch; a rival already listed makes the 5th a capped row."""
-        gh = Gh(runs=[run_of(60 * k + 10) for k in range(3)], rival=run_of(0, 'queued'))
-        self.assertEqual(play(gh), 'capped')
-        self.assertEqual(gh.dispatched, [], 'no dispatch for the 5th')
-        self.assertIn('pair limit', gh.rows[-1]['output[title]'])
-        self.assertEqual(gh.log, ['row written', 'row updated'])
-        alone = Gh(runs=[run_of(60 * k + 10) for k in range(3)])   # positive control: the same 3 starts and no rival is the 4th, allowed
-        self.assertEqual(play(alone), 'start')
-        self.assertEqual(len(alone.dispatched), 1)
 
     def test_the_run_list_is_read_for_the_24_hour_window_server_side_and_paged(self):
         """Gitar on #4221: the newest 100 runs of every PR can span less than a day, so a PR's own starts fell out of the list and the cap let a 5th through."""
@@ -281,6 +269,56 @@ class TheSecondRunSaysSo(unittest.TestCase):
         self.assertTrue(line.startswith('"Search pair · #${{ inputs.pr }} '), 'the run list is read by this start')
 
 
+class TheTableOfOneHeadsStart(unittest.TestCase):
+    """Design (14 Nov 2026, sa: no fifth patch): one writer, one rule to (re)start, one timer (JUST). Every row state x the inputs that matter -> the action and what the row says."""
+    def row(self, state, title, minutes_ago=None, owner=''):
+        done = None if minutes_ago is None else (NOW - timedelta(minutes=minutes_ago)).isoformat().replace('+00:00', 'Z')
+        return {'id': 50, 'completed_at': done, 'external_id': f'search-pair:{state}:3:{owner}', 'output[title]': title, 'output[summary]': ''}
+
+    def test_the_table(self):
+        full = [run_of(60 * k + 10) for k in range(4)]
+        rows = [   # (what the head's row is, the runs listed, the PR body, the action, a word the row must say after it, or '' when it does not change)
+            ('no row', Gh(), MOVES, 'start', 'pair queued'),
+            ('waiting, its run listed 1 min ago (inside the timer)', Gh([self.row('waiting', 'pair queued: starting')], [run_of(1, 'queued')]), MOVES, 'none', 'pair queued'),
+            ('waiting, its run listed and still running (any age)', Gh([self.row('waiting', 'pair queued: starting')], [run_of(40, 'in_progress')]), MOVES, 'none', 'pair queued'),
+            ('waiting, only a run that ended 5 min ago (past the timer)', Gh([self.row('waiting', 'pair queued: starting')], [run_of(5)]), MOVES, 'start', 'pair queued'),
+            ('waiting, no run listed at all (past the timer: a dispatch that never happened)', Gh([self.row('waiting', 'pair queued: starting', minutes_ago=None)]), MOVES, 'start', 'pair queued'),
+            ('"pair needed" 1 min ago, the body now names a person (no timer on it)', Gh([self.row('unnamed', "pair needed: name the people in the body's Moves lines", minutes_ago=1)]), MOVES, 'start', 'pair queued'),
+            ('"pair needed", still no person', Gh([self.row('unnamed', "pair needed: name the people in the body's Moves lines", minutes_ago=1)]), 'No moves line.', 'needed', 'pair needed'),
+            ('"pair limit" while 4 starts are in the window', Gh([self.row('unnamed', 'pair limit: 4 pairs started in 24 h; starts by itself once a place frees', minutes_ago=1)], full), MOVES, 'capped', 'pair limit'),
+            ('"pair limit" once the oldest start aged out (it starts by itself)', Gh([self.row('unnamed', 'pair limit: 4 pairs started in 24 h; starts by itself once a place frees', minutes_ago=1)], [run_of(60 * k + 10) for k in range(3)] + [run_of(25 * 60)]), MOVES, 'start', 'pair queued'),
+            ('"pair not started" 1 min ago (inside the timer)', Gh([self.row('unnamed', 'pair not started: the dispatch failed; start it by hand', minutes_ago=1)]), MOVES, 'none', 'pair not started'),
+            ('"pair not started" 4 min ago (past the timer)', Gh([self.row('unnamed', 'pair not started: the dispatch failed; start it by hand', minutes_ago=4)]), MOVES, 'start', 'pair queued'),
+            ('a row already running', Gh([self.row('running', 'running since 13:00Z', owner='9')]), MOVES, 'none', 'running'),
+        ]
+        for name, gh, body, action, says in rows:
+            self.assertEqual(play(gh, body), action, name)
+            self.assertIn(says, gh.rows[-1]['output[title]'], name)
+            self.assertEqual(len(gh.dispatched), 1 if action == 'start' else 0, name)
+
+    def test_the_timer_has_both_sides_for_a_waiting_row(self):
+        """Inside it a listed dispatch is not repeated; past it a waiting row with no run is started again, once."""
+        inside = Gh([self.row('waiting', 'pair queued: starting')], [run_of(2)])
+        self.assertEqual(play(inside), 'none')
+        past = Gh([self.row('waiting', 'pair queued: starting')], [run_of(4)])
+        self.assertEqual(play(past), 'start')
+
+    def test_the_capped_row_says_when_a_place_frees_and_that_the_pair_then_starts_by_itself(self):
+        gh = Gh(runs=[run_of(60 * k + 10) for k in range(5)])   # 5 starts: two must age out (the older at 08:50Z, the second at 09:50Z) before a place is free
+        self.assertEqual(play(gh), 'capped')
+        self.assertIn('A place frees at 09:50Z', gh.rows[-1]['output[summary]'])
+        self.assertIn('the first check after that starts the pair by itself', gh.rows[-1]['output[summary]'])
+        self.assertEqual(mod.frees_at([]), None)
+
+    def test_the_failed_dispatch_cap_says_nothing_more_starts_by_itself(self):
+        gh = Gh(fail_dispatch=True)
+        minute = 0
+        for _ in range(8):
+            play(gh, now=NOW + timedelta(minutes=minute))
+            minute += 4
+        self.assertIn('Nothing more starts by itself on this commit', gh.rows[-1]['output[summary]'])
+
+
 class TheDecisionIsPure(unittest.TestCase):
     BASE = dict(reach=True, row=None, last=None, delta=None, nothing=False, people=[3], starts=0, failed=0, head=SHA)
 
@@ -289,7 +327,7 @@ class TheDecisionIsPure(unittest.TestCase):
         self.assertEqual(d(reach=False), 'none')
         self.assertEqual(d(row='counted'), 'none')
         self.assertEqual(d(row='waiting', busy=True), 'none')
-        self.assertEqual(d(row='unnamed', busy=True), 'none')
+        self.assertEqual(d(row='unnamed', busy=True), 'none')   # busy means a failed dispatch under 3 min old: publish() sets it for no other unnamed row
         self.assertEqual(d(row='unnamed'), 'start')
         self.assertEqual(d(people=[], nothing=True), 'nothing')
         self.assertEqual(d(people=[]), 'needed')
