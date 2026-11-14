@@ -66,6 +66,8 @@ class HomeSearch(unittest.TestCase):
         if '/kurs?' in url:
             return posting('Cooking course', 4)   # another search of the same page (courses): listed, none relevant
         if '/iskanje?' in url or '/search?' in url:
+            if isinstance(self.answer, Exception):
+                raise self.answer
             return self.answer
         return posting('Production worker', 2)   # what the home page itself would give as a list: never read for a named board
 
@@ -145,9 +147,10 @@ class HomeSearch(unittest.TestCase):
     def test_a_search_with_no_relevant_job_does_not_go_up_the_ladder(self):
         self.home = page('<form action="/kontakt" method="post"><input name="n"></form><form action="/iskanje" method="get"><input name="q"></form>')
         self.answer = posting('Cook', 3)   # the search answers, with no relevant job: the ladder (a POST form, a section, its feed, its list) would be next for any other board
-        titles, _ = self.read()
-        self.assertEqual(titles, ['Cook'])
+        titles, log = self.read()
+        self.assertEqual(titles, [])   # a listing with no relevant job is not handed on
         self.assertEqual(self.searched(), ['https://named.example/iskanje?q=welder'])
+        self.assertIn('its own search gave no relevant job', log)
 
     def test_the_next_form_is_asked_when_the_first_gives_no_relevant_job(self):
         self.home = page('<form action="/kurs" method="get"><input name="q"><input name="from"><input name="to"></form><form action="/iskanje" method="get"><input name="q"></form>')
@@ -157,12 +160,39 @@ class HomeSearch(unittest.TestCase):
         self.assertIn('found its own search (https://named.example/iskanje?q={role}), 1 job(s) read, 1 relevant', log)
         self.assertEqual(board_ideas.load()['boards']['named.example'].get('form_url'), 'https://named.example/iskanje?q={role}')
 
-    def test_when_no_form_gives_a_relevant_job_the_fullest_listing_is_returned(self):
-        self.home = page('<form action="/kurs" method="get"><input name="q"><input name="from"></form><form action="/iskanje" method="get"><input name="q"></form>')
-        self.answer = posting('Cook', 3)
-        titles, _ = self.read()
-        self.assertEqual(len(self.searched()), 2)
-        self.assertEqual(len(titles), 1)
+    def test_the_home_page_is_asked_at_the_boards_own_address_with_its_www(self):
+        board = {**BOARD, 'search_url': 'https://www.named.example/'}   # board_ideas strips www. from host, never from the link
+        asked = []
+
+        def fetch(url):
+            asked.append(url)
+            return GET_FORM if url.endswith('/') and '?' not in url and not url.endswith('robots.txt') else posting('Welder', 1)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            found_boards.read(SEARCH, [board], fetch=fetch, is_relevant=lambda jobs: jobs, dead=set())
+        self.assertIn('https://www.named.example/', asked)
+        self.assertNotIn('https://named.example/', asked)
+
+    def test_every_form_refused_leaves_the_board_to_a_persons_browser(self):
+        self.answer = urllib.error.HTTPError('https://named.example/iskanje?q=welder', 403, 'Forbidden', {}, None)
+        titles, log = self.read()
+        self.assertEqual(titles, [])
+        self.assertEqual(board_ideas.load()['boards']['named.example'].get('state'), 'browser')   # not an empty read: the refused-reads queue sees it
+        self.assertIn('refused or needs scripts', log)
+        self.assertEqual(self.searched(), ['https://named.example/iskanje?q=welder'])   # asked once, no retry
+
+    def test_a_cut_before_a_form_is_asked_marks_nothing_and_reads_nothing(self):
+        board, entry = dict(BOARD), {}
+        with mock.patch.object(board_home_search.read_budget, 'past_cut', side_effect=[False, True]), contextlib.redirect_stdout(io.StringIO()):
+            result = board_home_search.read(board, entry, HOME, SEARCH, self.fetch, lambda jobs: jobs, None, False, found_boards.read_board)
+        self.assertEqual(result, ([], 'empty', None))
+        self.assertEqual((entry, self.searched()), ({}, []))   # no ladder marker, no form link: the next search reads it again
+
+    def test_the_ladder_is_never_run_for_a_named_board(self):
+        self.home = page('<p>Jobs</p>')   # nothing to ask: the ladder (bare link, AI page reader, POST forms, section, routes) would be next for any other board
+        with mock.patch.object(found_boards, '_another_way', side_effect=AssertionError('the ladder never runs for a named board')), \
+                mock.patch.object(found_boards, '_fuller_section', side_effect=AssertionError('nor its fuller section')):
+            self.assertEqual(self.read()[0], [])
 
     def test_the_form_is_remembered_for_the_next_search(self):
         board = dict(BOARD)

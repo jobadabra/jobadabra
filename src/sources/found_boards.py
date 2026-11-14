@@ -425,10 +425,10 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             print(f"Job boards found: {board['name']} {len(answer[0])} job(s), 0 relevant; its other ways wait for the next search", flush=True)
             run_counts.looked(answer[0])
             _hand(turn, rounds.rest(read_item, answer[0]) if rounds else answer[0], on_board)
-        late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
-        if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
+        late, named = read_budget.past_cut(), board_home_search.wanted(board)   # late: its other ways are tried next time (_went_up is not marked); a named board has no other way (board_home_search)
+        if late and not early and not relevant and not route and not named and state != 'browser' and not _went_up(entry, proposed):
             return wait((found, state))
-        elif not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
+        elif not (early or relevant or route or named) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
             from ..ai import decide
             failed = decide.FAILED[0]
             before = (found, state)
@@ -440,7 +440,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 return wait(before)
         elif (0 < len(relevant) < FEW_RELEVANT and not (early or route) and state != 'browser' and (board.get('source_kind') or 'general') == 'general'
               and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed
-              and not late):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
+              and not late and not named):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})

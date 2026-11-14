@@ -3,12 +3,13 @@ link, never read"; measured by hand on the 14 Nov baseline: Sofia +12-15 right j
 The home page is fetched once with the plain reader; the form is found by structure only (board_forms.templates(plain=True): a GET form, text boxes, nothing personal, no message
 box, no bot check, on the board's own site), the words go in the charset the page declares, and the result list is read through the board read path like any board's.
 Never: a POST, a form that is not a plain search, a browser (show=None), a click or typing, the home page as a list, a retry of a 401/403, an AI call to find the form.
-Invariants: read() always answers (it never falls back to reading the home page as a list); the ladder (found_boards._another_way: bare link, AI page reader, any home form, section,
-routes) never runs for a named board, so no form that is not a plain search is ever tried. Tests: tests/unit/sources/test_board_home_search.py."""
+Invariants: read() always answers (it never falls back to reading the home page as a list); found_boards.keep never runs the ladder (_another_way: bare link, AI page reader, any home form,
+section, routes) nor the fuller section for a named board (wanted), so no form that is not a plain search is ever tried. Tests: tests/unit/sources/test_board_home_search.py."""
 import time
 import urllib.error
+import urllib.parse
 
-from . import board_forms, board_yield, careers, host_pace, page_bytes, read_budget
+from . import board_form_read, board_forms, board_yield, careers, host_pace, page_bytes, read_budget
 
 
 def wanted(board):
@@ -21,13 +22,14 @@ def _say(board, started, what):
 
 
 def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
-    """(jobs, state, None) of the named board asked through its own plain GET search; ([], state, None) with one line saying why when it has none or refused. Never None."""
-    from . import found_boards
-    entry['form_for'], entry['ladder'] = proposed, found_boards.LADDER   # Why (14 Nov 2026, owner "yes" via sa): never the ladder: its home-form step also sends POST forms and its other ways ask the AI
+    """(jobs, state, None) of the named board asked through its own plain GET search; ([], state, None) with one line saying why when it has none, was cut or refused
+    ('browser' when every form was refused or needs scripts, as for any board). Never None. The forms are asked by the shared loop (board_form_read.through_forms): the first
+    one giving a relevant job is kept as the board's link; a courses search sorting before the jobs one is passed by."""
     started = time.monotonic()
     if read_budget.past_cut():
         return [], 'empty', None
-    address = f"https://{board['host']}/"
+    parts = urllib.parse.urlsplit(board['search_url'])   # Why (14 Nov 2026, Gitar on #4229): the board's own address, www. kept as board_forms.home reads it, never the normalised host
+    address = f'{parts.scheme}://{parts.netloc}/'
     try:
         markup = str(fetch(address) or '')
     except urllib.error.HTTPError as error:   # a 401/403 is final for this board: never asked again in another form
@@ -47,23 +49,17 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
     declared = page_bytes.charset_of(markup)
     if declared and declared != 'utf-8':
         board['charset'] = declared   # the board's own words go in it (board_paths.read); kept per board by found_boards
-    best = None   # (jobs, state, template, relevant) of the form that listed the most when none gave a relevant job
-    for template in templates:   # Why (14 Nov 2026, run on Sofia's named boards): a home page's first form can be another search (a courses search before the jobs one): the next form is asked while none gave a relevant job
-        if read_budget.past_cut():
-            break
-        jobs, state, _ = read_board({**board, 'search_url': template}, search, fetch, None, early=early, show=None)
-        if state == 'browser':   # refused or script-only: the next form, never the browser here
-            continue
-        relevant = judge(jobs) if jobs else []
-        entry['forms_tried'] = proposed
-        if relevant:
-            entry['form_url'], entry['form_for'] = template, proposed   # read first next time, as any board's own search form
-            best = (jobs, state, template, relevant)
-            break
-        if best is None or len(jobs) > len(best[0]):
-            best = (jobs, state, template, relevant)
-    if best:
-        _say(board, started, f'found its own search ({best[2]}), {len(best[0])} job(s) read, {len(best[3])} relevant')
-        return best[0], best[1], None
-    _say(board, started, 'its own search was refused or needs scripts, not read')
+    refused = []
+    made = board_form_read.through_forms(board, entry, search, fetch, judge, None, read_board, templates, 0, refused, read_budget.past_cut)   # show=None: never the browser here
+    if made is board_form_read.CUT:   # no form was asked or the rest waits: nothing is marked, the next search reads it again
+        _say(board, started, 'the search time was up, not read')
+        return [], 'empty', None
+    if made:
+        jobs, state, relevant = made
+        _say(board, started, f"found its own search ({entry['form_url']}), {len(jobs)} job(s) read, {len(relevant)} relevant")
+        return jobs, state, None
+    if refused:   # every form refused or needs scripts: only a person's browser reads it, as for any board
+        _say(board, started, 'its own search was refused or needs scripts, not read')
+        return [], board_yield.Needs(board_yield.UNKNOWN), None
+    _say(board, started, 'its own search gave no relevant job')
     return [], 'empty', None
