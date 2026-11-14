@@ -98,7 +98,9 @@ def scan_beside(sources, db, search, so_far, due, scan=None, first=None, early=N
         with step_yield.span('employer_sites'):
             return scan(sources, db, on_jobs=sites, **after_site), None
     with batch_scope.concurrent():
-        ahead = start(db, search, after=first.wait if first is not None else None)
+        # Why (xc, 14 Nov 2026, L36 asked via AskUserQuestion: "Yes, one queue (Recommended)"): started at second 0 beside the lane's reads,
+        # never after their first pages; a board the lane took is not read again here (board_lanes.claim), so there is no second full read
+        ahead = start(db, search)
 
         def on_site(jobs):
             sites(jobs)

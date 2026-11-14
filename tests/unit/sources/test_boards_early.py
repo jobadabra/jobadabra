@@ -185,14 +185,27 @@ class BesideTests(unittest.TestCase):
         self.assertEqual([job['title'] for job in found['jobs']], ['Tontechniker'])
         self.assertEqual(shown, [], 'shown once')
 
-    def test_the_full_board_read_starts_after_the_boards_first_pages(self):
-        # ps E2a-2: it takes the pages the boards first fetched (found_boards._early); begun before them it would fetch page 1 again.
+    def test_the_full_board_read_starts_at_second_0_beside_the_boards_first_pages(self):
+        """L36 (owner, 14 Nov 2026, asked via AskUserQuestion: "Yes, one queue (Recommended)"): every board is read in one queue from second 0,
+        no second full read after the first pages. The full read starts while the lane's first pages are still being read."""
         first_done = threading.Event()
-        ahead = boards_ahead.start(self.db, SEARCH, after=lambda: self.assertTrue(first_done.wait(5)) or self.events.append('first pages in'))
-        self.events.append('first pages read')
+        self.addCleanup(first_done.set)
+
+        class Lane:   # a boards_first.Beside whose first pages are still being read
+            arrived = threading.Event()
+
+            def wait(self):
+                first_done.wait(5)
+
+            def deliver(self, db, on_jobs):
+                pass
+
+        def scan(sources, db, on_jobs=None, on_read=None):   # the employer sites: the first pages are still out while they are read
+            self.assertTrue(self.board_read.wait(5), 'the full read started before the first pages ended')
+            return {'jobs': []}
+        report, ahead = boards_ahead.scan_beside([], self.db, SEARCH, SoFar(), due=True, first=Lane(), scan=scan)
         first_done.set()
         ahead.wait()
-        self.assertEqual(self.events, ['first pages read', 'first pages in'])
         self.assertEqual(self.board_reads, 1)
 
     def test_a_search_that_reads_no_boards_starts_none(self):

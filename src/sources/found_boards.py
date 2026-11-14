@@ -370,7 +370,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
 
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
         lane = read_item[0]['host']
-        if early and not board_lanes.claim(lane, lanes):   # another of this search's early reads took this host (one host, one read)
+        if not board_lanes.claim(lane, lanes):   # another of this search's reads took this host (one host, one read; L36)
             return TAKEN
         if not lanes.take(lane, wait=read_budget.seconds_left(cut)):   # no lane came before the cut: read by the next search
             return NO_LANE

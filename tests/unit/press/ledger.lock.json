@@ -140,8 +140,8 @@
   "hash": "20636c195d146f60"
  },
  "L36": {
-  "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them",
-  "hash": "26019cb8d00c2fe1"
+  "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them; every board is read in one queue from second 0 (no second full read after the first pages)",
+  "hash": "55909f7197e936b4"
  },
  "L37": {
   "gets": "each Find jobs run saves what every step left for the next one, as counts the planner reads",
