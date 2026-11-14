@@ -111,3 +111,15 @@ def page_seen(markup, url):
     judged = [words for words in verdicts.values() if words is not None]
     return (f'the search page: {len(verdicts)} links, {sum(1 for words in judged if words.job_path)} the AI called job pages, '
             f'{len(verdicts) - len(judged)} not judged')
+
+
+def until_cut(fetch):
+    """The page reader of a board's follow-up ways (found_boards._another_way, _fuller_section): past the search's read cut it reads no page (the
+    way's own error handling ends it at once). Moved from found_boards (500-line rule)."""
+    from . import read_budget
+
+    def until(url, *args, **kwargs):
+        if read_budget.past_cut():
+            raise Stalled('past the search\'s read cut')   # Why (14 Nov 2026, sa): told apart from a site that stalled (why)
+        return fetch(url, *args, **kwargs)
+    return until

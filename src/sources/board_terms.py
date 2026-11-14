@@ -25,3 +25,14 @@ def terms(search, limit, early=False):
     own = listed(search.get('jobs_board_search_queries')) or listed(search.get('role_keywords'))
     local = boards.kept_queries(search) if early else boards.board_queries(search)
     return merged(own, local, limit)
+
+
+def told(board, term=None):
+    """Board discovery's notes (board['learn']) say which search words this read asked (term: one more, lowercase); no term: the jobs came as
+    a list, not from any word. Moved from found_boards._told (500-line rule)."""
+    notes = board.get('learn')
+    if isinstance(notes, dict):
+        if term is None:
+            notes.pop('terms', None)
+        elif term.lower() not in notes.setdefault('terms', []):   # once: the read that goes on after the slice asks its words again
+            notes['terms'].append(term.lower())

@@ -19,12 +19,14 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_lanes, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
 from .board_history import BROWSER_RETRY_DAYS, _dead, _retry_due, _retry_when_unjudged, read_since  # noqa: F401 -- moved out (500-line rule); tests and callers use found_boards._dead, .read_since
 from ..press import resume, stage
+from .board_terms import told as _told  # noqa: F401 -- moved out (500-line rule); tests use found_boards._told
+from .board_round_log import until_cut as _until_cut  # noqa: F401 -- moved out (500-line rule); tests use found_boards._until_cut
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
 FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up to this many (a board gave 3 jobs from 2 of the driver's 5, 18 Oct 2026)
@@ -37,6 +39,7 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
+NO_LANE = ([], 'no lane', None)   # a board that got no lane before the search's cut (board_lanes): not read, not stamped
 _early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
 
 
@@ -47,16 +50,6 @@ def _terms(search, limit=MAX_SEARCHES, early=False):
 def _places(search):
     from .. import places
     return places.words_of(search)[:MAX_PLACES] or ['']
-
-
-def _told(board, term=None):
-    """Board discovery's notes (board['learn']) say which search words this read asked (term: one more, lowercase); no term: the jobs came as a list, not from any word."""
-    notes = board.get('learn')
-    if isinstance(notes, dict):
-        if term is None:
-            notes.pop('terms', None)
-        elif term.lower() not in notes.setdefault('terms', []):   # once: the read that goes on after the slice asks its words again
-            notes['terms'].append(term.lower())
 
 
 def read_board(board, search, fetch=careers.get_text, route=None, early=False, show=None):
@@ -207,15 +200,6 @@ def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=N
     return listed, 'ok', more
 
 
-def _until_cut(fetch):
-    """The page reader of a board's follow-up ways (_another_way, _fuller_section): past the search's read cut it reads no page (the way's own error handling ends it at once)."""
-    def until(url, *args, **kwargs):
-        if read_budget.past_cut():
-            raise board_round_log.Stalled('past the search\'s read cut')   # Why (14 Nov 2026, sa): told apart from a site that stalled (board_round_log.why)
-        return fetch(url, *args, **kwargs)
-    return until
-
-
 def _another_way(board, entry, proposed, search, fetch, judge, before, show=None):
     """(jobs, state, relevant) for a board whose proposed link gave no relevant job: when its rules read something (a menu, a news search),
     the AI page reader reads its search page (_read_by_ai); else through the search form on its home page
@@ -355,13 +339,15 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
     rounds = board_rounds.Rounds(lambda read_item, found: board_later.hand(by_turn[order.get(id(read_item), -1)], board_yield.placed(found), on_board)) if on_board is not None else None
 
-    def one(read_item):   # one board's pages; what is kept of it is decided below, in the list's order, in this thread
+    def one(read_item, lane):   # one board's pages, in `lane` (a host's: lanes); what is kept of it is decided below, in the list's order, in this thread
         board, entry, pages, fetched, _ = read_item
 
         def through(url):   # a page this search's first-jobs slice fetched is served from it, not asked again
             if url in pages:
                 return pages[url]
+            lanes.touch(lane)   # asking and answered: the board is not quiet (board_lanes)
             page = fetch(url)
+            lanes.touch(lane)
             if early:
                 fetched[url] = page
             return page
@@ -383,20 +369,26 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         return result
 
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
-        first = result = one(read_item)
-        name = read_item[0]['name']
-        while result[1] in REPLACED:
-            with lock:
-                if not spares:
-                    break
-                _, spare_item = spares.pop(0)
-                order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
-            print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
-            result = one(spare_item)
-            with lock:
-                taken.setdefault(read_item[0]['host'], []).append((spare_item, result))
-            name = spare_item[0]['name']
-        return first
+        lane = read_item[0]['host']
+        if not lanes.take(lane, wait=read_budget.seconds_left(cut)):   # no lane came before the cut: read by the next search
+            return NO_LANE
+        try:
+            first = result = one(read_item, lane)
+            name = read_item[0]['name']
+            while result[1] in REPLACED:
+                with lock:
+                    if not spares:
+                        break
+                    _, spare_item = spares.pop(0)
+                    order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
+                print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
+                result = one(spare_item, lane)
+                with lock:
+                    taken.setdefault(read_item[0]['host'], []).append((spare_item, result))
+                name = spare_item[0]['name']
+            return first
+        finally:
+            lanes.give_back(lane)
 
     def keep(read_item, result, after=None):   # after: the board this one was read in place of
         board, entry, _, fetched, proposed = read_item
@@ -453,7 +445,10 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         run_counts.looked(found)
         run_counts.matched(relevant)
         board_later.hand(turn, rounds.rest(read_item, found) if rounds else found, on_board)
-    pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
+    cut, left = read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
+    # Why (xc, 14 Nov 2026, #4255): `workers` boards read at once (the lanes); the pool has threads beyond them so a board that went quiet keeps
+    # its thread while the next board reads in its lane (a thread cannot be stopped)
+    lanes, pool = board_lanes.Lanes(workers, say=board_lanes.said), ThreadPoolExecutor(max_workers=2 * max(1, workers) + 1)
     order = {id(read_item): n for n, read_item in enumerate(reads)}   # by item, not host: two items of one host keep their own turns (Gitar, #3892)
     by_turn.extend([] for _ in range(len(reads) + 1))   # the last: a board not in the list (none expected)
     # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST level for the AI calls of
@@ -466,10 +461,10 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
     for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders, between=rounds.take if rounds else None), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
-        if result is read_budget.LEFT:
+        if result is read_budget.LEFT or result is NO_LANE:
             left.append(read_item[0]['name'])
             if not early:   # not killed: its page result, when it ends, is the next search's (late_reads)
-                late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got[1] not in REPLACED else None)
+                late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got is not NO_LANE and got[1] not in REPLACED else None)
             continue
         keep(read_item, result)
         board_later.kept_spares(taken, lock, [read_item], keep)
