@@ -30,7 +30,7 @@ for (const name of ['JOBADABRA_DATA_DIR', 'JOBADABRA_CONFIG_DIR']) {   // the ow
   try { real = named ? fs.realpathSync(named) : null; } catch { real = path.resolve(named); }   // a folder that does not exist yet is judged by its path
   if (named && (path.relative(tmp, real).startsWith('..') || path.isAbsolute(path.relative(tmp, real)))) { console.error(`${name} names a folder outside ${tmp}: refused`); process.exit(2); }
 }
-const env = {...cleanEnv(process.env), JOBADABRA_NO_DOTENV: '1', JOBADABRA_AI_CALL_LOG: '1', JOBADABRA_STAGE_LOG: '1', JOBADABRA_SAME_INPUTS_TEXT: '1',
+const env = {...cleanEnv(process.env), JOBADABRA_NO_DOTENV: '1', JOBADABRA_AI_CALL_LOG: '1', JOBADABRA_STAGE_LOG: '1', JOBADABRA_TAPE_SAME_INPUTS_TEXT: '1',
   ...(share ? {JOBADABRA_TAPE_SHARED: path.join(work, 'shared'), ...(args.includes('--no-ai') ? {} : {JOBADABRA_TAPE_SHARED_AI: '1'})} : {})};
 for (const name of Object.keys(env)) if (/(_API_KEY|_KEY)$/.test(name) || ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL', 'JOBADABRA_EURES', 'JOBADABRA_AI_ENGINE'].includes(name) || /^JOBADABRA_LINKEDIN/.test(name)) delete env[name];   // every LinkedIn switch off too: CI and tools never read LinkedIn
 

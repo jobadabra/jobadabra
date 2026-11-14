@@ -312,11 +312,11 @@ class TechnicalLineText(unittest.TestCase):
     def line(self, shared):
         import contextlib
         import io
-        env = {'JOBADABRA_SAME_INPUTS_TEXT': '1'} if shared else {}
+        env = {'JOBADABRA_TAPE_SAME_INPUTS_TEXT': '1'} if shared else {}
         out = io.StringIO()
         with unittest.mock.patch.dict(os.environ, env, clear=False), contextlib.redirect_stdout(out):
             if not shared:
-                os.environ.pop('JOBADABRA_SAME_INPUTS_TEXT', None)
+                os.environ.pop('JOBADABRA_TAPE_SAME_INPUTS_TEXT', None)
             contract.detail('decide link-kind', RuntimeError('no free slot in time'))
         return out.getvalue()
 
@@ -324,7 +324,7 @@ class TechnicalLineText(unittest.TestCase):
         import contextlib
         import io
         out = io.StringIO()
-        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_SAME_INPUTS_TEXT': '1'}), contextlib.redirect_stdout(out):
+        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_TAPE_SAME_INPUTS_TEXT': '1'}), contextlib.redirect_stdout(out):
             contract.detail('page read', RuntimeError('refused: Bearer abc123secret and sk-live-0123456789 and ' + 'x' * 40))
         self.assertNotIn('abc123secret', out.getvalue())
         self.assertNotIn('sk-live-0123456789', out.getvalue())
@@ -345,10 +345,10 @@ class PairValidity(unittest.TestCase):
         import contextlib
         import io
         out = io.StringIO()
-        env = {'JOBADABRA_SAME_INPUTS_TEXT': '1'} if shared else {}
+        env = {'JOBADABRA_TAPE_SAME_INPUTS_TEXT': '1'} if shared else {}
         with unittest.mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out):
             if not shared:
-                os.environ.pop('JOBADABRA_SAME_INPUTS_TEXT', None)
+                os.environ.pop('JOBADABRA_TAPE_SAME_INPUTS_TEXT', None)
             contract.detail(what, error)
         return out.getvalue().splitlines()
 
@@ -381,6 +381,9 @@ class PairValidity(unittest.TestCase):
 
     def test_a_quoted_technical_phrase_is_not_a_failed_call(self):
         self.assertEqual(self.verdict(['job title: see Technical: notes', '[12s] Technical: x' + ' || text: ' + CLOCK], self.clock(1)), 'valid')
+
+    def test_stacked_log_prefixes_are_still_read(self):
+        self.assertEqual(self.verdict(['[124s] [sources] ' + self.lines(RuntimeError('boom'))[0]], self.clock(1)), 'NOT VALID')
 
     def test_the_log_time_prefix_is_still_read(self):
         self.assertEqual(self.verdict(['[124s] ' + self.lines(RuntimeError('boom'))[0]], self.clock(1)), 'NOT VALID')

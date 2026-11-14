@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from src.ai.providers.cli_base import CLOCK_UP  # noqa: E402
 from src.ai.providers.contract import TEXT_MARK  # noqa: E402
 
-TECHNICAL = re.compile(r'^(\[\d+s\] )?Technical: ')   # contract.detail's line starts so, after the log's own "[12s] " prefix; a page or model text quoting the words is not one
+TECHNICAL = re.compile(r'^(\[[^\]]*\] )*Technical: ')   # contract.detail's line starts so, after any "[12s] "-style log prefixes; a page or model text quoting the words is not one
 GAP = 3   # clock-rule drops that may differ between the sides before the pair is flagged
 
 

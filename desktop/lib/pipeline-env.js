@@ -62,9 +62,9 @@ const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'L
 // The persona search check's tape (src/search_tape.py, src/tape_items.py, tools/persona-search), never set for a user.
 // Why (#3565 review, 7 Nov 2026): a new tape flag, JOBADABRA_TAPE_ITEMS, was set and dropped by the list above (as JOBADABRA_AI_CALL_LOG was, #3535), so every tape flag passes by its prefix.
 const TAPE = /^JOBADABRA_(SEARCH_TAPE|TAPE_)/;
-// Why (14 Nov 2026, owner via sa: "let's commit it open a PR and get this merged"; src/same_inputs.py): the by-hand same-inputs pair shares pages and AI answers through JOBADABRA_TAPE_SHARED*;
+// Why (14 Nov 2026, owner via sa: "let's commit it open a PR and get this merged"; src/same_inputs.py): the by-hand same-inputs pair shares pages and AI answers through JOBADABRA_TAPE_SHARED* and its error text through JOBADABRA_TAPE_SAME_INPUTS_TEXT (Gitar on #4323: the text switch had no TAPE_ name and never reached the engine);
 // the installed app never passes them, so no leaked variable can make a search read another run's folder (guard test/unit/main/same-inputs-env.test.js).
-const SHARED = /^JOBADABRA_TAPE_SHARED/;
+const SHARED = /^JOBADABRA_TAPE_(SHARED|SAME_INPUTS_TEXT)/;
 /** The tape and same-inputs flags of the parent environment, by prefix; the same-inputs ones not in an installed build. */
 const tapeEnv = parent => Object.fromEntries(Object.entries(parent).filter(([name, value]) => TAPE.test(name) && value && !(installedBuild && SHARED.test(name))));
 
