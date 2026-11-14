@@ -146,6 +146,34 @@ class OneHostOneRead(unittest.TestCase):
         """Gitar on #4273: the not-read results were one list for every search; a consumer extending it would change them all."""
         self.assertEqual((found_boards.NO_LANE[0], found_boards.TAKEN[0]), ((), ()))
 
+    def test_every_board_first_or_spare_gives_its_lane_back_and_keeps_its_host_only_when_asked(self):
+        """Design (#4273): one way in for every board (board_lanes.read_in_lane). After the read no lane is held; the host stays claimed when it
+        was asked (read or refused: never asked twice in a search) and is given back when no lane came (nothing asked)."""
+        from src import time_budget
+        for where in ('first', 'spare'):
+            for outcome in ('read', 'refused', 'no lane'):
+                with self.subTest(where=where, outcome=outcome):
+                    board_lanes.open_search(self)
+                    target, made = ('b1.example' if where == 'first' else 'b2.example'), []
+
+                    class Spy(board_lanes.Lanes):
+                        def __init__(self, *a, **k):
+                            super().__init__(*a, **k)
+                            made.append(self)
+
+                        def take(self, key, wait=None):
+                            return False if outcome == 'no lane' and key == target else super().take(key, wait)
+
+                    def read_board(b, search, fetch, route=None, early=False, show=None):
+                        if b['host'] == 'b1.example' and where == 'spare' or outcome == 'refused':
+                            return [], 'browser', None
+                        return [{'title': 'Developer', 'url': f"https://{b['host']}/job/1"}], 'ok', None
+                    with mock.patch.object(found_boards, 'read_board', read_board), mock.patch.object(board_lanes, 'Lanes', Spy):
+                        found_boards.read(SEARCH, [board(1)], early=True, workers=1, spare=[board(2)] if where == 'spare' else (), is_relevant=list,
+                                          dead=set(), fetch=lambda url: '')
+                    self.assertEqual([lanes.reading for lanes in made], [{}], 'no lane held after the read')
+                    self.assertEqual(target in time_budget.CLOCK.board_hosts['hosts'], outcome != 'no lane')
+
     def test_a_new_search_reads_the_board_again(self):
         self.assertTrue(board_lanes.claim('delucru.md', 'read 1'))
         self.assertFalse(board_lanes.claim('delucru.md', 'read 2'))

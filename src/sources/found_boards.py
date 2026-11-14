@@ -39,7 +39,7 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
-NO_LANE, TAKEN = ((), 'no lane', None), ((), 'taken', None)   # not read: no lane before the cut / another read has the host; () shares nothing (Gitar, #4273)
+NO_LANE, TAKEN = board_lanes.NO_LANE, board_lanes.TAKEN   # not read: no lane before the cut / another read of the search has the host
 _early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
 
 
@@ -368,32 +368,26 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 return [], site, None
         return result
 
+    def read_one(read_item):   # every board, first or spare: one way in (board_lanes.read_in_lane, Design #4273)
+        return board_lanes.read_in_lane(lanes, read_item[0]['host'], read_budget.seconds_left(cut), lambda host: one(read_item, host))
+
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
-        lane = read_item[0]['host']
-        if not board_lanes.claim(lane, lanes):   # another of this search's reads took this host (one host, one read; L36)
-            return TAKEN
-        if not lanes.take(lane, wait=read_budget.seconds_left(cut)):   # no lane came before the cut: another read of the search may read it
-            board_lanes.release(lane, lanes)   # Why (Gitar, #4268): a kept claim left the host read by no one
-            return NO_LANE
-        try:
-            first = result = one(read_item, lane)
-            name = read_item[0]['name']
-            while result[1] in REPLACED:
-                with lock:
-                    if not spares:
-                        break
-                    _, spare_item = spares.pop(0)
-                    if not board_lanes.claim(spare_item[0]['host'], lanes):   # another read of the search has it (Gitar, #4268)
-                        continue
-                    order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
+        first = result = read_one(read_item)
+        name = read_item[0]['name']
+        while result[1] in REPLACED:
+            with lock:
+                if not spares:
+                    break
+                _, spare_item = spares.pop(0)
+                order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
+            if (got := read_one(spare_item)) is NO_LANE:
+                break
+            if got is not TAKEN:   # TAKEN: another read of the search has it, the next spare
                 print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
-                result = one(spare_item, lane)
+                result, name = got, spare_item[0]['name']
                 with lock:
                     taken.setdefault(read_item[0]['host'], []).append((spare_item, result))
-                name = spare_item[0]['name']
-            return first
-        finally:
-            lanes.give_back(lane)
+        return first
 
     def keep(read_item, result, after=None):   # after: the board this one was read in place of
         board, entry, _, fetched, proposed = read_item

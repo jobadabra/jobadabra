@@ -20,6 +20,7 @@ import time
 # questions took 14 s between two requests), so a board that keeps asking within 20 s keeps its lane (sa: a request every 15 s is not quiet).
 QUIET_S = 20
 LOOK_S = 1   # how often a board waiting for a lane looks for a quiet one (a wait's slice, never a schedule)
+NO_LANE, TAKEN = ((), 'no lane', None), ((), 'taken', None)   # a board's result when it was not read; () shares nothing between searches (Gitar, #4273)
 
 
 class Lanes:
@@ -116,3 +117,19 @@ def release(host, read):
     open_ = time_budget.CLOCK.board_hosts
     if open_ is not None and open_['hosts'].get(host) is read:
         del open_['hosts'][host]
+
+
+def read_in_lane(lanes, host, wait, read):
+    """The one way a board of a search is read, first or spare (Design, #4273): claim `host`, take a lane of `lanes` within `wait` s, `read(host)`,
+    give the lane back. TAKEN: another read of the search has the host. NO_LANE: no lane came, nothing was asked, so the claim is given back
+    (Gitar, #4268: a kept claim left the host read by no one). A host that was asked stays claimed, read or refused: a 403 or a check is never
+    asked again in the search (CLAUDE.md)."""
+    if not claim(host, lanes):
+        return TAKEN
+    if not lanes.take(host, wait=wait):
+        release(host, lanes)
+        return NO_LANE
+    try:
+        return read(host)
+    finally:
+        lanes.give_back(host)
