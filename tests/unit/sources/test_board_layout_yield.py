@@ -192,6 +192,25 @@ class LayoutYieldTests(unittest.TestCase):
         self.assertTrue(any(u.endswith('/python-developer-3') for u in asked) and any(u.endswith('/python-developer-5') for u in asked), 'both failing pages were asked once')
         self.assertEqual(len(jobs), 36, 'only those two job pages are lost')
 
+    def test_a_job_page_linked_from_two_listing_pages_is_asked_once_across_the_read(self):
+        """Gitar on #4163 + sa: the cache spans the board read, not one listing page: a normal job page and a refused one (403), both linked from the pages of two search words, are asked once."""
+        import collections
+        import urllib.error
+        asked = collections.Counter()
+        listing = _listing(36, 38)
+
+        def fetching(url):
+            asked[url] += 1
+            if url.endswith('/python-developer-3'):
+                raise urllib.error.HTTPError(url, 403, 'Forbidden', {}, None)
+            return _page(url, listing)
+        with redirect_stdout(io.StringIO()):
+            found_boards.read_board({**BOARD, 'layout': ROOT, 'learn': {}}, {**SEARCH, 'jobs_board_search_queries': ['developer', 'engineer']}, fetch=fetching)
+        job_pages = {u: n for u, n in asked.items() if '/python-developer-' in u or '/section-' in u}
+        self.assertTrue(job_pages)
+        self.assertEqual(max(job_pages.values()), 1, f'asked more than once across two listing pages: {[u for u, n in job_pages.items() if n > 1]}')
+        self.assertEqual(asked[[u for u in asked if u.endswith('/python-developer-3')][0]], 1, 'the refused page is asked once, not once a page')
+
     def test_a_learned_layout_is_checked_by_reading_through_it_once(self):
         """Learn time shares the usual read's fetched pages: no job page is requested twice."""
         fetched = []

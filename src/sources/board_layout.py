@@ -60,12 +60,14 @@ class Layout:
         # back), or False (the given one read nothing where the usual read found jobs, and none was derived); absent: no layout was tested.
         notes = board.get('learn')
         self.notes = notes if isinstance(notes, dict) else None
-        self.page = None   # the fetch (kept answers) of the last read in board discovery's pass: `learn` reads through a derived layout with it
+        self.page, self._raw = None, None   # the fetch (kept answers) of this board read in board discovery's pass, and the fetch it wraps: `learn` reads through a derived layout with it
 
     def read(self, markup, url, fetch, part=None):
         """The page's jobs: its JSON-LD first, then the layout's job cards, else the usual read (careers.read_page_from)."""
         if self.notes is not None:
-            fetch = self.page = _once(fetch)
+            if self._raw is not fetch:   # Why (14 Nov 2026, Gitar on #4163): one cache per underlying fetch for the board read, across its listing pages and next pages, so a refused or shared job page is asked once
+                self._raw, self.page = fetch, _once(fetch)
+            fetch = self.page
         declared = careers.jsonld_jobs(markup, url)
         if declared:
             self.why_none('its jobs are JSON-LD, read with no question')
