@@ -100,13 +100,21 @@ FACTS = ('location', 'work_mode', 'posted', 'salary', 'contract', 'seniority', '
 POSTING = ('description', 'source', 'source_kind')
 
 
+def fit_of(match):
+    """A match's score, or None when it has none (not scored yet): never 0 in its place.
+    Why (#4375, owner's screenshot): `fit or 0` posted every unscored match as fit 0, and the "new matches" mail and the app's job page drew it as a 0 score."""
+    fit = match.get('fit')
+    return None if fit is None or fit == '' else fit
+
+
 def new_matches(before, after, postings=None):
-    """The matches the run added (by url), best fit first, as the result post carries them, each with its facts and, from `postings` (read_postings), its posting."""
+    """The matches the run added (by url), best fit first and unscored ones after, as the result post carries them (fit None when not scored), each with its
+    facts and, from `postings` (read_postings), its posting."""
     known = {m.get('url') for m in before}
     fresh = [m for m in after if m.get('url') not in known and m.get('url')]
-    fresh.sort(key=lambda m: -(m.get('fit') or 0))
+    fresh.sort(key=lambda m: -(fit_of(m) if fit_of(m) is not None else -1))
     text = lambda v: ', '.join(map(str, v)) if isinstance(v, list) else str(v or '')   # languages is a list in the store, a string on the wire
-    return [{'job': m['url'], 'title': m.get('title') or '', 'company': m.get('company') or '', 'url': m['url'], 'fit': m.get('fit') or 0,
+    return [{'job': m['url'], 'title': m.get('title') or '', 'company': m.get('company') or '', 'url': m['url'], 'fit': fit_of(m),
              'line': (m.get('reason') or '')[:300],
              **{k: text(m.get(k)) for k in FACTS if m.get(k)}, **{k: v for k, v in ((postings or {}).get(m['url']) or {}).items() if k in POSTING and v}}
             for m in fresh[:MAX_MATCHES] if m.get('title')]
@@ -262,7 +270,7 @@ def merge(path):
         url = match.get('url') or ''
         if not url or not match.get('title') or stores.matches.get(url):
             continue
-        stores.matches.upsert({'url': url, 'title': match['title'], 'company': match.get('company') or '', 'fit': match.get('fit') or 0,
+        stores.matches.upsert({'url': url, 'title': match['title'], 'company': match.get('company') or '', 'fit': fit_of(match),
                                'reason': match.get('line') or '', 'status': 'Open', **facts_of(match)})
         # Why (Gitar on #4248): the app moves its inbox position past the whole batch once merge ends well (desktop/lib/hosted-search.js pullInbox), so a
         # job skipped here is lost and a crash blocks every later job: the match is always saved, and a posting that could not be written is said, not fatal.
@@ -272,7 +280,8 @@ def merge(path):
             print(f'hosted merge: {url}: posting not saved: {type(error).__name__}: {error}', file=sys.stderr)
         added += 1
         clean = lambda text: str(text or '').replace('|', '/').replace('\n', ' ').strip()   # the log line's own separator
-        lines.append(f"New job: {clean(match['title'])} | {clean(match.get('company'))} | {url} | {int(match.get('fit') or 0)}")
+        fit = fit_of(match)   # the run card reads a line with no fit as unscored (desktop/renderer/new-jobs-card.js)
+        lines.append(f"New job: {clean(match['title'])} | {clean(match.get('company'))} | {url}" + ('' if fit is None else f' | {int(fit)}'))
     if added:
         # The run card in Recent activity (spec §4b): what arrived while this Mac was off, one row of this Mac's own run history. Written directly: the AI ran on our
         # servers, so none of the run log's own words (cost, warnings) apply here.
