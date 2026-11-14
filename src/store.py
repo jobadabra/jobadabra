@@ -119,6 +119,12 @@ def _city(text):
     return _words(plain.split(',')[0].split(';')[0].split(' - ')[0])
 
 
+def cities_agree(one, other):
+    """True unless both places name a city and the cities differ ('Zürich, Switzerland' and 'Zurich' agree; a place naming no city agrees with any)."""
+    city, other = _city(one), _city(other)
+    return not city or not other or city == other or city in other or other in city
+
+
 def _same_company(one, other):
     """'akkodis' and 'akkodis germany tech experts' are one employer: equal, or one name is the other's first whole words."""
     return one == other or other.startswith(one + ' ') or one.startswith(other + ' ')
@@ -134,7 +140,7 @@ def same_job(db, item, company_name, board=False):
     if not key:
         return None, ''
     company, title = key.split('|', 1)
-    city = _city(item.get('city') or item.get('location'))
+    place = item.get('city') or item.get('location')
     host = _site(urlsplit(item.get('url') or '').hostname)
     rows = db.execute("SELECT id, location, city, url, identity FROM jobs WHERE state = 'open' AND substr(identity, instr(identity, '|') + 1) = ?",
                       (title,)).fetchall()
@@ -143,8 +149,7 @@ def same_job(db, item, company_name, board=False):
             continue
         if host and host == _site(urlsplit(row['url'] or '').hostname) and not board:
             continue
-        other = _city(row['city'] or row['location'])
-        if not city or not other or city == other or city in other or other in city:
+        if cities_agree(place, row['city'] or row['location']):
             return row, key
     return None, key
 
