@@ -66,8 +66,8 @@ export const startedApplying = (job = null) => jobsChanged(job, job && BEFORE_AP
 async function linkToJob(dialogId, result, title, stay = false) {
   const added = result.job;
   await loadJobs();
-  if (!added?.jobUrl) return;
-  const job = (shared.allJobs || []).find(row => row.url === added.jobUrl || (added.url && row.notion_url === added.url))
+  // A worked add whose result names no job still closes and toasts; only the drawer and the button need the job.
+  const job = !added?.jobUrl ? null : (shared.allJobs || []).find(row => row.url === added.jobUrl || (added.url && row.notion_url === added.url))
     || {url: added.jobUrl, title: added.title, notion_url: added.url};
   afterAdded({dialog: $(dialogId), job, openJob: openJobPanel, button: () => document.createElement('button'), label: t('pagesJobsFinal.openJob'), stay,
     say: () => toastMessage(t(title), result.text, {view: 'jobs'}, 'good')});

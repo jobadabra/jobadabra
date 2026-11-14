@@ -9,17 +9,18 @@ export function clearOpenJob(dialog) {
 }
 
 /**
- * The step after a job was added to `dialog`: `say()` (the toast), close and `openJob(job)`; with `stay`, the dialog keeps its result and gets one
+ * The step after a job was added to `dialog`: `say()` (the toast), close and `openJob(job)` (no job named: close only); with `stay`, the dialog keeps its result and gets one
  * "Open job" button (`label`, made by `button()`) first in its `.actions` row, which closes it and opens the job. -> that button, or null.
  */
 export function afterAdded({dialog, job, openJob, button, label, stay = false, say = () => {}}) {
   clearOpenJob(dialog);
-  const open = () => { dialog.close(); openJob(job); };
+  const open = () => { dialog.close(); if (job) openJob(job); };
   if (!stay) {
     say();
     open();
     return null;
   }
+  if (!job) return null;  // nothing to open: the dialog keeps its result text only
   const press = Object.assign(button(), {type: 'button', className: 'secondary', textContent: label});
   press.dataset.openJob = '';
   press.addEventListener('click', open);
