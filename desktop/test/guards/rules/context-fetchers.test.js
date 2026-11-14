@@ -1,6 +1,7 @@
 // Guard: privacy — the fixer's context fetchers hold read-only tokens and feed a public repo: they must never write to Linear/Sentry/GitHub, must scrub and withhold anything personal, and must stay bounded (tools/context/).
 // One loop over every source for each class: read-only calls, scrub, fail-closed, bounds, never-throws; plus one pack run.
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -135,9 +136,42 @@ test('the pack keeps every same-source file, refuses what would pass its cap, an
 });
 
 test('a github "paths" ref reads the file history from git, and refuses an option disguised as a path', async () => {
-  const out = await github.fetch('paths tools/context/lib.mjs', {env, cwd: path.resolve(import.meta.dirname, '..', '..', '..', '..')});
-  assert.ok(out.markdown.startsWith(BANNER), out.notes);
-  assert.match(out.markdown, /git log -15 of tools\/context\/lib\.mjs/);
+  // Why (xc, 14 Nov 2026, mac-95): the real repo's `git log` passed the fetcher's 10 s hang guard on a loaded Mac and failed the push gate twice
+  // ("unavailable: spawnSync git ETIMEDOUT"); a one-commit repo of its own is the same history every run.
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'context-git-'));
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.test', '-c', 'commit.gpgsign=false', ...args],
+    {cwd: repo, stdio: 'ignore', env: {...process.env, GIT_AUTHOR_DATE: '2026-11-01T00:00:00Z', GIT_COMMITTER_DATE: '2026-11-01T00:00:00Z'}});
+  try {
+    fs.mkdirSync(path.join(repo, 'tools', 'context'), {recursive: true});
+    fs.writeFileSync(path.join(repo, 'tools', 'context', 'lib.mjs'), 'export {};\n');
+    git('init', '-q');
+    git('add', '.');
+    git('commit', '-q', '--no-verify', '-m', 'One fake commit');
+    const out = await github.fetch('paths tools/context/lib.mjs', {env, cwd: repo});
+    assert.ok(out.markdown.startsWith(BANNER), out.notes);
+    assert.match(out.markdown, /git log -15 of tools\/context\/lib\.mjs/);
+    assert.match(out.markdown, /2026-11-01 One fake commit/);
+  } finally {
+    fs.rmSync(repo, {recursive: true, force: true});
+  }
+});
+
+// Why (xc, 14 Nov 2026, Gitar on #4238): the push gate's red was a slow `git log`; a git that hangs must end as "unavailable" within the tool's
+// time limit, never hold the caller. A shell script stands in for git, so not on Windows.
+test('a github "paths" read whose git hangs ends as "unavailable" within the time limit', {skip: process.platform === 'win32' && 'a shell-script git'}, async () => {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'slow-git-'));
+  const saved = process.env.PATH;
+  try {
+    fs.writeFileSync(path.join(bin, 'git'), '#!/bin/sh\nexec sleep 30\n', {mode: 0o755});
+    process.env.PATH = `${bin}${path.delimiter}${saved}`;
+    const started = Date.now();
+    const out = await github.fetch('paths tools/context/lib.mjs', {env, cwd: bin, limits: {maxBytes: 24576, maxItems: 5, timeoutMs: 300}});
+    assert.match(out.notes, /^unavailable/);
+    assert.ok(Date.now() - started < 5000, 'the read gives up at the given limit (300 ms), not a fixed one of its own');   // 5 s: only a margin for a loaded Mac
+  } finally {
+    process.env.PATH = saved;
+    fs.rmSync(bin, {recursive: true, force: true});
+  }
 });
 
 test('a long thread keeps its newest comments, not its oldest (GitHub lists oldest first)', async () => {

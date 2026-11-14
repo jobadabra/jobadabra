@@ -25,6 +25,7 @@ export async function fetch(ref, {limits = LIMITS, env = {}, fetchImpl = globalT
 
 function history(files, limits, cwd) {
   if (!files.every(f => /^[\w./@-]+$/.test(f) && !f.startsWith('-') && !f.includes('..'))) return unavailable('paths must be plain repo-relative file names');
-  const log = execFileSync('git', ['log', '--format=%h %ad %s', '--date=short', '-15', '--', ...files], {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000});
+  // Why (xc, 14 Nov 2026, Gitar on #4238/#4241): the read's hang guard is the tool's one time limit (LIMITS.timeoutMs), as every other source's call, so its default moves 10 s -> 15 s on purpose; a slow read ends as "unavailable" (guarded). The flake itself was the test reading this repo, fixed there.
+  const log = execFileSync('git', ['log', '--format=%h %ad %s', '--date=short', '-15', '--', ...files], {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: limits.timeoutMs ?? LIMITS.timeoutMs});
   return finish(`# git log -15 of ${files.join(' ')}`, log.trim() || '(no commits)', limits);
 }
