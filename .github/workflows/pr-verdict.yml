@@ -115,7 +115,7 @@ jobs:
       cancel-in-progress: true
     timeout-minutes: 5
     permissions:
-      actions: write         # the commit's workflow runs (read), and the green head's Claude review dispatch (claude-review.yml)
+      actions: write         # the commit's workflow runs (read)
       checks: read           # failed steps' annotations (desktop/e2e/ci-alert.mjs stepCauses, tools/pr_flaky.py)
       pull-requests: read    # the PR's files and commits (the CI change budget)
       statuses: write        # the "All checks passed" status
@@ -154,15 +154,6 @@ jobs:
           SHA: ${{ matrix.sha }}
           REVALIDATE_HEAD: ${{ github.event_name != 'workflow_run' && '--revalidate-head' || '' }}
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD
-      - name: Ask Claude to review the green head
-        if: steps.verdict.outputs.green_pr != ''
-        timeout-minutes: 5   # the repo's floor for a step cap (tests/tooling/ci/test_e2e_step_timeouts.py)
-        continue-on-error: true   # a reviewer, not a check: a refused dispatch never reds the verdict
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ steps.verdict.outputs.green_pr }}
-          HEAD: ${{ steps.verdict.outputs.green_sha }}
-        run: python3 tools/gh_retry.py workflow run claude-review.yml -R "$GITHUB_REPOSITORY" -f prs="$PR" -f sha="$HEAD"
       - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:

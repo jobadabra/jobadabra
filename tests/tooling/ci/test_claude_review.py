@@ -33,7 +33,7 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertEqual(go(reviews=f"[{{sha: '{HEAD}'}}]")['reason'], 'this head is already reviewed')
         self.assertEqual(go(today='60', cap='60')['reason'], 'cap')
         self.assertEqual(go(manual='true', today='60', cap='60')['go'], False, 'the owner\'s ask is under the cap too')
-        self.assertEqual(go(PR.replace("status:'SUCCESS'", "status:'PENDING'"))['go'], False, 'a head whose checks are not green is not reviewed')
+        self.assertEqual(go(PR.replace("status:'SUCCESS'", "status:'PENDING'"))['go'], True, 'a head is reviewed in parallel with CI: its checks do not matter (owner, 14 Nov 2026: "On every push, in parallel with CI")')
         self.assertEqual(go(wantedSha="'" + 'b' * 40 + "'")['reason'], 'the head moved since this was started')
 
     def test_a_fork_and_a_closed_pr_never_meet_the_token_even_when_asked(self):
@@ -139,22 +139,6 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertIn('reviews(last:100)@include(if:$full)', graphql_view)
         self.assertNotIn('reviews(first:', graphql_view)
 
-    def test_all_checks_passed_is_read_from_a_status_or_a_check_run(self):
-        """cr 3b (14 Nov 2026): jobadabra writes "All checks passed" as a commit STATUS, jobadabra-web and -lab have it as a job (CHECK RUN, asked by name); the gate must see both, and a run still going is not green."""
-        def run(conclusion, at):
-            return {'conclusion': conclusion, 'completed_at': at}
-        def state(status, runs):
-            return node(f"m.checkState({json.dumps(status)}, {json.dumps(runs)})")
-        self.assertEqual(state('SUCCESS', []), 'SUCCESS')
-        self.assertEqual(state(None, [run('success', '2026-11-14T01:00:00Z')]), 'SUCCESS')
-        self.assertEqual(state(None, [run('cancelled', '2026-11-14T01:00:00Z'), run('success', '2026-11-14T01:01:00Z')]), 'SUCCESS', 'the newest finished run decides (a cancelled twin stays on the commit)')
-        self.assertEqual(state(None, [run('success', '2026-11-14T01:00:00Z'), run(None, None)]), 'PENDING', 'a re-run still going')
-        self.assertEqual(state(None, [run('failure', '2026-11-14T01:00:00Z')]), 'FAILURE')
-        self.assertEqual(state(None, [run('success', None)]), 'SUCCESS', 'a finished run without a time is not an arbitrary pick')
-        self.assertEqual(state(None, []), '')
-        calls = node("(() => { const seen = []; m.readPr('o/r', 7, (...a) => { seen.push(a.slice(0, 2).join(' ')); return a[1] === 'graphql' ? JSON.stringify({data: {repository: {pullRequest: {number: 7, state: 'OPEN', isDraft: false, title: 't', headRefOid: 'a', baseRefName: 'main', headRepository: {nameWithOwner: 'o/r'}, commits: {nodes: [{commit: {status: null}}]}, reviews: {nodes: []}, comments: {nodes: []}, labels: {nodes: []}}}}}) : JSON.stringify({check_runs: [{conclusion: 'success', completed_at: '2026-11-14T01:00:00Z'}]}); }); return seen; })()")
-        self.assertEqual(calls, ['api graphql', 'api -X'], 'no status: the check runs are asked by name')
-
     def test_the_comment_ask_is_at_claude_review_and_nothing_looser(self):
         """Gitar's finding on the cr 3b PR: a loose "contains review" spent the plan on "@claude please don't review"; the owner's "@claude  review" (two spaces, #4144) must start one. Runs the plan job's step script."""
         text = (ROOT / '.github' / 'workflows' / 'claude-review.yml').read_text(encoding='utf-8')
@@ -167,10 +151,20 @@ class ClaudeReviewTest(unittest.TestCase):
                 env = {**os.environ, 'INPUT_PRS': '', 'COMMENT_PR': '7', 'COMMENT_BODY': body, 'GITHUB_OUTPUT': str(out)}
                 subprocess.run(['bash', '-c', step], env=env, capture_output=True, text=True, timeout=30, check=True)
                 return 'go=true' in out.read_text()
-        for yes in ('@claude review', '@claude  review', '@claude\treview', '@Claude Review please', '@claude review\nmore text'):
+        for yes in ('@claude review', '@claude  review', '@claude, review', '@claude: review', '@claude\treview', '@Claude Review please', '@claude review\nmore text'):
             self.assertTrue(asks(yes), yes)
-        for no in ("@claude please don't review", '@claudette review', '@claude-bot review', '@claude reviewing', 'thanks, @claude review', '@claude', 'review @claude'):
+        for no in ("@claude please don't review", '@claudette review', '@claude-bot review', '@claude reviewing', 'thanks, @claude review', '@claude', 'review @claude', '@claude;review', '@claude,review'):
             self.assertFalse(asks(no), no)
+
+    def test_every_push_starts_the_review_by_one_trigger_and_the_green_hand_over_is_gone(self):
+        """Owner, 14 Nov 2026 ("On every push, in parallel with CI"): a pull_request_target push of a non-draft PR dispatches this workflow with the head's sha, once; pr-verdict no longer dispatches it after green (one trigger)."""
+        caller = (ROOT / '.github' / 'workflows' / 'claude-review.yml').read_text(encoding='utf-8')
+        self.assertIn('types: [opened, synchronize, reopened, ready_for_review]', caller)
+        self.assertIn("if: github.event_name == 'pull_request_target' && !github.event.pull_request.draft", caller)
+        self.assertIn('gh workflow run claude-review.yml -R "$GITHUB_REPOSITORY" -f prs="$PR" -f sha="$HEAD"', caller)
+        verdict = (ROOT / '.github' / 'workflows' / 'pr-verdict.yml').read_text(encoding='utf-8')
+        self.assertNotIn('claude-review.yml', verdict, 'one trigger: the after-green dispatch is gone')
+        self.assertNotIn('hand_over_green', (ROOT / 'tools' / 'pr-verdict.py').read_text(encoding='utf-8'))
 
 
 if __name__ == '__main__':

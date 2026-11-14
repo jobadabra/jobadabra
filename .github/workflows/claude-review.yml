@@ -1,10 +1,11 @@
 name: CI · Claude review
-run-name: Claude review · ${{ inputs.prs || github.event.issue.number }}${{ github.event_name == 'issue_comment' && ' (asked by comment)' || '' }}
-# jobadabra's caller of the shared Claude reviewer (claude-review-shared.yml): only the events that start it. Three ways in (owner, 13 Nov 2026, "Trial Claude on jobadabra" then "replace Gitar"):
-#   a green head: tools/pr-verdict.py writes "All checks passed" and pr-verdict.yml then dispatches this with `prs` and `sha` (a status written with the Actions token starts no event of its own);
-#   the owner's comment "@claude review" on a PR (author_association OWNER or MEMBER only): reviews the current head at once, on a draft or a red head too;
+run-name: Claude review · ${{ inputs.prs || github.event.issue.number || github.event.pull_request.number }}${{ github.event_name == 'issue_comment' && ' (asked by comment)' || '' }}
+# jobadabra's caller of the shared Claude reviewer (claude-review-shared.yml): only the events that start it. Three ways in (owner, 13 Nov 2026, "Trial Claude on jobadabra" then "replace Gitar"; 14 Nov: "On every push, in parallel with CI"):
+#   every push: a pull_request_target event (opened, synchronize, reopened, ready_for_review) of a non-draft PR starts the job `start`, which dispatches this workflow with `prs` and `sha`, in parallel with CI, not after green
+#     (a dispatch is the path the review action is proven on; the gate skips a draft, a "DONT MERGE" title, a fork and a head already reviewed; a newer push cancels the older head's review in the shared workflow's per-PR group);
+#   the owner's comment "@claude review" / "@claude, review" on a PR (author_association OWNER or MEMBER only): reviews the current head at once, on a draft or a held PR too;
 #   workflow_dispatch with `prs` (numbers, space or comma separated) and no `sha`: the same ask, by hand, for a batch (2 at a time).
-# A workflow reached by issue_comment or workflow_dispatch runs from the default branch: this file only works once it is on main.
+# A workflow reached by issue_comment, workflow_dispatch or pull_request_target runs from the default branch: this file only works once it is on main, and a PR can never change it for its own run.
 on:
   workflow_dispatch:
     inputs:
@@ -12,16 +13,33 @@ on:
       sha: {description: 'automatic only: the head that went green (empty = the owner asked by hand)', required: false, default: '', type: string}
   issue_comment:
     types: [created]
+  pull_request_target:   # Why (14 Nov 2026, owner): the default-branch copy of this file runs, never the PR's; the PR's code is only read by the review (the gate refuses a fork)
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
 jobs:
+  start:
+    name: Start the review of a pushed head
+    if: github.event_name == 'pull_request_target' && !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write   # the dispatch below
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: gh workflow run claude-review.yml -R "$GITHUB_REPOSITORY" -f prs="$PR" -f sha="$HEAD"
+
   plan:
     name: Which PRs
     # Why (13 Nov 2026, cr): the comment path is the owner's alone: only a PR comment by OWNER or MEMBER; a fork PR's code never meets the plan token (the gate refuses it too).
     #   Why (14 Nov 2026, cr; the owner typed "@claude  review" with two spaces on #4144 and nothing started; Gitar: a loose "contains review" would spend the plan on "@claude please don't review"): the job starts for a comment that begins with "@claude",
-    #   and its first step starts a review only when the first line is `@claude`, whitespace, `review` and then a word boundary (`go`); GitHub expressions have no regex.
+    #   and its first step starts a review only when the first line is `@claude`, an optional comma or colon, whitespace, `review` and then a word boundary (`go`; the owner also types "@claude, review"); GitHub expressions have no regex.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.issue.pull_request && startsWith(github.event.comment.body, '@claude') &&
@@ -38,7 +56,7 @@ jobs:
           COMMENT_PR: ${{ github.event.issue.number }}
           COMMENT_BODY: ${{ github.event.comment.body }}   # through env, never inlined in the script
         run: |
-          if [ -z "$INPUT_PRS" ] && ! printf '%s\n' "$COMMENT_BODY" | head -n 1 | grep -qiE '^@claude[[:space:]]+review([^[:alnum:]_-]|$)'; then
+          if [ -z "$INPUT_PRS" ] && ! printf '%s\n' "$COMMENT_BODY" | head -n 1 | grep -qiE '^@claude[,:]?[[:space:]]+review([^[:alnum:]_-]|$)'; then
             echo "not a review ask: $(printf '%s' "$COMMENT_BODY" | head -c 80)"; echo "go=false" >> "$GITHUB_OUTPUT"; echo "prs=[0]" >> "$GITHUB_OUTPUT"; exit 0   # [0]: an empty matrix is an error; the review job is skipped by `go`
           fi
           list="${INPUT_PRS:-$COMMENT_PR}"
