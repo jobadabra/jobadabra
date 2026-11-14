@@ -41,6 +41,11 @@ class AiLimit(AiError):
         self.final, self.stopped, self.said = final, stopped, said
 
 
+def scrubbed(text):
+    """A message for a log: whitespace folded, anything key-shaped (sk-…, Bearer …, a 32+ character token) replaced by …, cut to 160 characters; the one scrubber of error_facts and detail."""
+    return re.sub(r'sk-[\w-]{6,}|Bearer\s+\S+|\b[A-Za-z0-9_-]{32,}\b', '…', ' '.join(str(text).split()))[:160]
+
+
 def error_facts(error):
     """What the log needs to tell a limit from a bad key or a wrong model, from any provider's error: "HTTP 429 insufficient_quota, model gpt-x, engine openai".
     Why the AI stopped when it is no limit (AiLimit.stopped), the status, the code, the model asked for, the engine (stamped by Adapter.create) and, for a refusal
@@ -50,7 +55,7 @@ def error_facts(error):
     code = getattr(error, 'code', None) or (body.get('code') or body.get('type') if isinstance(body, dict) else '')
     status = getattr(error, 'status_code', None) or getattr(error, 'ai_status', None)
     said = ((body.get('message') if isinstance(body, dict) else '') or str(error)) if status else (getattr(error, 'said', '') or '')
-    said = re.sub(r'sk-[\w-]{6,}|Bearer\s+\S+|\b[A-Za-z0-9_-]{32,}\b', '…', ' '.join(str(said).split()))[:160]
+    said = scrubbed(said)
     # Why (gp, 12 Nov 2026): "CliLimitError (model …, engine cli)" read the same for a spent plan, a sign-out, a binary gone during an update and a CLI that
     # stopped answering; two local proofs were taken for the plan's limit. The cause (AiLimit.stopped) leads the facts.
     parts = [getattr(error, 'stopped', '') or '', f'HTTP {status}' + (f' {code}' if code else '') if status else (str(code) if code else ''),
@@ -74,9 +79,14 @@ def reason(error):
     return 'the AI call failed'
 
 
+TEXT_MARK = ' || text: '   # a Technical line's class and facts, then this marker, then the error's own text (only in a same-inputs run); readers test for the marker, never parse the facts
+
+
 def detail(what, error):
-    """The technical line behind a plain warning: what was asked and named(error), for the technical log only."""
-    print(f'Technical: {what}: {named(error)}', flush=True)
+    """The technical line behind a plain warning: what was asked and named(error), for the technical log only; inside a same-inputs run also the scrubbed error text after TEXT_MARK."""
+    from ... import same_inputs   # the one owner of the same-inputs switch
+    text = f'{TEXT_MARK}{scrubbed(error)}' if same_inputs.captures_text() and str(error) else ''
+    print(f'Technical: {what}: {named(error)}{text}', flush=True)
 
 
 # ---------- the request ----------

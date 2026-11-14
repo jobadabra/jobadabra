@@ -26,6 +26,7 @@ Options: `--no-share` (nothing shared: the baseline for the noise), `--no-ai` (p
 
 ## Reading the result
 - LISTED both / only A / only B: jobs in the final list. READ: jobs the search opened. RIGHT: listed jobs the blind judge (role AND place, one pass over both lists) accepts.
+- **Valid or not comes first** (sa, 14 Nov 2026): the report's first line. A failed AI call whose text starts with `CLOCK_UP` ("the search's time was up before …", `src/ai/providers/cli_base.py`, the one owner of the words) is the engine's own clock rule: counted per side, flagged only when the sides differ by more than 3. Any other failed call, or one whose text is not in the log, makes the pair NOT VALID: report it so, never as numbers; one re-run, then "no valid pair". The text is in the log only when `JOBADABRA_TAPE_SAME_INPUTS_TEXT=1` (same-inputs.mjs sets it, shared or `--no-share`; `same_inputs.captures_text()`).
 - A job only one side lists: the report names it; its stage on each side (`kept`, `ai_no`, `never_asked`, `not_read`) says where it was lost.
 - Measured noise (14 Nov 2026, one run each, 3 people): with sharing A/A differs by 0-2 right jobs (more for d03); without it 3-10 listed jobs. A difference inside that is not a result.
 - Cannot see: timing and load, the page browser and the extension (reads not through urllib), a CI stall.

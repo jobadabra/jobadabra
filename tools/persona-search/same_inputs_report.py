@@ -54,6 +54,17 @@ for s in SIDES:
     stages[s] = (inout.stages(logs[0]) if logs else None) or {}   # a run cut before its first stage line has none: READ 0, not a crash
     never[s] = sum(1 for st in stages[s].values() if all(x == 'read' for x in st))
 L = {s: set(listed[s]) for s in SIDES}
+import same_inputs_validity  # noqa: E402
+lines = {}
+for s in SIDES:
+    texts = [open(os.path.join(d, f), errors='replace').read() for d, _, files in os.walk(os.path.join(work, s)) for f in files if f == 'run-1.log']
+    lines[s] = [line for text in texts for line in text.splitlines()]
+result = same_inputs_validity.classify(lines)
+c = result['counts']
+print(f'{pid}: {result["verdict"]}{result["why"]}: failed calls (AI, web search, feed reads) '
+      + ', '.join(f'{s.upper()} {c[s]["failed"]} (clock rule {c[s]["clock"]}, other {c[s]["other"]}, no text {c[s]["notext"]})' for s in SIDES))
+for s, line in result['shown']:
+    print(f'  failed {s.upper()} (not the clock rule): {line[:200]}')
 print(f'{pid}: LISTED both / only A / only B: {cells(L["a"], L["b"])}')
 print(f'{pid}: READ   both / only A / only B: {cells(*({u for u in stages[s]} for s in SIDES))}   (read, never judged: A {never["a"]}, B {never["b"]})')
 if '--no-judge' not in sys.argv:

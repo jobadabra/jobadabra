@@ -306,6 +306,89 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(schema.problems(back, SCHEMA), [])
 
 
+class TechnicalLineText(unittest.TestCase):
+    """Guard: privacy: an error's own text reaches the technical log only inside a same-inputs throwaway run, never in a person's log."""
+
+    def line(self, shared):
+        import contextlib
+        import io
+        env = {'JOBADABRA_TAPE_SAME_INPUTS_TEXT': '1'} if shared else {}
+        out = io.StringIO()
+        with unittest.mock.patch.dict(os.environ, env, clear=False), contextlib.redirect_stdout(out):
+            if not shared:
+                os.environ.pop('JOBADABRA_TAPE_SAME_INPUTS_TEXT', None)
+            contract.detail('decide link-kind', RuntimeError('no free slot in time'))
+        return out.getvalue()
+
+    def test_a_key_shaped_text_is_scrubbed_like_error_facts(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with unittest.mock.patch.dict(os.environ, {'JOBADABRA_TAPE_SAME_INPUTS_TEXT': '1'}), contextlib.redirect_stdout(out):
+            contract.detail('page read', RuntimeError('refused: Bearer abc123secret and sk-live-0123456789 and ' + 'x' * 40))
+        self.assertNotIn('abc123secret', out.getvalue())
+        self.assertNotIn('sk-live-0123456789', out.getvalue())
+        self.assertNotIn('x' * 40, out.getvalue())
+
+    def test_text_only_in_a_same_inputs_run(self):
+        self.assertIn('no free slot in time', self.line(True))
+        self.assertNotIn('no free slot in time', self.line(False))
+
+
+CLOCK = "the search's time was up before Claude Code had a free slot"
+
+
+class PairValidity(unittest.TestCase):
+    """Guard: release: a same-inputs pair says valid only when every failed call is the engine's own clock rule (or none), read from the lines contract.detail really writes."""
+
+    def lines(self, error, what='decide link-kind (a: b)', shared=True):
+        import contextlib
+        import io
+        out = io.StringIO()
+        env = {'JOBADABRA_TAPE_SAME_INPUTS_TEXT': '1'} if shared else {}
+        with unittest.mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out):
+            if not shared:
+                os.environ.pop('JOBADABRA_TAPE_SAME_INPUTS_TEXT', None)
+            contract.detail(what, error)
+        return out.getvalue().splitlines()
+
+    def verdict(self, a, b):
+        import importlib.util
+        path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tools', 'persona-search', 'same_inputs_validity.py')
+        spec = importlib.util.spec_from_file_location('same_inputs_validity', path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.classify({'a': a, 'b': b})['verdict']
+
+    def clock(self, n):
+        return [l for _ in range(n) for l in self.lines(RuntimeError("the search's time was up before Claude Code had a free slot"))]
+
+    def test_clock_rule_drops_with_parentheses_and_colons_in_the_facts_are_valid(self):
+        self.assertEqual(self.verdict(self.clock(1), self.clock(2)), 'valid')
+
+    def test_a_gap_of_four_is_flagged_and_three_is_not(self):
+        self.assertEqual(self.verdict(['[1s] ok'], self.clock(3)), 'valid')
+        self.assertTrue(self.verdict(['[1s] ok'], self.clock(4)).startswith('valid, clock-rule gap'))
+
+    def test_another_text_is_not_valid(self):
+        self.assertEqual(self.verdict(self.lines(RuntimeError('plan refused: (x)')), ['[1s] ok']), 'NOT VALID')
+
+    def test_a_line_with_no_text_is_not_valid(self):
+        self.assertEqual(self.verdict(['[1s] ok'], self.lines(RuntimeError('boom'), shared=False)), 'NOT VALID')
+
+    def test_a_side_with_no_log_lines_is_not_valid(self):
+        self.assertEqual(self.verdict([], self.clock(1)), 'NOT VALID')
+
+    def test_a_quoted_technical_phrase_is_not_a_failed_call(self):
+        self.assertEqual(self.verdict(['job title: see Technical: notes', '[12s] Technical: x' + ' || text: ' + CLOCK], self.clock(1)), 'valid')
+
+    def test_stacked_log_prefixes_are_still_read(self):
+        self.assertEqual(self.verdict(['[124s] [sources] ' + self.lines(RuntimeError('boom'))[0]], self.clock(1)), 'NOT VALID')
+
+    def test_the_log_time_prefix_is_still_read(self):
+        self.assertEqual(self.verdict(['[124s] ' + self.lines(RuntimeError('boom'))[0]], self.clock(1)), 'NOT VALID')
+
+
 # Each engine: the environment that picks it, and the adapter class it builds.
 ENGINE_CASES = {
     'api': ({'ANTHROPIC_API_KEY': 'k'}, 'AnthropicApi'),

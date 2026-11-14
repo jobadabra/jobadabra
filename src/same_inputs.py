@@ -29,6 +29,11 @@ counts = {}
 folder = ''
 
 
+def captures_text():
+    """True inside a same-inputs run, shared or not (same-inputs.mjs sets JOBADABRA_TAPE_SAME_INPUTS_TEXT): failed calls then log their error text too (src/ai/providers/contract.py detail)."""
+    return os.environ.get('JOBADABRA_TAPE_SAME_INPUTS_TEXT') == '1'
+
+
 def _count(name, amount=1):
     counts[name] = counts.get(name, 0) + amount
 
