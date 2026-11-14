@@ -7,6 +7,24 @@ from pathlib import Path
 ANSWERED = re.compile(r'^relay: .* status 200 .* engine ([a-z-]+)', re.M)
 ANY_ANSWER = re.compile(r'^relay: .* status 200 ', re.M)
 UNANSWERED = re.compile(r'^relay: .* status (?!200 )(\S+) .*?(?: why (.+))?$', re.M)   # refused (why …) or never reached (status error, no why)
+SHORT_CALL = re.compile(r'^relay: small total \d+ broker (\d+) .* status 200 ', re.M)
+HUNG_SHORT_MS = 30000   # Why (14 Nov 2026, owner via sa: "Drop the build, fix the measure"; #4100 pair 1 had a 62.9 s title call): a short (small-tier) call over 30 s hung, so the side did not measure the code
+
+
+def engines_in(text):
+    """The engines that answered a call in one log's text, sorted ([] when none): one parser for "ONE engine per search" (Gitar on #4130)."""
+    return sorted(set(ANSWERED.findall(text)))
+
+
+def unanswered_calls(text):
+    """How many calls the broker did not answer (refused, or never reached) in one log's text; 0 for no relay line.
+    Why (13 Nov 2026, sa; runs 43524290510 / 43524315186 / 43524339782): 358 calls were refused at the paid lane's day cap, which no wait p90 sees."""
+    return len(UNANSWERED.findall(text))
+
+
+def longest_short_ms(text):
+    """The longest answered short (small-tier) call of one log's text in ms of AI time at the broker (`broker N`; the queue wait is the waits p90 rule, not this one); 0 for none."""
+    return max((int(ms) for ms in SHORT_CALL.findall(text)), default=0)
 
 
 def calls_by_engine(log):

@@ -45,7 +45,19 @@ class RefusedCallsAreNotCountedTest(unittest.TestCase):
     def test_one_refused_call_is_enough(self):
         with tempfile.TemporaryDirectory() as tmp:
             got = profiles.row('c18', folder(tmp, 'c18', 54, 1, 7))
-            self.assertEqual(got['not_measured'], 'not measured (1 AI calls refused)')
+            self.assertEqual(got['not_measured'], 'not measured (1 AI call refused)')
+
+    def test_refusals_are_the_reason_even_when_the_answered_calls_were_slow(self):
+        """Gitar on #4130: the p90 starved branch returned first, so 358 refusals read "waits p90 N s" with an empty refused cell."""
+        with tempfile.TemporaryDirectory() as tmp:
+            out = folder(tmp, 'slow', 0, 119, 3)
+            (out / 'run.log').write_text('AI: claude / claude-sonnet-5-5\n' + ANSWERED.replace('waited 247', 'waited 56000') * 10 + REFUSED * 119)
+            got = profiles.row('d03', out)
+            self.assertEqual((got['not_measured'], got['refused_calls'], got['waits_p90_s']), ('not measured (119 AI calls refused)', 119, 56))
+            self.assertNotIn('starved', got)
+            slow = folder(tmp, 'slow-clean', 0, 0, 3)
+            (slow / 'run.log').write_text('AI: claude / claude-sonnet-5-5\n' + ANSWERED.replace('waited 247', 'waited 56000') * 10)
+            self.assertTrue(profiles.row('d03', slow)['starved'], 'positive control: a slow broker with no refusal is still "starved"')
 
     def test_two_engines_in_one_row_are_not_counted_but_two_models_of_one_engine_are(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -60,8 +72,8 @@ class RefusedCallsAreNotCountedTest(unittest.TestCase):
                 (folder(tmp, pid, 60, refused, right) / 'row.json').write_text(json.dumps(profiles.row(pid, Path(tmp) / pid)))
             profiles.table(tmp, Path(tmp) / 'table.md')
             table = (Path(tmp) / 'table.md').read_text()
-            self.assertIn('| broker waits p90 | AI calls refused |', table)
-            self.assertRegex(table, r'\| 17 \|.*\| 0 s \| 0 \| claude')
+            self.assertIn('| broker waits p90 | AI calls refused | longest short AI call |', table)
+            self.assertRegex(table, r'\| 17 \|.*\| 0 s \| 0 \| 2\.4 s \| claude')
             self.assertIn('| d03 | Chisinau | Programmer (Software Engineer) | not measured (14 AI calls refused) |', table)
 
     def test_a_pair_side_with_a_refused_call_is_not_valid(self):
@@ -78,6 +90,11 @@ class RefusedCallsAreNotCountedTest(unittest.TestCase):
             (mixed / 'run.log').write_text(ANSWERED + ANSWERED.replace('engine claude', 'engine codex'))
             pair.side(mixed, 'pr')
             self.assertFalse(row(mixed)['valid'], 'two engines answered one side')
+            why_line = ANSWERED.replace('status 200 sent yes', 'status 200 sent yes why broker: fell back').replace('engine claude', 'engine free-ai')   # a call with a why, and a hyphenated engine (Gitar on #4130)
+            (mixed / 'run.log').write_text(ANSWERED + why_line)
+            pair.side(mixed, 'pr')
+            self.assertEqual(row(mixed)['engines'], ['claude', 'free-ai'])
+            self.assertFalse(row(mixed)['valid'])
             self.assertIn('0 refused', pair._wait(row(clean)))
             self.assertIn('14 refused', pair._wait(row(damaged)))
 
@@ -88,6 +105,23 @@ class RefusedCallsAreNotCountedTest(unittest.TestCase):
         self.assertEqual(why(side(failed=14)), 'a side had AI calls refused by the broker')
         self.assertEqual(why(side(engines=['claude', 'codex'])), 'a side was answered by two AIs')
         self.assertEqual(why(side(wait_p90_ms=31000)), 'a side waited over 20 s at the broker', 'positive control: the old reason stays for a slow broker')
+
+    def test_a_hung_short_call_is_not_counted_plays_pair_1_of_4100(self):
+        """Owner via sa, 14 Nov 2026 ("Drop the build, fix the measure"): #4100 pair 1 had a 62.9 s title call (a short, small-tier call); 30.0 s is the line, over it hung."""
+        hung = 'relay: small total 63000 broker 62900 waited 100 in-flight 2 prompt-chars 900 kind title start 1794611186489 status 200 sent yes tools 0 out-tokens 20 engine codex\n'
+        edge = hung.replace('broker 62900', 'broker 30000')
+        mid = hung.replace('relay: small', 'relay: mid')   # a long (mid-tier) call may take this long
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, line, counted in (('hung', hung, False), ('edge', edge, True), ('mid', mid, True)):
+                out = folder(tmp, name, 0, 0, 5, ai=('codex / gpt-6-luna',))
+                (out / 'run.log').write_text('AI: codex / gpt-6-luna\n' + ANSWERED.replace('engine claude', 'engine codex') * 30 + line)
+                got = profiles.row('c04', out)
+                self.assertEqual('relevant' in got, counted, name)
+                pair.side(out, 'pr')
+                self.assertEqual(json.loads((out / 'side.json').read_text())['valid'], counted, name)
+            self.assertEqual(profiles.row('c04', Path(tmp) / 'hung')['not_measured'], 'not measured (a short AI call took 62.9 s)')
+            side = {'valid': False, 'shared': True, 'wait_p90_ms': 300, 'failed': 0, 'engines': ['codex'], 'short_call_max_ms': 62900}
+            self.assertEqual(pair_row.why_not_counted({'p1': {'main': [{'valid': True, 'shared': True}], 'pr': [side]}}), 'a side had a short AI call over 30 s')
 
 
 if __name__ == '__main__':
