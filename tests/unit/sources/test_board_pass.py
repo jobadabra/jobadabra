@@ -13,7 +13,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest import mock
 
-from src import geo, time_budget
+from src import geo, run_counts, time_budget
 from src.ai import engine, place_triage, slots, title_triage
 from src.sources import aggregators, board_pass, boards_first, feeds, places_later, read_budget, waiting_jobs
 from tests.unit.ai.test_titles_with_places import Model
@@ -116,6 +116,8 @@ class TheLastPass(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         self.addCleanup(time_budget.start, 0)
+        run_counts.reset()   # a search's counts start at 0 (src/daily_search.py): an earlier test's matched-not-scored jobs close the title floor (time_budget.title_room)
+        self.addCleanup(run_counts.reset)
         self.addCleanup(lambda: setattr(feeds, 'PLACED', None) or setattr(feeds, 'TRIAGED', None) or setattr(feeds, 'READ', None))
         feeds.PLACED = feeds.TRIAGED = feeds.READ = None
         self.db = sqlite3.connect(':memory:', check_same_thread=False)
@@ -128,6 +130,13 @@ class TheLastPass(unittest.TestCase):
         lane.wake()
         if wait:
             self.assertTrue(lane.passed.wait(timeout=30), 'the lane ran its pass at the pass time')
+
+    def queue(self):
+        """The queue after the search, as the app runs it: a process of its own, with its own clock and counts (src/daily.py, src/press/after_search.py).
+        Why (#4199, CI shard): judged under the search's clock at 150 s, its titles rode the title floor, which an earlier test's run counts had closed."""
+        time_budget.start(0)
+        run_counts.reset()
+        return waiting_jobs.judge(self.db, SEARCH, NOW, out=lambda line: None)
 
     def lane(self, read):
         """The boards' lane with one stand-in group source; the title sort of the lane's own threads had no time for its jobs (the AI's stop came first)."""
@@ -192,7 +201,7 @@ class TheLastPass(unittest.TestCase):
         self.assertEqual(shown, [], 'read after the pass: not judged in the search')
         self.assertFalse(self.model.asked('titles late role'), 'no title call for it in the search')
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 2, 'it waits for the queue after the search')
-        checked, items = waiting_jobs.judge(self.db, SEARCH, NOW, out=lambda line: None)
+        checked, items = self.queue()
         self.assertEqual(sorted(item['title'] for item in items), ['Late role 0', 'Late role 1'], 'the queue lists them')
 
     def test_a_job_the_pass_refuses_leaves_the_queues_list(self):
