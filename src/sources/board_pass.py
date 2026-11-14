@@ -77,7 +77,7 @@ def judge(jobs, track=None):
         said('places')
         sorting.join()
     _say(unplaced, [job for job in waiting if job.get('title')])
-    return Done([job for job, place, title in _answers(waiting) if place or title is not None], at, places, titles, None)
+    return Done([job for job, place, title in _answers(waiting) if place or title is not None], at, places, titles, None, owed=waiting)
 
 
 def cut(track):
@@ -90,7 +90,7 @@ def cut(track):
     answers = _answers(waiting)
     asked = {id(job) for job in unplaced}
     got = (len({_where(job) for job, place, _ in answers if place and id(job) in asked}), len({job.get('title') for job, _, title in answers if title is not None}))
-    return Done([job for job, place, title in answers if place or title is not None], at, places, titles, None, got)
+    return Done([job for job, place, title in answers if place or title is not None], at, places, titles, None, got, owed=waiting)
 
 
 def listable(done):
@@ -147,8 +147,22 @@ class Done:
     """What one pass did: `answered` jobs, the second it began (`at`), the places and titles it asked, `why` it asked nothing (None: it ran),
     and `got`: (places, titles) answered by the deadline when it was cut (None: it ended)."""
 
-    def __init__(self, answered, at, places, titles, why, got=None):
-        self.answered, self.at, self.places, self.titles, self.why, self.got = answered, at, places, titles, why, got
+    def __init__(self, answered, at, places, titles, why, got=None, owed=()):
+        self.answered, self.at, self.places, self.titles, self.why, self.got, self.owed = answered, at, places, titles, why, got, list(owed)
+
+    def accounted(self, listed):
+        """Every job the pass owed an answer, once: `Board pass: owed N · listed L · refused R · waiting W (posting not read V · no answer by the
+        deadline D)` (`listed`: the urls kept). Invariant: N = L + R + W, so a board job read before the pass is never silently unjudged.
+        Why (sa, 14 Nov 2026, design (b)): 61 CI funnels showed >= 1,101 board jobs never judged, with no reason said."""
+        from . import feeds
+        counts = Counter()
+        for job in self.owed:
+            place, title = feeds.place_of(job), feeds.judged_title(job.get('title') or '')
+            counts['listed' if job.get('url') in listed else 'refused' if title is False or (place == 'out' and self.got is None)
+                   else 'posting not read' if place == 'vague' else 'no answer by the deadline'] += 1
+        waiting = counts['posting not read'] + counts['no answer by the deadline']
+        return (f"Board pass: owed {len(self.owed)} · listed {counts['listed']} · refused {counts['refused']} · waiting {waiting} "
+                f"(posting not read {counts['posting not read']} · no answer by the deadline {counts['no answer by the deadline']})")
 
     def said(self, listed):
         """The main thread's line once it kept them: `Board pass: asked N place(s), M title(s), listed K, at S s`, or for a cut pass
