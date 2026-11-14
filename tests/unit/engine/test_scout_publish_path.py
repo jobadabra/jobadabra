@@ -99,7 +99,7 @@ class PublishPathTest(unittest.TestCase):
     def test_a_board_fact_goes_up_with_the_day_it_was_read(self):
         """Why (14 Nov 2026, zb for sa, #4346): a fact went up with no read day and the site stored the publish date, so a board board discovery read on 13 Nov
         was served dated 14 Nov and every publish moved its day forward. Played through the publish over board discovery's own database (SCOUT_BOARD_DB)."""
-        read = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        read = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()  # clock: relative, the publish reads facts on the real date (scout_boards.facts today=None)
         with tempfile.TemporaryDirectory() as tmp:
             beside = str(Path(tmp) / 'boards.sqlite')
             with sqlite3.connect(beside) as db:
