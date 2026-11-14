@@ -39,7 +39,7 @@ BOARD_WORKERS = 4         # boards read at once (each its own site, its own page
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
             'other': 'is not a job board'}   # a read that gives a board's place to the next spare one, and what it says
-NO_LANE = ([], 'no lane', None)   # a board that got no lane before the search's cut (board_lanes): not read, not stamped
+NO_LANE, TAKEN = ([], 'no lane', None), ([], 'taken', None)   # a board that got no lane before the search's cut (board_lanes): not read, not stamped
 _early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
 
 
@@ -370,6 +370,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
 
     def one_or_spare(read_item):   # the board's own result; while what was read refuses, the next spare board is read in its place
         lane = read_item[0]['host']
+        if early and not board_lanes.claim(lane, lanes):   # another of this search's early reads took this host (one host, one read)
+            return TAKEN
         if not lanes.take(lane, wait=read_budget.seconds_left(cut)):   # no lane came before the cut: read by the next search
             return NO_LANE
         try:
@@ -461,6 +463,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
     for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders, between=rounds.take if rounds else None), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
+        if result is TAKEN:
+            print(f"Job boards: {read_item[0]['name']} is read by another of this search's reads; not read twice", flush=True)
+            continue
         if result is read_budget.LEFT or result is NO_LANE:
             left.append(read_item[0]['name'])
             if not early:   # not killed: its page result, when it ends, is the next search's (late_reads)

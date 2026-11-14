@@ -7,6 +7,10 @@ Design: one Lanes per found_boards.read; its states, owned here only: a board is
 quiet (reading, nothing sent for QUIET_S: its lane is given to the next board, the board is named in `freed`), ended (gave its lane back, once).
 A quiet board's thread is not stopped (Python cannot): if it ends before the search's cut its jobs are kept as any board's. No watcher thread and
 no timer: a board waiting for a lane looks for quiet ones each time it would wait. At most `n` boards read at once besides the quiet ones.
+One host, one read (claim): the search's early reads (the first-jobs slice's boards, the known boards' and the web search's groups) run side
+by side, each with its own lanes; a host one of them took is not read again by another in the same search (d03, 14 Nov 2026: delucru.md
+from the pack and DeLucru.md from the web search were read as two boards with two different search pages, and the two sides of an identical
+search listed different jobs).
 Tests: tests/unit/sources/test_board_lanes.py, tests/unit/sources/test_board_lane_read.py."""
 import collections
 import threading
@@ -79,3 +83,35 @@ class Lanes:
 def said(key, now):
     """The log line of a freed board (found_boards.read's say)."""
     print(f"Job boards: {key} sent nothing for {QUIET_S} s; its lane went to the next board (#4255)", flush=True)
+
+
+_CLAIMED = {'lane': None, 'hosts': {}}   # {host: the read that took it} while one search's boards' lane (boards_first.Beside) is open
+_CLAIM_LOCK = threading.Lock()
+
+
+def bare_host(host):
+    """A board's host as one read knows it: lowercase, without "www." (delucru.md and www.DeLucru.md are one board)."""
+    host = (host or '').strip().lower()
+    return host[4:] if host.startswith('www.') else host
+
+
+def open_search(lane):
+    """The boards' lane `lane` of a new search began (boards_first.Beside): no host is taken yet."""
+    with _CLAIM_LOCK:
+        _CLAIMED['lane'], _CLAIMED['hosts'] = lane, {}
+
+
+def close_search(lane):
+    """`lane` ended: reads after it (the full read, a scout's) claim nothing."""
+    with _CLAIM_LOCK:
+        if _CLAIMED['lane'] is lane:
+            _CLAIMED['lane'], _CLAIMED['hosts'] = None, {}
+
+
+def claim(host, read):
+    """True when `read` (any object naming one found_boards.read call) may read `host`: no other read of the open lane took it. No lane
+    open (a read outside Find jobs' lane, tests): every read is its own."""
+    with _CLAIM_LOCK:
+        if _CLAIMED['lane'] is None:
+            return True
+        return _CLAIMED['hosts'].setdefault(bare_host(host), read) is read
