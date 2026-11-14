@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {linkedinRoutes, linkedinView, registerLinkedinHandlers} from '../../../lib/linkedin-handlers.js';
-import {SERVICE, WANTED_MS, openSignin, readSession} from '../../../lib/linkedin-session.js';
+import {SERVICE, WANTED_MS, openSignin, readSession, turnOff} from '../../../lib/linkedin-session.js';
 import {createRefresh} from '../../../lib/linkedin-refresh.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
@@ -107,5 +107,20 @@ test('a copy after the Chrome way waited 150 s is refused; a page that never ope
   registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: other, deps: {keychain: keychain()},
     openPage: async () => ({opened: null, why: 'no-extension'})});
   assert.deepEqual(await handlers.get('linkedinJobsConnect')(), {opened: null, why: 'no-extension'});
-  assert.equal(other.settings().linkedinJobs.signinOpenAt, undefined, 'nothing opened: no copy is waited for');
+  assert.equal(other.settings().linkedinJobs?.signinOpenAt, undefined, 'nothing opened: no copy is waited for');
+  const thrown = store(), h2 = new Map();
+  registerLinkedinHandlers({DEMO: false, ipcMain: {handle: (name, fn) => h2.set(name, fn)}, server: {setVisitRoute: () => {}}, storage: thrown, deps: {keychain: keychain()},
+    openPage: async () => { throw new Error('Chrome would not start'); }});
+  await assert.rejects(h2.get('linkedinJobsConnect')(), /Chrome would not start/);
+  assert.equal(thrown.settings().linkedinJobs?.signinOpenAt, undefined, 'a page that threw opens no Chrome way (Gitar on #4340)');
+});
+
+// Gitar on #4340: switching LinkedIn jobs off ends an open Chrome way, so a late consent copy cannot turn it back on.
+test('switching off ends an open Chrome way: a late copy is refused and the grants go back', () => {
+  const settings = store(), kc = keychain(), routes = linkedinRoutes(settings, {keychain: kc});
+  openSignin(settings);
+  turnOff(settings, {keychain: kc});
+  assert.equal(routes.pending().revoke, true);
+  assert.equal(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}).ok, false);
+  assert.equal(kc.items.size, 0);
 });

@@ -45,9 +45,8 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
   ipcMain.handle('linkedinJobsConnect', async () => {
     if (DEMO) return {opened: true};
-    session.openSignin(storage);
     const answer = await openPage();
-    if (!answer?.opened) session.closeSignin(storage);   // Gitar on #4337: a page that never opened asks for no copy
+    if (answer?.opened) session.openSignin(storage);   // Gitar on #4337, #4340: only a page that opened waits for a copy (one that failed or threw never opens the way)
     return answer;
   });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
   // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain and the switch turns on. One line per press, never a value.
