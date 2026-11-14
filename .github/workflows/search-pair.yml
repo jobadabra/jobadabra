@@ -449,4 +449,5 @@ jobs:
         if: ${{ always() }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pr-verdict.yml --repo "$GITHUB_REPOSITORY" || echo "the verdict was not asked ($?): the 10-minute sweep reads the row"
+        run: |
+          gh workflow run pr-verdict.yml --repo "$GITHUB_REPOSITORY" || echo "the verdict was not asked (the 10-minute sweep reads the row)"
