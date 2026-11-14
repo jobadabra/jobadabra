@@ -18,7 +18,7 @@ RED_WORKFLOWS=("CI · Tests")   # one workflow since 15 Oct 2026: its one Linux 
 names_json="$(printf '%s\n' "${RED_WORKFLOWS[@]}" | jq -R . | jq -sc .)"
 repo="${RED_MAIN_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 . "$(dirname "$0")/pr-rest-lib.sh"   # pr_get: the ETag read
-slug="$(git -C "$repo" remote get-url origin 2>/dev/null | sed -E 's#^.*github.com[:/]##; s#\.git$##')"
+slug="$(pr_repo "$repo")"   # owner/repo of the origin when it is on GitHub, else empty
 red_status() {
   command -v gh >/dev/null && command -v jq >/dev/null || { echo unknown; return 0; }
   git -C "$repo" rev-parse -q --verify origin/main >/dev/null || { echo unknown; return 0; }
@@ -43,7 +43,7 @@ red_status() {
       id="${row%%|*}"; rest="${row#*|}"; status="${rest%%|*}"
       # Why (14 Nov 2026, rb, mac-95: `gh run view` was 299 spent calls an hour in gh-rest-report.sh): the jobs are read through the ETag cache (a 304 while they do not change; a finished run never changes). A remote that is no GitHub
       #   address (the push-gate tests' local origin) has no owner/repo to read, so it keeps asking gh in the folder.
-      if [[ "$slug" =~ ^[^/\ :]+/[^/\ :]+$ ]]; then failed="$(pr_get "repos/$slug/actions/runs/$id/jobs?per_page=100" | jq '[.jobs[]? | select(.conclusion == "failure")] | length' 2>/dev/null)"
+      if [ -n "$slug" ]; then failed="$(pr_get "repos/$slug/actions/runs/$id/jobs?per_page=100" | jq '[.jobs[]? | select(.conclusion == "failure")] | length' 2>/dev/null)"
       else failed="$(cd "$repo" && gh run view "$id" --json jobs --jq '[.jobs[] | select(.conclusion == "failure")] | length' 2>/dev/null)"; fi
       if [ "${failed:-0}" -gt 0 ] 2>/dev/null; then
         jq -r --arg id "$id" '.[] | select((.databaseId | tostring) == $id) | "red|\(.headSha[0:7])|\(.workflowName)|\(.url)|\(.updatedAt)|\(.databaseId)"' <<<"$mine"; return 1

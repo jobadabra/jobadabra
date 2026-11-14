@@ -292,13 +292,16 @@ class RedMainTest(unittest.TestCase):
 
 
     def test_an_origin_that_is_no_github_address_still_reads_the_jobs_through_gh(self):
-        """The push-gate fixtures' origin is a local folder: no owner/repo for the REST jobs read, so `gh run view` in the folder answers, as before (14 Nov 2026, rb)."""
-        self.run_at(3, TESTS, status='in_progress', failed_jobs=1)
-        subprocess.run(['git', '-C', str(self.repo), 'remote', 'set-url', 'origin', '/some/local/folder'], check=True)
-        out, code = self.state()
-        self.assertEqual((code, out.split('|')[:2]), (1, ['red', self.shas[3][:7]]))
-        self.assertFalse((self.tmp / 'gh' / 'api-reads').exists(), 'no REST read without an owner/repo')
-
+        """The push-gate fixtures' origin is a local folder: no owner/repo for the REST jobs read, so `gh run view` in the folder answers, as before (14 Nov 2026, rb). A foreign host whose path
+        contains "github.com" is no GitHub address either (Gitar on #4206: the looser regex gave it a slug, and the jobs were read from the wrong repository)."""
+        for origin in ('/some/local/folder', 'https://gitlab.com/github.com/x/y.git'):
+            (self.tmp / 'gh' / 'api-reads').unlink(missing_ok=True)
+            self.runs = []
+            self.run_at(3, TESTS, status='in_progress', failed_jobs=1)
+            subprocess.run(['git', '-C', str(self.repo), 'remote', 'set-url', 'origin', origin], check=True)
+            out, code = self.state()
+            self.assertEqual((code, out.split('|')[:2]), (1, ['red', self.shas[3][:7]]), origin)
+            self.assertFalse((self.tmp / 'gh' / 'api-reads').exists(), f'no REST read without an owner/repo: {origin}')
 
 if __name__ == '__main__':
     unittest.main()
