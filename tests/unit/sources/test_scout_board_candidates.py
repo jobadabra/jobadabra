@@ -7,10 +7,13 @@ import sqlite3
 import sys
 import unittest
 import urllib.error
+from pathlib import Path
+from urllib.parse import urlsplit
 from datetime import date, timedelta
 from unittest import mock
 
-from src import scout_board_candidates as candidates, scout_boards
+from src import employer_index, scout_board_candidates as candidates, scout_boards
+from src.ai import board_ideas
 from src.sources import ats, board_paths, careers
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tools', 'persona-search'))
@@ -99,6 +102,15 @@ class Fetch(unittest.TestCase):
         self.assertEqual(asked, [('https://www.jobadabra.top/api/scout-memory?boards=1', 'Bearer k3y-secret')])
         self.assertNotIn('k3y-secret', ' '.join(out))
 
+    def test_the_pass_line_counts_the_boards_whose_address_is_on_another_host_than_the_reported_one(self):
+        """14 Nov 2026, sa: the owner is told how many boards the subdomain fix reaches; the first pass after it prints the number."""
+        out = []
+        boards = [{'host': 'jobeka.com', 'countries': ['es'], 'installs': 0, 'ci': True, 'ci_urls': {'es': 'https://es.jobeka.com/empleos-{role}'}},
+                  {'host': 'plain.example', 'countries': ['es'], 'installs': 0, 'ci': True, 'ci_urls': {'es': 'https://www.plain.example/s?q={role}'}}, {'host': 'home.example', 'countries': ['es'], 'installs': 1}]
+        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k'}):
+            candidates.fetch(out.append, urlopen=lambda request, timeout=None: self.answer(boards))
+        self.assertEqual(out[-1], 'Board pass: reported boards: 3 of 3 read; 1 with an address on another host than the reported one', 'www. is no other host; a board with no address is none')
+
     def test_a_site_that_does_not_answer_gives_none_and_the_pass_goes_on(self):
         out = []
 
@@ -186,8 +198,9 @@ class ForCountry(unittest.TestCase):
         address = 'https://es.jobeka.example/empleos-{role}-provincia-de-{place}'
         reports = [{'host': 'jobeka.example', 'countries': ['es', 'pt'], 'installs': 0, 'local': 19, 'ci_urls': {'es': address}}, {'host': 'plain.example', 'countries': ['es'], 'installs': 0, 'local': 3}]
         got = {item['host']: item for item in candidates.for_country(reports, 'es', today=TODAY)}
-        self.assertEqual(got['jobeka.example']['search_url'], address)
-        self.assertNotIn('home', got['jobeka.example'], 'read like an AI-named template board: its own address, no home step')
+        self.assertEqual(got['es.jobeka.example']['search_url'], address)
+        self.assertEqual(got['es.jobeka.example']['name'], 'jobeka.example', 'the reported name stays the name; the host is the address\'s own (Design: scout_board_candidates.py)')
+        self.assertNotIn('home', got['es.jobeka.example'], 'read like an AI-named template board: its own address, no home step')
         self.assertEqual((got['plain.example']['search_url'], got['plain.example']['home']), ('https://plain.example/', True))
         self.assertEqual(candidates.for_country(reports, 'pt', today=TODAY)[0]['search_url'], 'https://jobeka.example/', 'no address for pt: the es address is never used there')
 
@@ -201,12 +214,12 @@ class ForCountry(unittest.TestCase):
         self.assertEqual(candidates.choose(db, reports, 'es'), [], 'home page read lately, nothing else known: not asked again (the 20-day rule)')
         reports[0]['ci_urls'] = {'es': address}
         due = candidates.choose(db, reports, 'es')
-        self.assertEqual([(item['host'], item['search_url']) for item in due], [('jobeka.example', address)], 'the address arrives: due now; plain.example (no address) stays blocked')
-        candidates.stamp_read(db, 'es', due, ['jobeka.example 20/19'])
+        self.assertEqual([(item['host'], item['search_url']) for item in due], [('es.jobeka.example', address)], 'the address arrives: due now; plain.example (no address) stays blocked')
+        candidates.stamp_read(db, 'es', due, ['es.jobeka.example 20/19'])
         self.assertEqual(candidates.choose(db, reports, 'es'), [], 'read at that address: not again for 20 days')
         old = sqlite3.connect(':memory:')
         candidates.stamp(old, 'es', [('jobeka.example', address), ('plain.example', '')], today=TODAY)   # stamped on a fixed day: no real clock in this test
-        self.assertEqual([item['host'] for item in candidates.for_country(reports, 'es', measured=candidates.tried(old), today=TODAY + timedelta(days=21))], ['jobeka.example', 'plain.example'], 'both are candidates again after the refresh days')
+        self.assertEqual([item['host'] for item in candidates.for_country(reports, 'es', measured=candidates.tried(old), today=TODAY + timedelta(days=21))], ['es.jobeka.example', 'plain.example'], 'both are candidates again after the refresh days')
         self.assertEqual(candidates.for_country(reports, 'es', measured=candidates.tried(old), today=TODAY + timedelta(days=19)), [], 'still inside the 20 days: neither')
         reports[0]['ci_urls'] = {'es': 'https://es.jobeka.example/search?q={role}'}
         self.assertEqual([item['search_url'] for item in candidates.choose(db, reports, 'es')], ['https://es.jobeka.example/search?q={role}'], 'a changed address is a new one: due')
@@ -217,10 +230,10 @@ class ForCountry(unittest.TestCase):
         address = 'https://es.jobeka.example/empleos-{role}-provincia-de-{place}'
         report = {'host': 'jobeka.example', 'countries': ['es'], 'installs': 0, 'ci_urls': {'es': address}}
         today = TODAY.isoformat()
-        for url, due in (('https://jobeka.example/search?q={role}', True), (address, False)):
+        for host, url, due in (('jobeka.example', 'https://jobeka.example/search?q={role}', True), ('jobeka.example', address, False), ('es.jobeka.example', address, False), ('es.jobeka.example', 'https://es.jobeka.example/search?q={role}', True)):
             db.execute('DELETE FROM scout_board_facts')
-            db.execute('INSERT INTO scout_board_facts (host, country, url, families, read_at, local_jobs, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)', ('jobeka.example', 'es', url, '[]', today, scout_boards.MIN_LOCAL, '{}'))
-            self.assertEqual(bool(candidates.choose(db, [report], 'es')), due, url)
+            db.execute('INSERT INTO scout_board_facts (host, country, url, families, read_at, local_jobs, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)', (host, 'es', url, '[]', today, scout_boards.MIN_LOCAL, '{}'))
+            self.assertEqual(bool(candidates.choose(db, [report], 'es')), due, (host, url))   # a fact kept under either name counts: the report's (before the fix) or the address's
 
     def test_a_reported_subscribe_style_template_is_never_read_the_board_is_read_by_its_home(self):
         report = candidates.valid({'host': 'rabota.md', 'url': SUBSCRIBE, 'countries': ['md'], 'installs': 1})
@@ -317,7 +330,7 @@ class WholePath(unittest.TestCase):
             asked = board_paths.forms(item['search_url'], 'programator', 'Chisinau')[0]
             seen.append(item['search_url'])   # (the home mark is taken off by the reader at the first read: the address says home or not)
             return ([{'title': f'Developer {n}', 'location': 'Chisinau', 'url': f'https://md.jobeka.example/oferta-{n}'} for n in range(20)] if asked == page else []), 'ok', None
-        scout_boards.run(self.db, ideas=lambda search: [], read_board=read_board, out=lines.append, named='md', google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {'software_dev': ['programator']}, reported=reported)
+        self.kept = scout_boards.run(self.db, ideas=lambda search: [], read_board=read_board, out=lines.append, named='md', google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {'software_dev': ['programator']}, reported=reported)
         return seen, lines
 
     def report_of_the_search(self):
@@ -338,7 +351,31 @@ class WholePath(unittest.TestCase):
         self.assertEqual(reports[0]['ci_urls'], {'md': ADDRESS})
         seen, lines = self.run_pass(reports)
         self.assertEqual(seen, [ADDRESS], 'read at the address the search read, not at https://jobeka.example/')
-        self.assertTrue(any('listed/local: jobeka.example 20/20' in line for line in lines), lines)
+        self.assertTrue(any('listed/local: md.jobeka.example 20/20' in line for line in lines), lines)
+
+    def test_the_fact_of_a_board_read_at_a_subdomain_address_is_kept_by_the_site_and_served_by_the_engine(self):
+        """14 Nov 2026, sa for the owner ("a subdomain board is never served, so the whole chain is dead for it"), found by a local run of the Scout half for Jobeka: reported jobeka.com with its es.jobeka.com address gave a fact with
+        host jobeka.com and a url on es.jobeka.com, which the site's boardFactsOf (the url's host must be the fact's host) and the engine's board_ideas.served (the same check) both dropped. Fails on main (host jobeka.example);
+        passes with one definition: the board's host is the address's host (scout_board_candidates.read_host)."""
+        self.run_pass(self.reported(SITE_ANSWER))
+        fact = next(item for item in self.kept if item['url'] == ADDRESS)
+        self.assertEqual(fact['host'], 'md.jobeka.example', 'the fact is kept under the host of the address it was read at')
+        # the site's rule, jobadabra-web api/employers.js boardFactsOf: `urlHost !== host.replace(/^www\./, '')` drops the fact
+        self.assertEqual(urlsplit(fact['url'].replace('{role}', 'x').replace('{place}', 'x')).hostname, fact['host'].removeprefix('www.'), 'the site drops a fact whose host is not its url\'s host')
+        # the engine's rule: the cache a search reads (the site's answer for this fact) -> board_ideas.served
+        cache = Path(self.tmp.name) / 'employer_index.json'
+        cache.write_text(json.dumps({'sites': [{'kind': 'board', 'host': fact['host'], 'url': fact['url'], 'recipe': {'countries': ['md']},
+                                                'relevant': [{'family': 'software_dev', 'country': 'md', 'installs': 1, 'in_places': fact['family_jobs']['software_dev'], 'fit70': 0, 'measured': True}]}]}))
+        with mock.patch.object(employer_index, 'CACHE', cache):
+            self.assertEqual([board['host'] for board in board_ideas.served(['Moldova'])], ['md.jobeka.example'], 'a search for Moldova is served the board')
+
+    def test_a_stamp_or_fact_kept_under_the_reported_host_before_the_fix_still_counts_for_the_address(self):
+        """The fix must not make every board read before it due again: a read under jobeka.example (the report's host) at this address blocks it, under md.jobeka.example too."""
+        db = sqlite3.connect(':memory:')
+        candidates.stamp(db, 'md', [('jobeka.example', ADDRESS)], today=TODAY)
+        report = candidates.valid(SITE_ANSWER['boards'][0])
+        self.assertEqual(candidates.for_country([report], 'md', measured=candidates.tried(db), today=TODAY), [])
+        self.assertEqual(candidates.for_country([report], 'md', today=TODAY)[0]['host'], 'md.jobeka.example')
 
     def test_a_home_page_read_today_with_no_rows_does_not_block_the_address_that_arrives_after_it(self):
         """sa, 14 Nov 2026: tonight's home reads (0 rows) stamped the host for 20 days, so a stored address would never have been read."""
@@ -349,7 +386,7 @@ class WholePath(unittest.TestCase):
         self.assertEqual(again, [], 'still no address: the 20-day rule holds')
         now, lines = self.run_pass(self.reported(SITE_ANSWER))
         self.assertEqual(now, [ADDRESS], 'the address arrives: read in the next pass whatever the home stamp says')
-        self.assertTrue(any('listed/local: jobeka.example 20/20' in line for line in lines), lines)
+        self.assertTrue(any('listed/local: md.jobeka.example 20/20' in line for line in lines), lines)
         after, _ = self.run_pass(self.reported(SITE_ANSWER))
         self.assertEqual(after, [], 'read at that address: not again for 20 days')
 
