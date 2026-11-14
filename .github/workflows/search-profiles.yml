@@ -214,7 +214,9 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/persona-search/profiles.py cv "$PROFILE" out
-          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --first-only --fresh --engine api --tag profiles 2>&1 | tee out/run.log || true
+          # Why (14 Nov 2026, owner via AskUserQuestion, session rb: "Trello cards (Recommended)" for "which measures should search the way the app does?"): --beside reads the boards that
+          #   refuse the plain reader in the honest browser, once per search page a day across all CI (tools/persona-search/board-mark.mjs, the broker's mark). The cards' series changes here.
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --first-only --fresh --engine api --tag profiles ${{ steps.render.outcome == 'success' && steps.render_browser.outcome == 'success' && '--beside' || '' }} 2>&1 | tee out/run.log || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-profiles/data/jobs.sqlite" out/jobs.json
           # Why (14 Nov 2026, owner via sa, asked via AskUserQuestion: "CI report carries it (Recommended)"): the run's board memory (the AI's templates with {role} and {place}, board names and hosts; as search-personas.yml copies it) is where report_boards.py finds the address a board was read at. Never red.
           cp "$(node -p 'require("os").tmpdir()')/jp-persona-draw-profiles/data/found_boards.json" out/found-boards.json 2>/dev/null || true
