@@ -123,11 +123,12 @@ class DiscoveryLayoutTest(unittest.TestCase):
         jobs, _, _ = found_boards.read_board({**board('one.example'), 'layout': layout}, SEARCH, pages('one'))
         self.assertEqual((self.asked, len(jobs)), ([], 4))
 
-    def test_a_kept_layout_that_still_holds_is_kept_and_the_read_asks_no_link_question(self):
+    def test_a_kept_layout_that_still_holds_is_kept_after_the_usual_read_is_compared(self):
+        """Why (14 Nov 2026, owner: "In the Scout only"): the re-read also reads the page the usual way and keeps the layout only if it gives as many jobs; the usual read's link questions are discovery's own (an allowance)."""
         self.keep('one.example', {'kind': 'links', 'prefix': '/job'})
         self.run_pass({'one.example': 'one'})
         self.assertEqual(scout_boards.facts(self.db)[0].get('layout'), {'kind': 'links', 'prefix': '/job'})
-        self.assertFalse([path for _, path in self.asked if path.startswith('/job/')], 'discovery itself replays the layout it kept')
+        self.assertTrue(self.asked, 'the usual read was asked beside the layout read (the cost of the comparison, in discovery only)')
         self.assertIn('one.example 4/4 (layout held: links /job)', self.summary())
 
     def test_a_stale_layout_is_replaced_by_the_one_this_read_learns(self):
