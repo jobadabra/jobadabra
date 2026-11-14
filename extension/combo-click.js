@@ -10,7 +10,10 @@
 // Why (#4298, owner 14 Nov 2026: "this filling is very slow and ineffective"): the AI's pick is the AI's time, not the menu's, for `hard` too. On the plan path a pick
 // took 18.4-26.7 s, and `hard` counted it, so a Greenhouse form's privacy and self-identify menus were given up right as the answer arrived (14 Oct's coreweave
 // "known leftover", which on the plan path hit every AI-picked menu). The AI's own limit is flow.js STEP_MS.choose; flow.js STEP_MS.combo bounds the whole.
-const PATIENCE = {first: 1500, loading: 5000, option: 4500, deciding: 9000, ceiling: 15000, hard: 30000, slowCall: 150};
+export const PATIENCE = {first: 1500, loading: 5000, option: 4500, deciding: 9000, ceiling: 15000, hard: 30000, slowCall: 150};
+// Why (Gitar on #4310): a search box may ask the AI 3-4 times (page/fill-menus.js searchFor, typeToSearch); the AI's time is left out of `hard`, so it has its own
+// budget a menu, and flow.js STEP_MS.combo is built from it (hard + this + one pick), so the outer limit never fires in the middle of a pick.
+export const ASKING_MAX = 90000;
 
 // type(text): real typing over the box's content. choose({asked, choices, label}): the AI's pick of one choice by meaning, or ''.
 // page(func, args): runs func in the page (MAIN world). click(x, y): a trusted click. spot: the armed menu's spot from __jobadabraNextCombo.
@@ -23,7 +26,7 @@ export async function clickCombo({page, click, spot, skip = 0, type = null, choo
   page = timed(page); click = timed(click); if (choose) { const ask = timed(choose); choose = async (...args) => { const t = now(); try { return await ask(...args); } finally { asking += now() - t; } }; }   // the AI's pick is the AI's time, not the menu's: a search box asks it more than once (page/fill-menus.js searchFor)
   const sleepFor = sleep;
   sleep = async ms => { const t = now(); await sleepFor(ms); const late = now() - t - ms; if (late > PATIENCE.slowCall) busy += late - PATIENCE.slowCall; };   // a starved worker wakes late too
-  const over = () => now() - began - asking >= PATIENCE.hard || now() - began - busy >= PATIENCE.ceiling;
+  const over = () => now() - began - asking >= PATIENCE.hard || asking >= ASKING_MAX || now() - began - busy >= PATIENCE.ceiling;
   const mark = tag => { marks.push(`${tag}@${now() - began}`); if (marks.length > 40) marks.shift(); };   // where the time went, said when a menu is given up (flow.js)   // every wait below is REAL time: counting 100 ms ticks let a busy page (each call taking a second or more) stretch a 1.5 s wait to 30 s
   for (let attempt = 1; attempt <= 2 && !picked; attempt++) {
     const before = await page(() => window.__jobadabraArmedCount());
