@@ -70,10 +70,12 @@ async function turnOff() {
  * Show the consent. mode: 'ask' (Find jobs press), 'turn-on' (Settings, Suggestions, ⌘K), 'manage' (it is on: Keep on / Turn off) or 'renew' (#3911: it is on and needs the person: sign in again). counts: "Not now" counts as an answer (the ask only).
  * Resolves when the dialog closed and what it chose did its first step.
  */
-export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
+export async function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
+  // Why (Gitar on #4263, 14 Nov 2026): the words read view.easyApply and view.extension, which change outside this page (Easy Apply's switch, the extension connecting), so they are read fresh at each opening.
+  await refreshLinkedin().catch(() => {});
   const words = mode === 'manage' && view.easyApply ? CONSENT['manage-easy-apply'] : CONSENT[mode] || CONSENT['turn-on'];   // Why (owner, 14 Nov 2026): turning LinkedIn jobs off also stops Easy Apply, and says so
   const shown = showConsent(words, {chrome: !!(words.ways && view.extension)});   // the Chrome way can be picked only while the Chrome extension is connected
-  if (!shown) return Promise.resolve(false);
+  if (!shown) return false;
   return shown.then(async answer => {
     const yes = answer === 'default', chrome = answer === 'chrome';
     if (chrome) await turnOnWithChrome(mode === 'renew');
