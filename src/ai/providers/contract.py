@@ -10,6 +10,7 @@ limit, not signed in, not installed; every other call would fail the same way), 
 this file in desktop/lib/ai/contract.js. Guarded by tests/unit/ai/test_ai_providers.py.
 """
 from dataclasses import dataclass, field
+import os
 import re
 import sys
 import time
@@ -76,7 +77,9 @@ def reason(error):
 
 def detail(what, error):
     """The technical line behind a plain warning: what was asked and named(error), for the technical log only."""
-    print(f'Technical: {what}: {named(error)}', flush=True)
+    # Why (ot, 14 Nov 2026, sa): a same-inputs pair needs the text of each failed call to name why a side did not run normally; that run's folder is a throwaway, so the text is safe there
+    text = f': {str(error)[:160]}' if os.environ.get('JOBADABRA_TAPE_SHARED') and str(error) else ''
+    print(f'Technical: {what}: {named(error)}{text}', flush=True)
 
 
 # ---------- the request ----------
