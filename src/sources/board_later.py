@@ -1,5 +1,6 @@
 """Boards that join a board read while it runs: the ones the AI names beside the measured boards of a first search
-(src/sources/found_boards.py read `later`, src/first_jobs.py board_jobs). One read, one board memory, one save: never a second read.
+(src/sources/found_boards.py read `later`, src/first_jobs.py board_jobs), and the spares read in place of a refusing board, kept at its turn
+(kept_spares, hand: moved from found_boards.py as they were, 14 Nov 2026). One read, one board memory, one save: never a second read.
 Tests: tests/unit/sources/test_proven_boards.py (FirstSliceTests)."""
 from concurrent.futures import ThreadPoolExecutor
 
@@ -46,3 +47,21 @@ def start(read_item, reads, hosts, order, by_turn, futures, submit):
     future = submit(read_item)
     futures[future] = read_item
     return future
+
+
+def kept_spares(taken, lock, read_items, keep):
+    """Keep, right after each of `read_items`, the boards read in its place (taken: {host: [(spare item, result)]}), in the order they were read.
+    Why (12 Nov 2026): they were kept after the whole read loop, which waits for the slowest board up to the cut: a replacement read at 19 s
+    reached the title judge at 124 s, after its AI time was gone, and its titles went unjudged. Each board's replacements follow it in its turn."""
+    for read_item in read_items:
+        with lock:
+            chain = taken.pop(read_item[0]['host'], [])
+        for spare_item, result in chain:
+            keep(spare_item, result, read_item)
+
+
+def hand(turn, found, on_board):
+    """One kept board's jobs: kept at its turn in the list (turn), and handed to on_board(jobs) at once when given and not empty."""
+    turn.extend(found)
+    if on_board is not None and found:
+        on_board(found)
