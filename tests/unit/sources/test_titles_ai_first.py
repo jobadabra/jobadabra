@@ -106,9 +106,7 @@ class LevelGoesToTheAiTest(unittest.TestCase):
 
 
 class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
-    # Why (#4352, part 3c): board_pass has direct judging tests; part 4 must remove this temporary exemption before production activation.
-    EXEMPT = {'src/sources/board_pass.py': 'standalone judging API; activation and its title-order guard belong to part 4',
-              'src/sources/feeds.py': 'the gate itself',
+    EXEMPT = {'src/sources/feeds.py': 'the gate itself',
               'src/sources/feed_facts.py': 'only which places still wait for an answer, after feed_scan sorted the titles',
               'src/sources/job_stage.py': 'keeps nothing: names why aggregators.kept, which sorted the titles first, did not keep a job'}
 

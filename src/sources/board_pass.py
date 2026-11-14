@@ -1,8 +1,5 @@
-"""Standalone board-job judging and accounting; the production search does not call this module yet.
-Part 3c prepares the hand-over consumer of judge/listable/settled/Done.report; part 4 starts and connects production work.
-The direct judge API uses owed, _titles, _say and the merged clock/answer hooks; _where/_host serve counts.
-Why (14 Nov 2026, owner): part 3a isolates judging after part 2's hooks; hand-over and activation stay separate.
-"""
+"""Judge board jobs received before pass_at inside the search; boards_first._pass starts this work and last_pass lists its answers.
+Counts and settlement share normalized answer-store keys and one URL snapshot."""
 from collections import Counter, defaultdict
 from urllib.parse import urlparse
 
@@ -119,13 +116,13 @@ class Done:
 
 def owed(jobs):
     """The jobs of `jobs` the AI still owes an answer for (job_stage 'never_asked'): not listed, and not refused by an answer; each url once.
-    Why (#4302, 14 Nov 2026): repeated URLs are owed once, and a definitive title refusal needs no further place or title call."""
+    Why (#4302, 14 Nov 2026): repeated URLs are owed once; only AI answers, never a role-word guess, settle an owed title."""
     from . import feeds, job_stage
     places, out, seen = {}, [], set()
     for job in jobs:
         if not job.get('url') or job['url'] in seen or feeds.judged_title(job.get('title') or '') is False:
             continue
-        if feeds.wanted_title(job.get('title') or '') and feeds.wanted_location(job):
+        if feeds.judged_title(job.get('title') or '') is True and feeds.wanted_location(job):
             continue
         if job_stage.of(job, places) == 'never_asked':
             seen.add(job['url'])
@@ -136,7 +133,7 @@ def owed(jobs):
 def judge(jobs, track=None):
     """Directly judge owed jobs with parallel place/title rounds under the existing search clock; return Done, never write job records.
     Each round uses the existing decision owner and lands partial answers. Both joins spend the same remaining clock; unfinished
-    workers leave a partial snapshot. Part 4 connects production startup; this API starts nothing without an explicit caller.
+    workers leave a partial snapshot. The lane worker calls this without writing job records.
     Why (#4300, #4311, 14 Nov 2026): either held round must release its caller and diagnostics when the shared clock expires."""
     import threading
     from .. import time_budget
