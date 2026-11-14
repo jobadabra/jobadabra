@@ -204,7 +204,7 @@ def line(db, today=None, priority=()):
 
 def seed(db, path, out=print):
     """Board discovery's own database takes the Scout's board facts in at the start of EVERY pass (the one function that copies a board fact between the two databases): for each host and country of the database at
-    `path`, the row is copied in whole (rule, layout, counts, browser, listed families travel with it) when discovery holds none or holds an OLDER read; a row discovery read more recently is kept, and on a same-day tie (read_at is a date) too, unless the Scout's layout is a drop (NULL) and discovery's is not.
+    `path`, the row is copied in whole (rule, layout, counts, browser, listed families travel with it) when discovery holds none or holds an OLDER read; a row discovery read more recently is kept, and on a same-day tie (read_at is a date) too, except that a layout the Scout dropped (NULL) is taken over discovery's kept one (only the layout: discovery's counts stay).
     A row taken in keeps the Scout's read_at and gets no read stamp: it was merged, not read by this pass, so a fact at an older rule is still due. Returns the rows taken; a missing or unreadable file takes none.
     Google's waiting sites, pairs searched and month count (SEEDED) are copied once, while discovery holds none.
     Design (14 Nov 2026, owner, asked via AskUserQuestion: "Merge at every pass now, one copy next (Recommended)"): two databases keep board facts (the Scout's own pass writes jobs.sqlite, discovery's pass boards.sqlite,
@@ -224,11 +224,13 @@ def seed(db, path, out=print):
     except sqlite3.Error:
         return 0
     own = {(host, country): (read_at, layout) for host, country, read_at, layout in db.execute('SELECT host, country, read_at, layout FROM scout_board_facts')}
-    # Newest read wins. read_at is a DATE, so two jobs reading a board the same day tie: discovery's row is kept, except that a layout the Scout dropped (NULL) beats the one discovery kept
-    # (Why (14 Nov 2026, bl on this merge): a dropped layout that read fewer jobs than the usual read, #4139, must not be published again by discovery's copy, which goes last).
-    taken = [fact for fact in rows if (fact[0], fact[1]) not in own or str(own[(fact[0], fact[1])][0]) < str(fact[5])
-             or (str(own[(fact[0], fact[1])][0]) == str(fact[5]) and fact[7] is None and own[(fact[0], fact[1])][1] is not None)]
+    # Newest read wins, the whole row. read_at is a DATE, so two jobs reading a board the same day tie: discovery's row is kept, and only a layout the Scout dropped (NULL) is taken over it
+    # (Why (14 Nov 2026, bl on this merge): a dropped layout that read fewer jobs than the usual read, #4139, must not be published again by discovery's copy, which goes last; Gitar on #4171: only the
+    # layout, because scout_board_counts.keep_fact merges families and counts across passes, so discovery's row may hold more than the Scout's of the same day).
+    taken = [fact for fact in rows if (fact[0], fact[1]) not in own or str(own[(fact[0], fact[1])][0]) < str(fact[5])]
+    dropped = [(fact[0], fact[1]) for fact in rows if (fact[0], fact[1]) in own and str(own[(fact[0], fact[1])][0]) == str(fact[5]) and fact[7] is None and own[(fact[0], fact[1])][1] is not None]
     db.executemany('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families, rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', taken)
+    db.executemany('UPDATE scout_board_facts SET layout = NULL WHERE host = ? AND country = ?', dropped)
     for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
         try:
             with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
@@ -238,8 +240,8 @@ def seed(db, path, out=print):
         if found and scout_cells._meta(db, key, None) is None:
             db.execute('INSERT OR REPLACE INTO scout_meta (key, value) VALUES (?, ?)', (key, found[0]))
     db.commit()
-    out(f"Board discovery: {len(taken)} of the Scout's {len(rows)} board facts are new or newer than discovery's own, taken in")
-    return len(taken)
+    out(f"Board discovery: {len(taken)} of the Scout's {len(rows)} board facts are new or newer than discovery's own, taken in" + (f', {len(dropped)} layout(s) dropped' if dropped else ''))
+    return len(taken) + len(dropped)
 
 
 def stopped_hosts(db):

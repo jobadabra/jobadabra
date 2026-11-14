@@ -72,14 +72,15 @@ class TwoDatabases(unittest.TestCase):
         """bl on the merge: read_at is a DATE, so two jobs that read a board the same day tie. A Scout row with no layout (dropped: it read fewer jobs than the usual read, #4139) must not lose to discovery's layout and be
         published again (discovery's copy goes last). A tie otherwise keeps discovery's row."""
         layout = json.dumps({'kind': 'links', 'prefix': '/x'})
-        put(self.own_path, 'tie.example', 'es', 9, 0, layout=layout)
-        put(self.scout_path, 'tie.example', 'es', 9, 0, layout=None)
+        put(self.own_path, 'tie.example', 'es', 9, 0, layout=layout)   # discovery measured more of the board than the Scout's row of the same day (keep_fact merges counts across passes)
+        put(self.scout_path, 'tie.example', 'es', 5, 0, layout=None)
         put(self.own_path, 'same.example', 'es', 9, 0, layout=layout)
         put(self.scout_path, 'same.example', 'es', 9, 0, layout=layout)
         put(self.own_path, 'plain.example', 'es', 9, 0, layout=None)
         put(self.scout_path, 'plain.example', 'es', 12, 0, layout=layout)
         self.pass_()
         self.assertIsNone(row(self.own_path, 'tie.example')['layout'], 'a drop beats a keep on a tie')
+        self.assertEqual((row(self.own_path, 'tie.example')['local_jobs'], json.loads(row(self.own_path, 'tie.example')['family_jobs'])), (9, {FAMILY: 9}), "only the layout is taken: discovery's counts stay (Gitar on #4171)")
         self.assertEqual(row(self.own_path, 'same.example')['layout'], layout)
         self.assertIsNone(row(self.own_path, 'plain.example')['layout'], 'a tie where discovery has none keeps discovery row: the Scout\'s layout does not come in on a tie')
 
