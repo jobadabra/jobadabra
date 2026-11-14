@@ -147,7 +147,7 @@ export async function runTriage(jobs, read, match = null) {
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
-      endSteps(state.log, Date.now(), {keep: !!result});   // Why (14 Nov 2026, Gitar on #4342): a read Stop cut short leaves the job's last check as it was
+      endSteps(state.log, Date.now(), {keep: !!result && !result.stored});   // Why (14 Nov 2026, Gitar on #4342, #4349): a read Stop cut short, or a check taken from the store (its own log is stored with it), leaves the job's last log as it was
       if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { if (!result.stored) rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;

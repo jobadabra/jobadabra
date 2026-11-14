@@ -11,7 +11,7 @@ import {readsQuestions} from '../renderer/apply-triage-mode.js';
 export const VERSION = 1;
 /** Notion's text column holds 2000 characters: a stored check stays under this (the questions go first, then the match's names). */
 export const MAX_CHARS = 1800;
-const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why', 'steps'];   // words-ok: the field names of our own read (lib/triage-reader.js), not page words
+const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why'];   // words-ok: the field names of our own read (lib/triage-reader.js), not page words
 
 /** A read worth keeping: not unreadable, and a simple form either has no question to match or has its match with every question judged (a form the AI never judged is "answers not checked", never stored as done). Pure. */
 export const storable = read => !!read && read.unreadable !== true && !(readsQuestions(read) && read.questions?.length && (!read.match || read.match.unjudged !== 0));
@@ -21,7 +21,8 @@ export function pack(read, {posted = '', now = new Date()} = {}) {
   const core = Object.fromEntries(CORE.filter(key => read[key] !== undefined).map(key => [key, read[key]]));
   const make = extra => JSON.stringify({v: VERSION, at: now.toISOString(), posted: String(posted || ''), read: {...core, ...extra}});
   const match = read.match ? {unjudged: read.match.unjudged || 0, unnamed: read.match.unnamed || 0, missing: (read.match.missing || [])} : undefined;
-  for (const extra of [{questions: read.questions, match}, {match}, {match: match && {...match, missing: match.missing.slice(0, 5).map(item => ({...item, label: String(item.label).slice(0, 60)}))}}, {}]) {
+  // Why (14 Nov 2026, Gitar on #4349): the check's step log is the first thing dropped when the text runs out of room; the questions and the match are worth more.
+  for (const extra of [{questions: read.questions, match, steps: read.steps}, {questions: read.questions, match}, {match}, {match: match && {...match, missing: match.missing.slice(0, 5).map(item => ({...item, label: String(item.label).slice(0, 60)}))}}, {}]) {
     const text = make(Object.fromEntries(Object.entries(extra).filter(([, value]) => value !== undefined)));
     if (text.length <= MAX_CHARS && (extra.match || !read.match)) return text;
   }
