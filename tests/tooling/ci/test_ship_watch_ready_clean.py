@@ -11,6 +11,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.ship_watch_guard import WATCH_HANG_GUARD_S
+
 ROOT = Path(__file__).resolve().parents[3]
 SHA = 'a' * 40
 
@@ -45,7 +47,7 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
         env.pop('SHIP_WATCH_DRAFT_OK', None)
-        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=30, check=True)
+        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=WATCH_HANG_GUARD_S, check=True)
         return self.log.read_text().splitlines()[1:]
 
     def test_the_459_case_is_not_ready(self):
