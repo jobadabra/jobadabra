@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src import read_methods, store  # noqa: E402
 from src.job_identity import unlinked_job_url  # noqa: E402
 from src.ai import page_reader  # noqa: E402
-from src.sources import board_ai_read, careers, found_boards  # noqa: E402
+from src.sources import board_ai_read, careers, found_boards, page_recipes  # noqa: E402
 
 PAGE = 'https://board.example/ofertas-empleo/electricista-empleos-en-madrid'
 BOARD = {'host': 'board.example', 'name': 'Board Example', 'search_url': PAGE, 'countries': ['Spain']}
@@ -97,6 +97,17 @@ class UnlinkedJobsTests(unittest.TestCase):
         self.assertEqual(sorted(job['location'] for job in jobs), ['Alcobendas', 'Getafe'], 'two places, two jobs; the same three values twice, one')
         self.assertEqual(imported(self.db, [{**job, 'company': 'Staffing Example'} for job in jobs]), ['new', 'new'],
                          'store.same_job tells two cities apart too, so the store agrees')
+
+    def test_a_layout_card_has_no_place_of_its_own_so_one_title_twice_on_a_page_is_one_ad(self):
+        """Gitar on #4197: a served layout's or a page recipe's link-less card is a title only. page_recipes.replay keeps one item per title and link,
+        the card's place is the listing page's (careers.listed), and store.same_job merges one employer's title in one city, so one title twice on one
+        page is one ad on this path. A card's own place needs a place in the learned recipe: parked on the Work board (14 Nov 2026)."""
+        markup = ''.join(f'<div class="offer"><h3 class="job-title">{title}</h3><span>{town}</span></div>'
+                         for title, town in (('Electricista', 'Getafe'), ('Electricista', 'Alcobendas'), ('Oficial Electricista', 'Getafe')))
+        items = page_recipes.replay({'kind': 'tag', 'tag': 'h3', 'class': 'job-title'}, markup, PAGE)
+        self.assertEqual(items, [('Electricista', None), ('Oficial Electricista', None)], 'the recipe names each title once, with no place')
+        jobs = board_read(from_layout([title for title, _ in items]))
+        self.assertEqual(sorted(job['title'] for job in jobs), ['Electricista', 'Oficial Electricista'])
 
     def test_a_place_worded_two_ways_is_one_job_and_fields_never_run_together(self):
         """Gitar on #4183: the AI words a place freely ('Madrid' one read, 'Madrid, España' the next), and an employer, title and place flattened
