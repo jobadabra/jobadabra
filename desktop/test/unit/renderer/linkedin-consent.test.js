@@ -39,16 +39,38 @@ test('the consent words: the owner\'s warning line verbatim, what is read, where
     const words = CONSENT[mode];
     assert.equal(words.line, LINE);
     assert.match(words.lead, /background/);
-    assert.match(words.lead, /in a Jobadabra window, on LinkedIn's own page/, 'the sign-in window (owner, 3 Nov 2026), not Chrome');
-    assert.match(words.lead, /you type your password there and Jobadabra never sees it/);
+    assert.match(words.lead, /the way you choose below: Jobadabra never sees your password/, 'owner, 14 Nov 2026: "Ask, Chrome first"');
     assert.ok(words.lead.includes(`stays on this ${process.platform === 'win32' ? 'PC' : 'Mac'}`));
     assert.match(words.lead, /Settings → Connections → LinkedIn/);
-    assert.equal(words.yes, 'Sign in to LinkedIn');
-    assert.equal(words.chrome, 'Use my Chrome sign-in', 'the shortcut, shown only while the extension is connected');
+    assert.equal(words.yes, 'Continue');
     assert.equal(words.no, 'Not now');
   }
   assert.equal(CONSENT.manage.yes, 'Turn off');
   assert.equal(CONSENT.manage.no, 'Keep on');
+});
+
+// Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Ask, Chrome first (Recommended)", then "make sure this popup make sense from all the states perspective"):
+// every dialog that leads to a sign-in asks how, Chrome first; the ones that do not (Manage) ask nothing; Easy Apply's door says why it needs LinkedIn.
+test('every sign-in door asks how to sign in, Chrome first; Manage asks nothing and says when Easy Apply stops too', () => {
+  for (const mode of ['ask', 'turn-on', 'renew', 'easy-apply']) {
+    const {ways, yes} = CONSENT[mode];
+    assert.ok(ways, `${mode} asks how to sign in`);
+    assert.equal(ways.title, 'How do you want to sign in?');
+    assert.equal(ways.chrome, 'Use my LinkedIn sign-in from Chrome');
+    assert.match(ways.chromeNote, /^Recommended\. No password/);
+    assert.match(ways.chromeMissing, /Settings → Connections → Chrome extension/, 'without the extension the Chrome way says what it needs');
+    assert.equal(ways.window, 'Sign in in a Jobadabra window');
+    assert.equal(yes, 'Continue', `${mode}: the choice decides the way, so the button only continues`);
+  }
+  for (const mode of ['manage', 'manage-easy-apply']) assert.equal(CONSENT[mode].ways, undefined, `${mode} signs nobody in`);
+  assert.match(CONSENT['easy-apply'].title, /for Easy Apply/);
+  assert.match(CONSENT['easy-apply'].lead, /also turns on LinkedIn jobs/, 'it says what else turning on does');
+  assert.doesNotMatch(CONSENT.manage.lead, /Easy Apply/);
+  assert.match(CONSENT['manage-easy-apply'].lead, /Easy Apply uses the same sign-in, so it stops too/);
+  const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
+  assert.match(page, /mode === 'manage' && view\.easyApply \? CONSENT\['manage-easy-apply'\]/, 'Manage names Easy Apply only while it is on');
+  const easy = readScreenSource(new URL('../../../renderer/pages/easy-apply-consent.js', import.meta.url), 'utf8');
+  assert.match(easy, /openLinkedinConsent\(\{mode: 'easy-apply'\}\)/, 'Easy Apply\'s door opens its own words');
 });
 
 test('every door opens the one consent: Settings row, ask on Find jobs, Suggestions entry, ⌘K', () => {
@@ -64,10 +86,15 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.equal(html.match(/id="linkedin-dialog"/g)?.length, 1);
   assert.match(html, /<dialog id="linkedin-dialog" class="save-dialog panel-dialog">/);
-  assert.match(html, /<button class="secondary" id="linkedin-chrome" value="chrome" formnovalidate hidden><\/button>/, 'the Chrome shortcut button is hidden until the page shows it');
+  assert.doesNotMatch(html, /id="linkedin-chrome"/, 'no side button: the choice is the one way');
+  assert.match(html, /<div class="choice-list" role="radiogroup" aria-labelledby="linkedin-ways-title">/, 'the shared choice list');
+  for (const way of ['chrome', 'window']) assert.match(html, new RegExp(`<input type="radio" name="linkedin-way" value="${way}" id="linkedin-way-${way}">`));
+  assert.ok(html.indexOf('id="linkedin-way-chrome"') < html.indexOf('id="linkedin-way-window"'), 'Chrome first');
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
-  assert.match(page, /chrome: !!\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
-  assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !chrome;/, 'the shared dialog shows the shortcut only when asked to');
+  assert.match(page, /chrome: !!\(words\.ways && view\.extension\)/, 'the Chrome way can be picked only while the extension is connected');
+  assert.match(page, /\$\('linkedin-way-chrome'\)\.disabled = !chrome;/);
+  assert.match(page, /\$\('linkedin-way-chrome'\)\.checked = chrome;/, 'Chrome is picked first when it can be');
+  assert.match(page, /ways && dialog\.returnValue === 'default' && \$\('linkedin-way-chrome'\)\.checked \? 'chrome'/, 'Continue with Chrome picked goes the Chrome way');
   assert.match(page, /linkedinJobsSignIn\(\)/, 'the primary button opens the sign-in window');
 });
 
@@ -92,9 +119,8 @@ test('⌘K finds "Renew LinkedIn sign-in" for "link", "renew" and "sign in" whil
   assert.ok(renewCommandOf(ok), 'also while it works: the person may want to renew before it breaks');
   const words = CONSENT.renew;
   assert.match(words.title, /Renew/);
-  for (const part of [/Chrome/, /extension/, /Find jobs/]) assert.match(words.lead, part, 'the one step');
-  assert.equal(words.yes, 'Sign in to LinkedIn', 'the sign-in window works without Chrome');
-  assert.equal(words.chrome, 'Use my Chrome sign-in');
+  assert.match(words.lead, /Sign in to LinkedIn again, the way you choose below/, 'neutral: it opens for a sign-out, a check, or by hand');
+  assert.ok(words.ways, 'the same choice as turning on');
 });
 
 test('the renew dialog is the third mode of the one consent: its yes signs in, never turns off', () => {

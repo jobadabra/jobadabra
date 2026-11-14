@@ -32,7 +32,7 @@ export async function openEasyApply() {
   await refreshEasyApply();
   let step = nextStep(view);
   if (step === 'linkedin-first') {
-    await openLinkedinConsent({mode: 'turn-on'});
+    await openLinkedinConsent({mode: 'easy-apply'});
     await refreshLinkedin().catch(() => {});
     await refreshEasyApply();
     step = nextStep(view);
