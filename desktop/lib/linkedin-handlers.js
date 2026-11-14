@@ -14,8 +14,10 @@ export function linkedinRoutes(storage, deps = {}) {
     // Why (Gitar on #4276, #4283): a copy is kept only while a Chrome way the window opened still waits (WANTED_MS), or while LinkedIn jobs is on (a refresh).
     session: payload => {
       if (!session.signinOpen(storage, deps) && !session.state(storage).on) return {ok: false, error: 'Nobody asked for a LinkedIn sign-in'};
+      const waited = session.signinOpen(storage, deps);   // the Chrome way the press opened: its copy turns LinkedIn jobs on; a refresh while on changes no switch
       const saved = session.saveSession(storage, payload?.cookies, deps);
       if (saved.ok) session.closeSignin(storage);
+      if (saved.ok && waited && !session.state(storage).on && !session.turnOn(storage, deps).ok) return {ok: false, error: 'LinkedIn jobs could not turn on'};
       return saved;
     },
     // Why (#4312): an open Chrome consent keeps the extension's grants, so an unfinished consent can deliver its copy before any revoke; a Find jobs press asks for a fresh copy.
@@ -49,7 +51,7 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
     if (answer?.opened) session.openSignin(storage);   // Gitar on #4337, #4340: only a page that opened waits for a copy (one that failed or threw never opens the way)
     return answer;
   });   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}
-  // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain and the switch turns on. One line per press, never a value.
+  // The sign-in window: the person types their password on LinkedIn's own page; the two session cookies LinkedIn then sets go to the Keychain and the press turns the switch on once they are kept. One line per press, never a value.
   ipcMain.handle('linkedinJobsSignIn', async () => {
     if (DEMO) return {ok: true};
     // Why (Gitar on #3080, 3 Nov 2026; 14 Nov 2026, owner: "Let's store them in Keychain/Credentials Manager (windows)"): the session is kept only in the Mac's Keychain or
@@ -61,8 +63,11 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
     const got = await signIn();
     const saved = got.ok ? session.saveSession(storage, got.cookies, deps) : got;
     if (saved.ok) session.closeSignin(storage);   // Gitar on #4328: a Chrome way left open before this window is done too, so its late copy is not taken
-    log('linkedin-jobs', 'press', {path: 'window', outcome: saved.ok ? 'signed-in' : (got.ok ? 'not-kept' : got.reason)});
-    return saved.ok ? {ok: true} : {ok: false, reason: got.ok ? 'not-kept' : got.reason, error: saved.error};
+    // Gitar on #4317: the answer is this press's own turn-on, so a refused turn-on never reads as "on" (the sign-in stays kept either way)
+    const on = saved.ok ? session.turnOn(storage, deps) : {ok: false};
+    log('linkedin-jobs', 'press', {path: 'window', outcome: saved.ok ? (on.ok ? 'signed-in' : `signed-in, ${on.reason}`) : (got.ok ? 'not-kept' : got.reason)});
+    if (!saved.ok) return {ok: false, reason: got.ok ? 'not-kept' : got.reason, error: saved.error};
+    return on.ok ? {ok: true} : {ok: false, kept: true, reason: on.reason};
   });
   ipcMain.handle('linkedinJobsOff', () => (DEMO ? {ok: true} : session.turnOff(storage, deps)));
 }
