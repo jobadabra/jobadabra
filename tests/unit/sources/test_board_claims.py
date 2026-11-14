@@ -51,7 +51,7 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
     def read(self, boards, early=True, spare=()):
         def read_board(board, search, fetch, route=None, early=False, show=None):
             self.reads.append((board['name'], early))
-            if self.gate is not None:
+            if self.gate is not None and board['host'] == 'alo.bg':   # only the board under test is held
                 self.gate.wait(5)
             return ([{'title': 'LKW Fahrer', 'url': f"https://{board['host']}/1"}], 'ok', None)
         with mock.patch.object(found_boards, 'read_board', read_board), mock.patch('builtins.print', lambda *a, **k: self.said.append(' '.join(map(str, a)))):
@@ -137,6 +137,38 @@ class OneEarlyReadPerBoardTests(unittest.TestCase):
         """It took an entry per board and used to pop it: the full read then fetched the first page again (found_boards item)."""
         self.read([board('alo.bg')])
         self.assertIn('alo.bg', found_boards._early)
+
+    def test_a_board_being_read_is_not_handed_to_the_full_read_until_it_has_its_pages(self):
+        """Gitar on #4145: an entry for a read still open fed not_read_since(handed=) as 'read early, next pages still to read'."""
+        self.gate, handed = threading.Event(), []
+        running = threading.Thread(target=self.read, args=([board('alo.bg')],))
+        running.start()
+        while not self.reads:
+            self.gate.wait(0.01)
+        self.assertIsNone(found_boards._early['alo.bg'][1], 'being read: no pages yet')
+        def seen(boards, kept, since, handed=()):
+            handed_seen.append(set(handed))
+            return list(boards)
+        handed_seen = handed
+        with mock.patch.object(found_boards.board_yield, 'not_read_since', seen):
+            self.read([board('TRANS.BG', 'trans.bg')], early=False)
+        self.gate.set()
+        running.join(10)
+        self.assertEqual(handed, [set()], 'nothing handed while the early read has no pages')
+        self.read([board('TRANS.BG', 'trans.bg')], early=False)
+        self.assertIsNotNone(found_boards._early['alo.bg'][1], 'finished: its pages are the full read\'s')
+
+
+class NamedLaterTests(unittest.TestCase):
+    def test_only_the_boards_that_started_are_said_and_read(self):
+        """Gitar on #4145: "also reading X" named a board another read took between pick and start."""
+        from src.sources import board_later
+        said, taken = [], {'taken.example'}
+        with mock.patch('builtins.print', lambda *a, **k: said.append(' '.join(map(str, a)))):
+            futures = board_later.join([board('Free', 'free.example'), board('Taken', 'taken.example')], list, set(), 5,
+                                       lambda b: None if b['host'] in taken else 'future')
+        self.assertEqual(futures, ['future'])
+        self.assertEqual(said, ['Job boards: also reading Free, named for your search meanwhile'])
 
 if __name__ == '__main__':
     unittest.main()
