@@ -91,7 +91,7 @@ def side(out, name):
     judged = json.loads(read('judged.json') or '{}')
     right = sum(1 for r in judged.get('rows') or [] if r.get('role') == 'yes' and r.get('place') == 'yes') if judged else None
     first = re.search(r'1st/10th relevant at (\S+?)/', relay)
-    row = {'side': name, 'right': right, 'found': len(json.loads(read('jobs.json') or '[]')), 'first_s': first.group(1) if first else None,
+    row = {'side': name, 'shown_on_both': (judged.get('pooled') or {}).get('shown_on_both'), 'right': right, 'found': len(json.loads(read('jobs.json') or '[]')), 'first_s': first.group(1) if first else None,
            'words': board_words(press), 'calls': calls, 'failed': failed, 'engines': engines, 'short_call_max_ms': short_ms, 'wait_p50_ms': p50, 'wait_p90_ms': p90,
            'shared': not (out / 'boards-not-shared').exists(),   # the workflow marks a side whose draft install had no board proposal (run.mjs --propose failed): it asked for itself
            'valid': bool(calls) and p90 is not None and p90 <= VALID_P90_MS and not failed and len(engines) <= 1 and short_ms <= engine_calls.HUNG_SHORT_MS and right is not None and not (out / 'boards-not-shared').exists()}
@@ -181,6 +181,9 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
     drafts = {r.get('own_draft') for r in (json.loads(p.read_text()) for p in results.glob('*/person.json'))}
     lines.append('Each side drafted its own search plan and searched twice: this PR changes the plan\'s producer.' if True in drafts
                  else 'Same draft both sides: one search plan per person, made once, searched by main and the PR at the same minute.')
+    both = {person: sides_['main'][0]['shown_on_both'] for person, sides_ in sorted(people_rows.items()) if sides_['main'] and sides_['main'][0].get('shown_on_both') is not None}
+    if both:   # Why (14 Nov 2026, sa for the owner: "Yes, judge each job once"): the judge saw both sides' jobs together, so a job on both sides has one verdict
+        lines.append(f"Judged once for both sides: {sum(both.values())} jobs shown on both ({', '.join(f'{person}: {count}' for person, count in both.items())}); each has the same verdict on both sides.")
     lines.append(f'A side whose broker wait p90 is over {VALID_P90_MS // 1000} s, with one refused AI call, a short AI call over {engine_calls.HUNG_SHORT_MS // 1000} s, or answered by two AIs is not valid: shown, not counted (start the pair again).')
     if any(r.get('shared') is False for rows in people_rows.values() for r in rows['main'] + rows['pr']):
         lines.append("The draft's board proposal failed, so each side asked for its own boards: not counted (start the pair again).")

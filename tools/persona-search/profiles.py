@@ -4,7 +4,7 @@ Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Move it to CI"): the 
 followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). This runs the same first search on fresh CI installs through the AI broker (Claude by default, Codex as an input).
 It never touches the nightly Search check: the profiles come from search-profiles.json, the 18 locked people (gate-personas.json) and gate.py are only read,
 and the judge is gate_judge.judge() itself, given this file's profiles. No night, no Admin, no floors, no reference, no red.
-Usage: profiles.py ids '<json list or empty>' | free '<json list>' <at_once> | cv <id> <out> | judge <id> <jobs.json> <judged.json> | row <id> <out> | table <dir> <out.md>
+Usage: profiles.py ids '<json list or empty>' | free '<json list>' <at_once> | cv <id> <out> | judge <id> <jobs.json> <judged.json> | judge-pooled <id> <jobs.json> <judged.json> ... | row <id> <out> | table <dir> <out.md>
        | tell <rows.json> <run url> <message.txt>
 """
 import json
@@ -98,6 +98,15 @@ def for_judge(p):
     if not p.get('area'):
         return p
     return {**p, 'title': f"{p['title']} (willing to work {p['area']})"}
+
+
+def judge_pooled(pid, files):
+    """The pair's judge for a profile: gate_judge's `--pooled` path (one judge call over both sides' jobs), given this profile instead of a night person.
+    files: <jobs.json> <judged.json> pairs, as gate_judge.main reads them."""
+    sys.path.insert(0, str(HERE))
+    import gate_judge  # noqa: PLC0415
+    gate_judge.PERSONAS = [for_judge(p) for p in PROFILES]
+    gate_judge.main(['--pooled', str(IDS.index(pid) + 1), *files])
 
 
 def judge(pid, jobs_path, out):
@@ -258,6 +267,8 @@ def main(argv):
         cv(*args[:2])
     elif command == 'judge':
         judge(*args[:3])
+    elif command == 'judge-pooled':   # judge-pooled <id> <jobs.json> <judged.json> [<jobs.json> <judged.json> ...]
+        judge_pooled(args[0], args[1:])
     elif command == 'row':
         result = row(*args[:2])
         (Path(args[1]) / 'row.json').write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding='utf-8')
