@@ -175,7 +175,7 @@ class OldState(unittest.TestCase):
         matched, shown, log = self.run_first()
         titles = [job['title'] for job in matched]
         self.assertTrue(any('First Officer' in title for title in titles), log)
-        self.assertEqual(len(matched), 14, 'both board shapes read: 8 links by id, 6 cards')
+        self.assertEqual(len(matched), 17, 'both board shapes read: 8 links by id, 6 cards; then crew-board\'s page 2 (3), its read gone on')
         self.assertTrue(shown and shown[0][0] < 60, 'on screen within 60 s')
         self.assertIn('Job boards first: reading the 3 the web search found, beside the employer sites', log)
 
@@ -186,14 +186,15 @@ class OldState(unittest.TestCase):
     def test_the_full_board_read_reads_their_next_pages_from_the_pages_fetched_first(self):
         """Page 1 first (on screen at once), the next pages beside the employer sites: the owner's pilot run read one board's 5 pages, each
         judged by the AI before the next, and showed its jobs at 163 s. The full read runs within the boards' 6-hour rest (since)."""
-        matched, _, _ = self.run_first()
-        self.assertNotIn('First Officer A320 (m/w/d) 50', [job['title'] for job in matched], 'page 2 is not read before the jobs are shown')
+        matched, shown, _ = self.run_first()
+        self.assertNotIn('First Officer A320 (m/w/d) 50', [job['title'] for job in shown[0][1]], 'page 2 is not read before the jobs are shown')
+        self.assertIn('First Officer A320 (m/w/d) 50', [job['title'] for job in matched], 'then the lane\'s read goes on to it (ab, 14 Nov 2026)')
         page_one = [url for url in FETCHED if url.startswith('https://crew-board.test/jobs')]
         with mock.patch.object(board_web, 'start', return_value=None), redirect_stdout(io.StringIO()):
             jobs = found_boards.read(SEARCH, [{'name': h, 'host': h, 'search_url': f'https://{h}/jobs?q={{role}}'} for h in PAGES],
                                      fetch=fetch, dead=set(), since=datetime.now(timezone.utc) - timedelta(hours=6))
         self.assertIn('First Officer A320 (m/w/d) 50', [job['title'] for job in jobs], 'the full read reads page 2')
-        self.assertEqual([url for url in FETCHED if url.startswith('https://crew-board.test/jobs')], page_one + [PAGE_TWO], 'page 1 is not fetched again')
+        self.assertEqual([url for url in FETCHED if url.startswith('https://crew-board.test/jobs')], page_one, 'no page the lane read is fetched again')
 
     def test_the_boards_that_worked_are_on_screen_before_the_web_search_answers(self):
         self.run_first()
@@ -231,7 +232,7 @@ class OldState(unittest.TestCase):
         self.run_first()
         self.search_again()
         matched, shown, log = self.run_first(answer=BAD)
-        self.assertEqual(len(matched), 14, log)
+        self.assertEqual(len(matched), 17, log)   # 14 first-page jobs, then crew-board's page 2 (its read goes on in the lane)
         self.assertTrue(shown and shown[0][0] < 60, 'on screen within 60 s')
         self.assertIn('that gave you jobs in this field before', log)
         self.assertNotIn('IT Jobs Moldova', log, "an earlier search's board is never read for this one (owner: in sync with the current search)")
@@ -243,7 +244,7 @@ class OldState(unittest.TestCase):
         shown = []
         with redirect_stdout(io.StringIO()) as out:
             matched = self.lane(shown.append)
-        self.assertEqual(len(matched), 14, out.getvalue())
+        self.assertEqual(len(matched), 17, out.getvalue())   # 14 first-page jobs, then crew-board's page 2 (its read goes on in the lane)
         self.assertTrue(shown)
 
     def test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read(self):
@@ -276,9 +277,9 @@ class OldState(unittest.TestCase):
                 matched = first.take(self.db, Shown(self.db).listener('job boards'))
             searching.exception(timeout=10)
         self.assertEqual(at_sites, [False], 'the employer sites were read while the boards were still being read')
-        self.assertEqual(len(matched), 14, out.getvalue())
+        self.assertEqual(len(matched), 17, out.getvalue())   # 14 first-page jobs, then crew-board's page 2 (its read goes on in the lane, ab 14 Nov 2026)
         self.assertTrue(shown and all(thread == owner for _, thread, _ in shown), 'kept and shown in the thread that owns the job cache')
-        self.assertEqual(sum(count for _, _, count in during), 14, 'shown during the employer read, though no employer site had a sure job')
+        self.assertEqual(sum(count for _, _, count in during), 17, 'shown during the employer read, though no employer site had a sure job')
         self.assertIn('Job boards first: reading the 3 the web search found, beside the employer sites', out.getvalue())
         self.assertEqual(read_budget.over(at=10**9, index=read_budget.READ_FLOOR, now=0.0), True,
                          'they gave enough: from now no employer site past the floor, though the read took its deadline before')
