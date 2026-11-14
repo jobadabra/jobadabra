@@ -45,7 +45,7 @@ test('each door turns LinkedIn jobs on: window in main, Chrome after its copy ar
         linkedinJobsSignIn: async options => handlers.get('linkedinJobsSignIn')({}, options),
         linkedinJobsConnect: async () => handlers.get('linkedinJobsConnect')(),
         linkedinJobsOn: async () => { if (!chrome) throw new Error('renderer closed before another IPC'); return handlers.get('linkedinJobsOn')(); },
-        easyApplyOn: async options => (await import('../../../lib/easy-apply-switch.js')).turnOn(storage, options)};
+        easyApplyOn: async options => (await import('../../../lib/easy-apply-switch.js')).turnOn(storage, {...options, keychain})};   // the test's own fake Keychain, never the real one
       await consent.refreshLinkedin();
       if (mode === 'easy-apply') await easy.openEasyApply();
       else await consent.openLinkedinConsent({mode});

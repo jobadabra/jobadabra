@@ -5,12 +5,16 @@ import {test} from 'node:test';
 import {registerEasyApplyHandlers} from '../../../lib/easy-apply-handlers.js';
 import {state, turnOff, turnOn, viewOf} from '../../../lib/easy-apply-switch.js';
 import * as linkedin from '../../../lib/linkedin-session.js';
+import {easyApplyOn} from '../../../renderer/apply-settings-model.js';
 
 const NOW = new Date('2026-11-13T18:00:00.000Z');
 function store(settings = {}) {
   const mine = structuredClone(settings);
   return {mine, settings: () => mine, saveSettings: patch => Object.assign(mine, patch)};
 }
+const ITEM = JSON.stringify({li_at: 'fake-token'});
+const keptItem = () => ({read: () => ITEM, write: () => true, remove: () => true});   // a fake Keychain with a kept sign-in: tests never touch the real one
+const keptOnly = (extra = {}) => ({linkedinJobs: {on: false, login: {state: 'kept', at: 1}, ...extra}});   // a sign-in kept with LinkedIn jobs off
 const linkedinOn = (extra = {}) => ({linkedinJobs: {on: true, asked: 1, declined: 0, pauseUntil: '2026-11-14T16:47:00.000Z', ...extra}});
 
 test('off by default, and the view says so for a fresh install', () => {
@@ -18,19 +22,21 @@ test('off by default, and the view says so for a fresh install', () => {
   assert.deepEqual(viewOf(store(), {packaged: false}), {on: false, linkedinOn: false, warned: false, offered: true});
 });
 
-test('turning on needs LinkedIn jobs on first: its sign-in is the one Easy Apply uses', () => {
+test('turning on needs a kept sign-in, not LinkedIn jobs: with none it says needs-signin', () => {
   const storage = store();
-  assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: false, reason: 'needs-linkedin'});
+  assert.deepEqual(turnOn(storage, {warned: true, now: NOW, keychain: keptItem()}), {ok: false, reason: 'needs-signin'});
+  const noItem = store(keptOnly());
+  assert.deepEqual(turnOn(noItem, {warned: true, now: NOW, keychain: {read: () => null}}), {ok: false, reason: 'needs-signin'}, 'the state alone is no sign-in: the Keychain item must be there');
   assert.equal(storage.mine.easyApply, undefined, 'nothing saved');
 });
 
 test('the first turn-on needs the warning shown; it is stamped once and a later turn-on keeps the first stamp', () => {
   const storage = store(linkedinOn());
-  assert.deepEqual(turnOn(storage, {now: NOW}), {ok: false, reason: 'not-warned'}, 'no warning shown yet: refused');
-  assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: true});
+  assert.deepEqual(turnOn(storage, {now: NOW, keychain: keptItem()}), {ok: false, reason: 'not-warned'}, 'no warning shown yet: refused');
+  assert.deepEqual(turnOn(storage, {warned: true, now: NOW, keychain: keptItem()}), {ok: true});
   assert.deepEqual(state(storage), {on: true, warnedAt: NOW.toISOString()});
   turnOff(storage);
-  assert.deepEqual(turnOn(storage, {now: new Date('2026-11-20T09:00:00.000Z')}), {ok: true}, 'warned once: no second warning');
+  assert.deepEqual(turnOn(storage, {now: new Date('2026-11-20T09:00:00.000Z'), keychain: keptItem()}), {ok: true}, 'warned once: no second warning');
   assert.equal(state(storage).warnedAt, NOW.toISOString());
 });
 
@@ -42,34 +48,50 @@ test('turning off keeps LinkedIn jobs as it was: its switch, its 24 h pause and 
   assert.deepEqual(state(storage), {on: false, warnedAt: NOW.toISOString()});
 });
 
-test('with LinkedIn jobs off (no sign-in kept) Easy Apply reads as off, whatever was saved', () => {
-  const storage = store({linkedinJobs: {on: false}, easyApply: {on: true, warnedAt: NOW.toISOString()}});
+test('with no sign-in kept Easy Apply reads as off, whatever was saved', () => {
+  const storage = store({linkedinJobs: {on: false, login: {state: 'none', at: 0}}, easyApply: {on: true, warnedAt: NOW.toISOString()}});
   assert.equal(state(storage).on, false);
   assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, linkedinOn: false, warned: true, offered: true});
 });
 
-// Gitar on #4008: the saved yes must not come back by itself when LinkedIn jobs is switched off and on again; Easy Apply sends from the person's account.
-test('switching LinkedIn jobs off turns Easy Apply off for good; LinkedIn jobs back on leaves it off, still warned once', () => {
-  const storage = store(linkedinOn());
-  const items = new Map(), keychain = {write: (key, value) => { items.set(key, value); return true; }, read: key => items.get(key) ?? null, remove: key => items.delete(key)};
-  assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: true});
-  linkedin.turnOff(storage, {keychain});
-  assert.equal(storage.mine.easyApply.on, false, 'the saved switch itself is off, not only read as off');
-  assert.equal(storage.mine.easyApply.warnedAt, NOW.toISOString());
-  assert.deepEqual(linkedin.saveSession(storage, [{name: 'li_at', value: 'fake-token', domain: '.linkedin.com'}], {keychain}), {ok: true});
-  assert.equal(linkedin.state(storage).on, false, 'a sign-in turns no switch on');
+// Owner, 14 Nov 2026: "he must be able to enable each of them separately, but he should never login 2 times" (replaces Gitar on #4008, where Easy Apply went off with LinkedIn jobs).
+test('each switch alone: Easy Apply on a sign-in kept with LinkedIn jobs off; LinkedIn jobs off keeps the sign-in while Easy Apply is on', () => {
+  const storage = store(keptOnly());
+  assert.deepEqual(turnOn(storage, {warned: true, now: NOW, keychain: keptItem()}), {ok: true}, 'LinkedIn jobs is off and Easy Apply still turns on');
+  assert.equal(easyApplyOn(storage.mine), true);
+  const items = new Map([[linkedin.SERVICE, ITEM]]), keychain = {write: (key, value) => { items.set(key, value); return true; }, read: key => items.get(key) ?? null, remove: key => items.delete(key)};
   linkedin.turnOn(storage, {keychain});
   assert.equal(linkedin.state(storage).on, true);
-  assert.equal(state(storage).on, false, 'LinkedIn jobs on again: Easy Apply stays off until the person turns it on');
-  const fresh = store(linkedinOn());
-  linkedin.turnOff(fresh, {keychain});
-  assert.equal(fresh.mine.easyApply, undefined, 'never turned on: nothing written');
+  linkedin.turnOff(storage, {keychain});
+  assert.equal(items.has(linkedin.SERVICE), true, 'the Keychain item stays: Easy Apply uses it');
+  assert.equal(linkedin.signedIn(storage), true, 'and so does the kept mark');
+  assert.equal(state(storage).on, true, 'Easy Apply is still on');
+});
+
+test('LinkedIn jobs off with Easy Apply off deletes the sign-in, and Easy Apply then reads off whatever was saved; warned once stays', () => {
+  const storage = store({...linkedinOn({login: {state: 'kept', at: 1}}), easyApply: {on: false, warnedAt: NOW.toISOString()}});
+  const items = new Map([[linkedin.SERVICE, ITEM]]), keychain = {read: key => items.get(key) ?? null, remove: key => items.delete(key)};
+  linkedin.turnOff(storage, {keychain});
+  assert.equal(items.size, 0, 'nobody uses it: gone');
+  assert.equal(storage.mine.easyApply.warnedAt, NOW.toISOString());
+  storage.mine.easyApply.on = true;   // a saved yes with no sign-in behind it
+  assert.equal(state(storage).on, false, 'no sign-in: reads off');
+});
+
+test('forgetUnused and a Chrome copy leave a sign-in alone while Easy Apply is on', () => {
+  const storage = store({...keptOnly({login: {state: 'kept', at: 1}}), easyApply: {on: true, warnedAt: NOW.toISOString()}});
+  const removed = [], keychain = {read: () => ITEM, remove: key => removed.push(key)};
+  linkedin.forgetUnused(storage, {keychain, now: () => Date.now()});
+  assert.deepEqual(removed, [], 'an old kept sign-in is not deleted while Easy Apply uses it');
+  assert.equal(linkedin.takesCopy(storage), true);
+  const idle = store(keptOnly({login: {state: 'none', at: 0}}));
+  assert.equal(linkedin.takesCopy(idle), false, 'nobody asked: no copy');
 });
 
 test('a packaged build is not offered the switch until sending lands (owner, 13 Nov 2026: "Dev builds only until 4/5")', () => {
   assert.equal(viewOf(store(linkedinOn()), {packaged: true}).offered, false);
   const storage = store(linkedinOn());
-  assert.deepEqual(turnOn(storage, {warned: true, now: NOW, packaged: true}), {ok: false, reason: 'not-offered'});
+  assert.deepEqual(turnOn(storage, {warned: true, now: NOW, packaged: true, keychain: keptItem()}), {ok: false, reason: 'not-offered'});
   assert.equal(state(storage).on, false);
 });
 
@@ -83,7 +105,7 @@ test('the three channels: demo mode touches no settings; a real turn-on passes t
   assert.equal(demo.mine.easyApply, undefined, 'demo: nothing saved');
 
   const real = store(linkedinOn());
-  registerEasyApplyHandlers({DEMO: false, ipcMain, storage: real, packaged: false, clock: () => NOW});
+  registerEasyApplyHandlers({DEMO: false, ipcMain, storage: real, packaged: false, clock: () => NOW, keychain: keptItem()});
   assert.deepEqual(await handlers.easyApplyOn({}, {}), {ok: false, reason: 'not-warned'});
   assert.deepEqual(await handlers.easyApplyOn({}, {warned: true}), {ok: true});
   assert.deepEqual(await handlers.easyApplyState(), {on: true, linkedinOn: true, warned: true, offered: true});

@@ -24,7 +24,7 @@ async function turnOn(warned) {
   const answer = await window.pilot.easyApplyOn({warned}).catch(() => null);
   await Promise.all([refreshEasyApply(), refreshLinkedin()]).catch(() => {});   // Gitar on #4263: LinkedIn jobs' Manage names Easy Apply from its own view, so both views move together
   if (answer?.ok) say(t('pagesEasyApply.onTitle'), t('pagesEasyApply.onBody'), NO_PLACE.itself, 'good');
-  else say(t('pagesEasyApply.stayedOff'), answer?.reason === 'needs-linkedin' ? t('pagesEasyApply.needsLinkedin') : '', NO_PLACE.itself, 'warn');
+  else say(t('pagesEasyApply.stayedOff'), answer?.reason === 'needs-signin' ? t('pagesEasyApply.needsLinkedin') : '', NO_PLACE.itself, 'warn');
 }
 
 /** The one flow behind every door: manage while on; else LinkedIn jobs first when it holds no sign-in, then the warning once, then on. Resolves when its last step is done. */

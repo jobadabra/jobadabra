@@ -84,24 +84,25 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
+const easyOn = storage => storage.settings().easyApply?.on === true;   // Easy Apply uses the sign-in too (owner, 14 Nov 2026: one sign-in, two switches)
 /** True when a copy from the extension is taken, and so the extension keeps its LinkedIn grants: a Chrome way waits for it, a sign-in is kept, or LinkedIn jobs is on (a refresh, also after a Chrome sign-out). One rule, no second name (Gitar on #4380). */
-export const takesCopy = (storage, deps = {}) => state(storage).on || loginOf(storage, deps).state !== 'none';
+export const takesCopy = (storage, deps = {}) => state(storage).on || easyOn(storage) || loginOf(storage, deps).state !== 'none';
 /**
  * The Chrome way was opened with LinkedIn jobs off: the sign-in waits for its copy (WANTED_MS). A sign-in already kept with its item there stays as it is: the press turns its switch on
  * with it (owner, 14 Nov 2026: "he should never login 2 times"; Gitar on #4350, #4365: nothing is deleted, so an expired wait leaves no orphan and no working sign-in is lost).
  */
 export const openSignin = (storage, deps = {}) => {
-  if (state(storage).on || (loginOf(storage, deps).state === 'kept' && readSession(deps))) return;
+  if (state(storage).on || easyOn(storage) || (loginOf(storage, deps).state === 'kept' && readSession(deps))) return;
   moveLogin(storage, 'waiting', deps);
 };
 
 /**
  * At start, with LinkedIn jobs off: a sign-in no press can still turn on is deleted, so no unused credential stays (Gitar on #4350): a wait that ran out, or a copy kept more than
- * WANTED_MS ago (Gitar on #4354: a fresh one may still be turned on by the press that asked). Easy Apply needs LinkedIn jobs on here, so it uses none.
+ * WANTED_MS ago (Gitar on #4354: a fresh one may still be turned on by the press that asked). Never while Easy Apply is on: it uses the sign-in.
  */
 export function forgetUnused(storage, {keychain = realKeychain, now = Date.now} = {}) {
   const login = loginOf(storage, {now});
-  if (state(storage).on || !storage.settings().linkedinJobs?.login || login.state === 'waiting' || (login.state === 'kept' && now() - login.at <= WANTED_MS)) return;
+  if (state(storage).on || easyOn(storage) || !storage.settings().linkedinJobs?.login || login.state === 'waiting' || (login.state === 'kept' && now() - login.at <= WANTED_MS)) return;
   keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {login: undefined, keptAt: undefined});
 }
@@ -113,15 +114,16 @@ export function turnOn(storage, {keychain = realKeychain} = {}) {
   return {ok: true};
 }
 
-/** Switch off: the Keychain item and its mark go, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
+/**
+ * Switch off: the ask counters and the shared pause stay. The Keychain item and its mark go with it unless Easy Apply is on, which uses the same sign-in and keeps working (owner, 14 Nov 2026:
+ * "Once logged in, then we should share it for the other"; replaces Gitar on #4008, where Easy Apply went off with LinkedIn jobs). Repeatable.
+ */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
-  keychain.remove(SERVICE, {account: ACCOUNT});
   // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; keptAt and the sign-in state cleared too, 14 Nov 2026; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
   // since the guest read runs while it is off (lib/linkedin-guest-on.js); a new yes starts with no old result, but LinkedIn's wait still holds.
+  if (easyOn(storage)) { save(storage, {on: false, last: undefined, noticedAt: undefined}); return {ok: true}; }   // the sign-in and its mark stay for Easy Apply
+  keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {on: false, login: undefined, last: undefined, signin: undefined, noticedAt: undefined, keptAt: undefined});   // a waiting Chrome way ends with `login` (Gitar on #4340)
-  // Why (Gitar on #4008, 13 Nov 2026): LinkedIn Easy Apply (lib/easy-apply-switch.js) uses this sign-in; its saved yes goes with it, so LinkedIn jobs back on never revives it (warnedAt stays: warned once).
-  const easy = storage.settings().easyApply;
-  if (easy?.on) storage.saveSettings({easyApply: {...easy, on: false}});
   return {ok: true};
 }
 
