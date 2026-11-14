@@ -177,6 +177,20 @@ class FactRule(unittest.TestCase):
         fact(self.db, 'gone.example', 'es', [self.FAMILY], TODAY - timedelta(days=scout_boards.FACT_DAYS + 1), rule=None)   # dropped by the site: not counted
         self.assertEqual(cells.rule_line(self.db, TODAY), 'Board pass: facts at an older rule: 1 of 2')
 
+    def test_discovery_calls_the_line_with_no_date_as_it_does_in_production(self):
+        """14 Nov 2026, lab run 43535757557 (es, reserve 12): `scout.discover(db)` passes today=None and rule_line subtracted from it: TypeError after the pass's reads, so every discovery run was red. Fails on 1ab05abd."""
+        fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
+        with mock.patch.object(cells, 'date', mock.Mock(today=lambda: TODAY)):   # the production clock, pinned
+            self.assertEqual(cells.rule_line(self.db), 'Board pass: facts at an older rule: 1 of 1')
+
+    def test_a_discovery_pass_runs_to_its_last_line_with_no_date_given(self):
+        """The production call, `scout.discover(db)`: it hands today=None to every line of the pass (rule_line did not default it). The pass is played whole with a fake read and the clock pinned."""
+        fact(self.db, 'old.example', 'es', [self.FAMILY], rule=None)
+        lines = []
+        with mock.patch.object(cells, 'date', mock.Mock(today=lambda: TODAY)), mock.patch.dict(os.environ, {'SCOUT_BOARD_CELLS': f'es:{self.FAMILY}', 'SCOUT_BOARD_SEED_DB': ''}):
+            scout.discover(self.db, run=lambda db, **ask: [], out=lines.append)
+        self.assertTrue(any(line.startswith('Board pass: facts at an older rule:') for line in lines), lines)
+
 
 class Share(unittest.TestCase):
     """The pass has MAX_BOARDS places: re-reads of old-rule facts and reported candidates split them in half, the unused half goes to the other (Design: src/scout_board_cells.py share)."""
