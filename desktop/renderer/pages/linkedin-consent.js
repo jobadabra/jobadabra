@@ -24,13 +24,13 @@ export async function refreshLinkedin() {
   return view;
 }
 const WATCH_MS = 2000, WATCH_FOR_MS = SIGNIN_WAIT_MS;   // the main side takes the Chrome copy exactly this long (lib/linkedin-session.js WANTED_MS)
-let watching = null;   // Gitar on #4380: a second press during a wait shares the running watch (and its answer) instead of returning false at once
+const watching = {};   // Gitar on #4380: a second press during a wait shares the running watch (and its answer) instead of returning false at once; one watch per asking switch, so an Easy Apply door never turns LinkedIn jobs on
 // The person finishes in Chrome: look every few seconds, for as long as the main side takes the copy (SIGNIN_WAIT_MS), until the one sign-in state leaves 'waiting'. Then, only if its copy was kept,
 // the press that asked turns its own switch on (owner, 14 Nov 2026, "Simplify, then reopen (Recommended)": a sign-in turns no switch on by itself). -> true when the asking switch is on.
-// Why (Gitar on #4350, #4358): an older kept sign-in is no answer to this press: opening the Chrome way moves the one state to 'waiting' (lib/linkedin-session.js loginOf), so the watch reads that state, never `signedIn` alone.
-function watchUntilSignedIn() {
-  if (watching) return watching;
-  watching = (async () => {
+// Why (Gitar on #4350, #4358): an older kept sign-in is no answer to this press: opening the Chrome way moves the one state to 'waiting' (lib/linkedin-session.js loginOf), so the watch reads that state, never `signedIn` alone; each asking switch has its own watch, so Easy Apply's door never turns LinkedIn jobs on.
+function watchUntilSignedIn(wanted) {
+  if (watching[wanted]) return watching[wanted];
+  watching[wanted] = (async () => {
     const until = Date.now() + WATCH_FOR_MS;
     try {
       await refreshLinkedin().catch(() => {});
@@ -38,19 +38,25 @@ function watchUntilSignedIn() {
         await new Promise(done => setTimeout(done, WATCH_MS));
         await refreshLinkedin().catch(() => {});
       }
-      if (view.login === 'kept') return await turnOnKept();
+      if (view.login === 'kept') return wanted === 'easy' ? keptForEasy() : await turnOnKept();
       toast(...signInEnded({reason: 'no-copy'}, view));   // Gitar on #4354, #4385: any ending that is not a kept copy says so, also a wait the window's clock ended a moment before the main side's
       return false;
-    } finally { watching = null; }   // Gitar on #4385: the shared handle lives until the turn-on and the message are done, so a press in that gap shares them too
+    } finally { delete watching[wanted]; }   // Gitar on #4385: the shared handle lives until the turn-on and the message are done, so a press in that gap shares them too
   })();
-  return watching;
+  return watching[wanted];
+}
+
+// Why (owner, 14 Nov 2026: "a turn on should focus just on that specific case"): Easy Apply's door keeps the sign-in and turns no LinkedIn jobs switch on; its own flow goes on to its warning and its own turn-on.
+function keptForEasy() {
+  toast(t('pagesLinkedinServices.savedTitle'), t('pagesLinkedinServices.savedBody'), NO_PLACE.itself, 'good');
+  return true;
 }
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.
 let signingIn = false;   // Why (independent review, 3 Nov 2026): the dialog is closed while the window is open, so a Find jobs press must not ask again (and count a decline) meanwhile
-// `wanted`: 'jobs' (turn LinkedIn jobs on) | 'renew'; the main handler completes this press before replying, with no asking-switch note stored. -> true on success.
+// `wanted`: 'jobs' (turn LinkedIn jobs on) | 'easy' (Easy Apply's door: no switch here) | 'renew'; the main handler completes this press before replying, with no asking-switch note stored. -> true on success.
 async function signInHere(wanted) {
-  const renew = wanted === 'renew';
+  const renew = wanted !== 'jobs';   // a renewal and Easy Apply's door only keep the sign-in; the main handler turns no switch on for them
   signingIn = true;
   const answer = await window.pilot.linkedinJobsSignIn({turnOn: renew ? undefined : wanted}).catch(() => null);
   signingIn = false;
@@ -64,12 +70,13 @@ async function signInHere(wanted) {
 
 // The Chrome way, while the Chrome extension is connected: its own page in Chrome copies the sign-in Chrome already has. -> true when the sign-in arrived (waits for it, except a renewal).
 async function turnOnWithChrome(wanted) {
-  if (wanted !== 'renew' && view.signedIn && view.hasSession) return turnOnKept();   // owner, 14 Nov 2026: never sign in twice; a sign-in already kept is used, Chrome is not opened
+  if (wanted === 'easy' && view.signedIn && view.hasSession) return keptForEasy();   // owner, 14 Nov 2026: never sign in twice; a sign-in already kept is used, Chrome is not opened
+  if (wanted === 'jobs' && view.signedIn && view.hasSession) return turnOnKept();
   const opened = await window.pilot.linkedinJobsConnect().catch(() => null);
   if (!opened?.opened) { toast(...notOpened(opened)); return false; }
   toast(t('pagesFinalLabels.finishChrome'), t('pagesAuditPunct.a41'), NO_PLACE.itself, 'info');
-  // Why (Gitar on #4265, 14 Nov 2026): Easy Apply's door goes on only once the copy has come, so its flow waits here instead of ending before it. A renewal has nothing to wait for (Gitar on #3914).
-  return wanted === 'renew' ? false : watchUntilSignedIn();
+  // Why (Gitar on #4265, 14 Nov 2026): Easy Apply's door keeps the sign-in once the copy has come (and turns on no LinkedIn jobs switch), so its flow waits here instead of ending before it. A renewal has nothing to wait for (Gitar on #3914).
+  return wanted === 'renew' ? false : watchUntilSignedIn(wanted);
 }
 
 let turning = null;
@@ -94,14 +101,14 @@ async function turnOff() {
 
 /**
  * Show the consent. mode: 'ask' (Find jobs press), 'turn-on' (Settings, Suggestions, ⌘K), 'manage' (it is on: Keep on / Turn off), 'renew' (#3911: sign in again) or 'easy-apply'
- * (Easy Apply's door: LinkedIn jobs first, pages/easy-apply-consent.js). counts: "Not now" counts as an answer (the ask only).
- * -> a promise that resolves when the dialog closed and what it chose is done: true when LinkedIn jobs turned on (or off for Manage, or the sign-in was kept for a renewal); false when it is already open.
+ * (Easy Apply's door: the sign-in alone, pages/easy-apply-consent.js). counts: "Not now" counts as an answer (the ask only).
+ * -> a promise that resolves when the dialog closed and what it chose is done: true when LinkedIn jobs turned on (or off for Manage, or the sign-in was kept for a renewal or Easy Apply's door); false when it is already open.
  */
 export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
   const words = CONSENT[mode] || CONSENT['turn-on'];   // Why (14 Nov 2026, owner; Gitar on #4393): Easy Apply keeps the shared sign-in when LinkedIn jobs goes off, so Manage no longer warns that it stops
   const shown = showConsent(words, {chrome: !!(words.ways && view.extension)});   // the Chrome way can be picked only while the Chrome extension is connected
   if (!shown) return Promise.resolve(false);
-  const wanted = mode === 'renew' ? 'renew' : 'jobs';   // Easy Apply's door asks for LinkedIn jobs first (owner, 13 Nov 2026: "LinkedIn jobs first")
+  const wanted = mode === 'renew' ? 'renew' : mode === 'easy-apply' ? 'easy' : 'jobs';   // Easy Apply's door signs in for Easy Apply only (owner, 14 Nov 2026: "a turn on should focus just on that specific case")
   return shown.then(async answer => {
     if (answer === 'chrome') return turnOnWithChrome(wanted);
     if (answer === 'default') return mode === 'manage' ? turnOff().then(() => true) : signInHere(wanted);

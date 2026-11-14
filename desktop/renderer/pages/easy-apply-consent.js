@@ -1,6 +1,6 @@
 // LinkedIn Easy Apply's switch in the window, plan 1/5 (spec docs/superpowers/specs/2026-11-13-linkedin-easy-apply-design.md D4): the window's copy of the switch and the flow behind its two doors
-// (the Connections row, ⌘K). It shares the one LinkedIn dialog (pages/linkedin-consent.js showConsent). Without a LinkedIn sign-in, LinkedIn jobs' own dialog comes first (owner, 13 Nov 2026:
-// "LinkedIn jobs first"); the owner's warning comes once, before the first turn-on. The steps and words are renderer/easy-apply-words.js. Guard: test/unit/renderer/easy-apply-words.test.js.
+// (the Connections row, ⌘K). It shares the one LinkedIn dialog (pages/linkedin-consent.js showConsent). Without a LinkedIn sign-in, the sign-in dialog comes first and keeps the sign-in only (owner,
+// 14 Nov 2026: "a turn on should focus just on that specific case"); the owner's warning comes once, before the first turn-on. The steps and words are renderer/easy-apply-words.js. Guard: test/unit/renderer/easy-apply-words.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {EASY_APPLY, commandOf, nextStep, view} from '../easy-apply-words.js';
@@ -27,7 +27,7 @@ async function turnOn(warned) {
   else say(t('pagesEasyApply.stayedOff'), answer?.reason === 'needs-signin' ? t('pagesEasyApply.needsLinkedin') : '', NO_PLACE.itself, 'warn');
 }
 
-/** The one flow behind every door: manage while on; else LinkedIn jobs first when it holds no sign-in, then the warning once, then on. Resolves when its last step is done. */
+/** The one flow behind every door: manage while on; else the sign-in dialog first when none is kept (it turns no LinkedIn jobs switch on), then the warning once, then on. Resolves when its last step is done. */
 export async function openEasyApply() {
   await refreshEasyApply();
   let step = nextStep(view);
@@ -36,7 +36,7 @@ export async function openEasyApply() {
     await refreshLinkedin().catch(() => {});
     await refreshEasyApply();
     step = nextStep(view);
-    if (step === 'linkedin-first') return;   // Not now, or the sign-in still finishing in Chrome: the person presses Turn on again once LinkedIn jobs is on
+    if (step === 'linkedin-first') return;   // Not now, or the sign-in still finishing in Chrome: the person presses Turn on again once it is kept
   }
   if (step === 'turn-on') return turnOn(false);
   const answer = await showConsent(step === 'manage' ? EASY_APPLY.manage : EASY_APPLY.warn);

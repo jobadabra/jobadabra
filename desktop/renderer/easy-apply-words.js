@@ -15,7 +15,7 @@ export const EASY_APPLY = {
 
 /**
  * The step a press on the row or ⌘K takes, from the window's read of the switch (lib/easy-apply-switch.js viewOf):
- * 'manage' (on: Keep on / Turn off) | 'linkedin-first' (no LinkedIn sign-in kept: the sign-in dialog first; owner, 13 Nov 2026: "LinkedIn jobs first", now any kept sign-in is enough, 14 Nov 2026) | 'warn' (the first turn-on) | 'turn-on' (warned once already).
+ * 'manage' (on: Keep on / Turn off) | 'linkedin-first' (no LinkedIn sign-in kept: the sign-in dialog first; any kept sign-in is enough, and the dialog keeps it without turning LinkedIn jobs on; owner, 14 Nov 2026) | 'warn' (the first turn-on) | 'turn-on' (warned once already).
  */
 export function nextStep(view) {
   if (view.on) return 'manage';

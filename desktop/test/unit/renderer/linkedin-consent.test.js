@@ -11,7 +11,7 @@ import {viewOf as easyView} from '../../../lib/easy-apply-switch.js';
 
 const off = {loaded: true, on: false, asked: 0, declined: 0, ask: true, hasSession: false};
 
-test('each door turns LinkedIn jobs on: window in main, Chrome after its copy arrives; Easy Apply\'s door then shows its warning', async t => {
+test('each door turns on only its own switch: window in main, Chrome after its copy arrives; Easy Apply\'s door keeps the sign-in, then shows its warning', async t => {
   const previousWindow = globalThis.window, previousDocument = globalThis.document;
   const nodes = new Map();
   const node = id => {
@@ -49,7 +49,8 @@ test('each door turns LinkedIn jobs on: window in main, Chrome after its copy ar
       await consent.refreshLinkedin();
       if (mode === 'easy-apply') await easy.openEasyApply();
       else await consent.openLinkedinConsent({mode});
-      assert.equal(settings.linkedinJobs?.on === true, true, `${mode} chrome=${chrome}`);
+      assert.equal(settings.linkedinJobs?.on === true, mode === 'turn-on', `${mode} chrome=${chrome}: Easy Apply's door turns LinkedIn jobs on no more (owner, 14 Nov 2026)`);
+      assert.equal(easyView(storage, {packaged: false}).signedIn, true, 'the sign-in is kept either way');
       assert.equal(settings.easyApply?.on === true, mode === 'easy-apply', 'Easy Apply goes on only after its own warning');
     }
   } finally { globalThis.window = previousWindow; globalThis.document = previousDocument; }
@@ -162,7 +163,8 @@ test('every sign-in door asks how to sign in, Chrome first; Manage asks nothing 
   }
   assert.equal(CONSENT.manage.ways, undefined, 'manage signs nobody in');
   assert.match(CONSENT['easy-apply'].title, /for Easy Apply/);
-  assert.match(CONSENT['easy-apply'].lead, /also turns on LinkedIn jobs/, 'it says what else turning on does');
+  assert.match(CONSENT['easy-apply'].lead, /only Easy Apply/, 'it says LinkedIn jobs is not turned on');
+  assert.doesNotMatch(CONSENT['easy-apply'].lead, /also turns on LinkedIn jobs/);
   assert.doesNotMatch(CONSENT.manage.lead, /Easy Apply/);
   assert.equal(CONSENT['manage-easy-apply'], undefined, 'Gitar on #4393: Manage never says Easy Apply stops; it keeps the shared sign-in');
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
@@ -226,7 +228,7 @@ test('⌘K finds "Renew LinkedIn sign-in" for "link", "renew" and "sign in" whil
 test('the renew dialog is the third mode of the one consent: its yes signs in, never turns off', () => {
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /mode === 'manage' \? turnOff\(\)\.then\(\(\) => true\) : signInHere\(wanted\)/, 'only manage turns off; renew and turn-on sign in');
-  assert.match(page, /const wanted = mode === 'renew' \? 'renew' : 'jobs';/);
+  assert.match(page, /const wanted = mode === 'renew' \? 'renew' : mode === 'easy-apply' \? 'easy' : 'jobs';/);
   const settings = readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8');
   assert.match(settings, /mode: needsYou \? .renew. :/, 'the card\'s button opens renew while it needs you');
 });
@@ -234,8 +236,8 @@ test('the renew dialog is the third mode of the one consent: its yes signs in, n
 test('a renewal never says "LinkedIn jobs is on" and never waits for the switch (Gitar on #3914): it says the copy is saved; the next good read says "renewed"', () => {
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /answer\?\.ok && renew\) toast\(.LinkedIn sign-in saved./, 'the sign-in window path');
-  assert.match(page, /return wanted === 'renew' \? false : watchUntilSignedIn\(\);/, 'the Chrome path does not wait for an "on" that is already true');
-  assert.match(page, /const renew = wanted === 'renew';/);
+  assert.match(page, /return wanted === 'renew' \? false : watchUntilSignedIn\(wanted\);/, 'the Chrome path does not wait for an "on" that is already true');
+  assert.match(page, /const renew = wanted !== 'jobs';/, 'a renewal and Easy Apply\'s door only keep the sign-in');
 });
 
 // Gitar on #4374: a kept sign-in whose turn-on was refused is told as that, never as a cancel.
