@@ -17,7 +17,7 @@
  },
  "L05": {
   "gets": "the job boards lane starts no new read after the search's last judging pass, a few seconds before its deadline, and waits for a read already open to the run's end, not to the employer sites' read cut",
-  "hash": "5ad286b74e736027"
+  "hash": "9c3efcb958d65024"
  },
  "L06": {
   "gets": "the best employer sites are always read, the rest are kept and read first next time",
@@ -165,6 +165,6 @@
  },
  "L42": {
   "gets": "board jobs read before the search's last judging pass are placed and title-judged in the search; one read after it waits for the queue after the search; the pass starts no AI call in the run's last seconds",
-  "hash": "fd12de2bec245828"
+  "hash": "14c10ef4ea6d5cd0"
  }
 }
