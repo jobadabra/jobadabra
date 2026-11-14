@@ -2,7 +2,7 @@
 rest/<path, every non-alphanumeric as _>: the JSON body for that path, with an ETag of its hash (304 when the request sends that ETag). A missing file: [] for a list, else 404.
 The watcher's looks (tests/test_ship_watch.py): when states exists, repos/<r>/pulls/<n> and the head's check-runs/status follow one line per look of
 states (OPEN | MERGED <sha> | CLOSED | REFUSED), mergeables, checks (pending | <failing name> | empty = pass), runs (none | running | gate | ok | refused: a 403), verdicts (pending | none | ok),
-heads (the head sha, default new1), labels (comma-separated names), titles (default "[t] A change"), reviews.json (the PR's reviews, REST shape), twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
+variables (a repository variable's value per look, or 404 once deleted), heads (the head sha, default new1), labels (comma-separated names), titles (default "[t] A change"), reviews.json (the PR's reviews, REST shape), twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
 Every call is appended to calls; any other gh command fails like an unknown call.
 REST out (10 Nov 2026, the GraphQL fallback of tools/pr-rest-lib.sh): a refuse_rest file makes every REST read a 403 "API rate limit exceeded"; `gh api rate_limit` prints the number in rate_core (default 5000);
 `gh api graphql` answers the query it recognises from graphql_view.json (pullRequest), graphql_checks.json (checkSuites) or graphql_runs.json (the aliased resource lookups), each a full {"data": ...} body, and
@@ -109,6 +109,12 @@ if (d / 'states').exists() and re.search(r'/commits/[^/]+/status$', path):
     runs = line('runs', look())   # like pr-verdict.yml: no status before the head's runs exist, pending while they run, none for runs older than the status
     verdict = line('verdicts', look()) or {'gate': 'none', 'none': 'none', 'running': 'pending'}.get(runs, 'ok')
     answer({'sha': line('heads', look()) or 'new1', 'statuses': [] if verdict == 'none' else [{'context': 'All checks passed', 'state': 'pending' if verdict == 'pending' else 'success', 'target_url': 'u'}]})
+if (d / 'variables').exists() and re.search(r'/actions/variables/[A-Z_]+$', path):   # a repository variable per look: its value, or 404 (deleted)
+    value = line('variables', look())
+    if value == '404':
+        print('HTTP/2.0 404 Not Found\n\n{"message":"Not Found"}')
+        sys.exit(1)
+    answer({'name': path.rsplit('/', 1)[1], 'value': value})
 f = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', path)
 if f.exists():
     answer(json.loads(f.read_text()))
