@@ -192,7 +192,10 @@ def search_key(search):
 
 def read_lately(db, name, now=None, search=None):
     """When reader `name` was last read, if that was within SPACING_HOURS for this search (it is not read again before), else None.
-    Without a search, or a last read from before the key was kept, any search counts as the same one."""
+    Without a search, or a last read from before the key was kept, any search counts as the same one. A row whose `rests` says no for this run (reader_rows) is never "read lately"."""
+    from . import reader_rows
+    if any(row.name == name and not row.rests(os.environ) for row in reader_rows.ROWS):
+        return None
     db.execute(TABLE)
     db.execute(SEARCH_TABLE)
     last = db.execute('SELECT at FROM aggregator_runs WHERE source = ?', (name,)).fetchone()

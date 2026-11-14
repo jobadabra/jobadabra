@@ -46,6 +46,7 @@ class Row:
     read: Callable
     on: Callable[[Mapping], bool]
     lane: str
+    rests: Callable[[Mapping], bool] = lambda env: True   # read at most once in aggregators.SPACING_HOURS for a search (aggregators.read_lately); False: asked every search
 
 
 def _eures_read(run, search):
@@ -90,6 +91,13 @@ def _linkedin_on(env):
     return not disabled('aggregators', env) and enabled('linkedin_guest', env)
 
 
+def _linkedin_rests(env):
+    """Why (owner, 14 Nov 2026, asked via AskUserQuestion: "Cloud only, Mac keeps 6 h (Recommended)"; the caps approved 13 Nov, spec 2026-11-13-linkedin-guest-search-design.md "Caps"):
+    on the Mac each search is read at most once per 6 h; an Always on run (the site's turn) has no engine rest, the site's caps pace it (searches a person a day, requests a day, the 6 h shared cache, the 24 h stop)."""
+    from . import linkedin_turn
+    return not linkedin_turn.active(env)
+
+
 # Why (#3887, Norway's and Switzerland's rows, 12 Nov 2026): named here, not imported: the retired replay's verdict script (13 Nov 2026) loaded this file on its own (no package), so nothing at import imports a sibling; kept so. src/sources/national.py SERVICES' names, in its order; tests/unit/sources/test_national.py pins the two equal.
 NATIONAL = ('Platsbanken', 'Le Forem', 'arbeidsplassen.no', 'Job-Room')
 
@@ -97,5 +105,5 @@ NATIONAL = ('Platsbanken', 'Le Forem', 'arbeidsplassen.no', 'Job-Room')
 ROWS = (
     Row('EURES', _eures_read, _eures_on, 'eures'),   # the portal's countries only (it returns nothing otherwise)
     *(Row(name, _national_read(name), _national_on, 'free_job_apis') for name in NATIONAL),   # each its own country only (it returns nothing otherwise)
-    Row('LinkedIn', _linkedin_read, _linkedin_on, 'linkedin_guest'),   # started at the press like the free job APIs (src/sources/api_lane.py), in its own thread
+    Row('LinkedIn', _linkedin_read, _linkedin_on, 'linkedin_guest', _linkedin_rests),   # started at the press like the free job APIs (src/sources/api_lane.py), in its own thread
 )
