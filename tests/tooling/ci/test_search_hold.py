@@ -55,8 +55,8 @@ class SearchHoldTest(unittest.TestCase):
         self.assertIn('Moves: p1 right jobs 20 → 6', out['body'])   # the number is written either way
 
     def test_an_unmeasured_difference_allows_seven_jobs(self):   # 13 Nov 2026, sa: 7, not 1 (run 43498213279: the same code gave 8 vs 15)
-        self.assertTrue(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 5, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
-        self.assertFalse(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 4, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
+        self.assertTrue(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 5, None), p4=(20, 40, None)), ['p1', 'p4'], 1)['lift'])
+        self.assertFalse(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 4, None), p4=(20, 40, None)), ['p1', 'p4'], 1)['lift'])
 
     def test_a_side_not_valid_runs_once_more_then_reports(self):
         first = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1, rerun=['p4'])

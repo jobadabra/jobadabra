@@ -42,16 +42,18 @@ class TheRow(unittest.TestCase):
         out = pair_row.decide({'c15': moves(5, 20)}, ['c15'], {'c15'}, {'c15': None}, 1, rows(c15=1))
         self.assertIn('gain beyond ±7', out['title'])
 
-    def test_a_pair_that_did_not_count_runs_once_more_then_stays_pending_never_red_or_green(self):
+    def test_a_pair_that_did_not_count_runs_once_more_then_is_red_never_green(self):
+        """Owner via sa, 14 Nov 2026: "not valid or a swing → one re-run, then decide". Reverses 13 Nov's "never red" (sa: a stalled call is not a loss): a stall that repeats in the one re-run is red with its reason,
+        so a PR is not open forever on a pair that cannot count; the first attempt stays pending and asks for the one re-run."""
         flat = {'b10': {'main': [{'valid': False, 'shared': False}], 'pr': [{'valid': False, 'shared': False}]}}
         first = pair_row.decide({}, ['b10'], {'b10'}, {}, 1, flat)
         self.assertEqual((first['conclusion'], first['rerun']), ('pending', ['b10']))
         self.assertIn('boards not shared', first['title'])
         second = pair_row.decide({}, ['b10'], {'b10'}, {}, 2, flat)
-        self.assertEqual((second['conclusion'], second['rerun']), ('pending', []))   # sa, 13 Nov 2026: a stalled call is not a loss, never red
-        self.assertTrue(second['title'].startswith('not counted: b10'))
-        self.assertIn('run it again', second['title'])
-        self.assertNotIn('failure', (first['conclusion'], second['conclusion']))
+        self.assertEqual((second['conclusion'], second['rerun']), ('failure', []))
+        self.assertTrue(second['title'].startswith('not valid twice: b10'))
+        self.assertIn('boards not shared', second['title'])
+        self.assertEqual(pair_row.decide({}, ['b10'], {'b10'}, {}, 2, flat, second_ran=False)['conclusion'], 'pending', 'the second run was never started: it did not fail twice')
         self.assertIn('run the pair by hand', first['summary'])   # #4103: an unowned second run that never starts is closed by a pair by hand, and the row says so
         self.assertNotIn('running once more', first['title'])
 
@@ -122,7 +124,7 @@ class TheRowsStatesHaveOneWriter(unittest.TestCase):
             (row_of('running'), ev('ended', done={}, rows=rows(c04=1)), 'rerunning'),   # not counted, a side ran: once more
             (row_of('running'), ev('ended', done={}, seen=set(), rows={}), 'unproven'),   # never searched: not run again (#3967)
             (row_of('running'), ev('ended', done={}, rerun_failed=True), 'unproven'),
-            (row_of('rerunning'), ev('ended', done={}), 'unproven'),   # never a third
+            (row_of('rerunning'), ev('ended', done={}), 'counted'),   # never a third: red "not valid twice"
             (row_of('running', '3'), ev('ended'), 'noop'), (row_of('running', '3'), ev('died'), 'noop'),   # another run's row
             (row_of('waiting', ''), ev('ended'), 'noop'), (row_of('unproven', ''), ev('died'), 'noop'),
         ]
@@ -164,8 +166,8 @@ class TheRowsStatesHaveOneWriter(unittest.TestCase):
         second_start = pair_row.next_row({'external_id': first['api']['external_id'], 'summary': first['api']['output']['summary']}, ev('started', run_id='2', claim=True))
         self.assertEqual(second_start['state'], 'rerunning')
         second = pair_row.next_row({'external_id': second_start['api']['external_id'], 'summary': second_start['api']['output']['summary']}, ev('ended', run_id='2', done={}))
-        self.assertEqual((second['state'], second['rerun'], second['api']['status']), ('unproven', [], 'in_progress'))   # never red, never green
-        self.assertIn('run it again', second['api']['output']['title'])
+        self.assertEqual((second['state'], second['rerun'], second['api']['status'], second['api']['conclusion']), ('counted', [], 'completed', 'failure'))   # not valid twice: red, never green
+        self.assertIn('not valid twice', second['api']['output']['title'])
 
     def test_a_failed_second_dispatch_says_so_and_asks_for_nothing(self):
         out = pair_row.next_row(row_of('running'), ev('ended', done={}, rerun_failed=True))
@@ -177,6 +179,67 @@ class TheRowsStatesHaveOneWriter(unittest.TestCase):
         out = pair_row.next_row(row_of('rerunning', '7', ('b10', 'c04'), summary=first + '\nnot counted: b10'), ev('ended', people=['b10'], ran=['b10'], done={'b10': moves(2, 9)}, rows=rows(b10=1), seen={'b10'}))
         self.assertIn('c04 15 → 14', out['api']['output']['summary'])
         self.assertIn('b10 2 → 9', out['api']['output']['title'])
+
+class TheRowDemandsAProvenGainOnlyFromThePeopleTheMovesLinesName(unittest.TestCase):
+    """Owner, 14 Nov 2026: "The PR CI check (search pair) should tell us": green = valid, nobody worse, and the claimed gain beyond the usual difference; red = no gain or a loss."""
+    def verdict(self, done, claims, **more):
+        return pair_row.decide(done, list(done), set(done), {p: None for p in done}, 1, rows(**{p: 1 for p in done}), claims=claims, **more)
+
+    def test_positive_control_a_named_person_who_gained_beyond_the_band_is_green(self):
+        out = self.verdict({'p3': moves(5, 20)}, {'p3'})
+        self.assertEqual(out['conclusion'], 'success')
+
+    def test_a_named_person_level_within_the_band_is_red_no_proven_gain_with_the_way_out(self):
+        out = self.verdict({'p3': moves(15, 17)}, {'p3'})
+        self.assertEqual(out['conclusion'], 'failure')
+        self.assertTrue(out['title'].startswith('no proven gain: p3 15 → 17'), out['title'])
+        self.assertIn('ruleset override', out['summary'])
+        self.assertEqual(out['rerun'], [])
+
+    def test_a_gain_of_exactly_the_band_is_not_beyond_it(self):
+        self.assertEqual(self.verdict({'p3': moves(10, 17)}, {'p3'})['conclusion'], 'failure')
+        self.assertEqual(self.verdict({'p3': moves(10, 18)}, {'p3'})['conclusion'], 'success')
+
+    def test_one_gaining_person_is_enough_a_guard_person_may_stay_level(self):
+        done = {'p3': moves(5, 20), 'p9': moves(12, 12)}
+        self.assertEqual(self.verdict(done, {'p3', 'p9'})['conclusion'], 'success')
+        self.assertEqual(self.verdict({'p3': moves(5, 6), 'p9': moves(12, 12)}, {'p3', 'p9'})['conclusion'], 'failure')
+
+    def test_a_pair_for_people_no_moves_line_names_claims_nothing_and_a_loss_is_still_red(self):
+        self.assertEqual(self.verdict({'p3': moves(15, 15)}, set())['conclusion'], 'success', 'a by-hand pair with no Moves line: no claim, no gain demanded')
+        self.assertEqual(self.verdict({'p3': moves(15, 2)}, set())['conclusion'], 'failure')
+        self.assertEqual(self.verdict({'p3': moves(15, 15)}, {'b02'})['conclusion'], 'success', 'a named person this pair did not measure is not judged here')
+
+    def test_a_gain_the_first_run_already_proved_is_not_lost_when_the_second_run_repeats_other_people(self):
+        first = 'p3 5 → 20 right jobs (one run a side, gain beyond the usual difference of 7)'
+        out = self.verdict({'p9': moves(12, 12)}, {'p3', 'p9'}, earlier=[first])
+        self.assertEqual(out['conclusion'], 'success')
+
+    def test_a_loss_beyond_the_band_stays_a_loss_not_a_missing_gain(self):
+        out = self.verdict({'p3': moves(15, 2)}, {'p3'})
+        self.assertTrue(out['title'].startswith('fell:'), out['title'])
+
+    def test_the_body_names_its_people_pending_or_numbered_and_nothing_names_nobody(self):
+        import pair
+        body = '- Moves: p3 right jobs 0 → pending (1 run a side, same minute, usual difference 2)\n**Moves:** b08 right jobs 4 → 9 (1 run a side, same minute, usual difference not measured yet)\n'
+        self.assertEqual(pair.claims(body), {'p3', 'b08'})
+        self.assertEqual(pair.claims('Moves: nothing (a comment line)'), set())
+        self.assertEqual(pair.claims('Move: p3 right jobs 0 → pending ('), set())
+
+    def test_settle_keeps_ships_hold_when_the_row_is_red_for_no_gain(self):
+        import pair
+        body = 'Moves: p3 right jobs 0 → pending (1 run a side, same minute, usual difference 2)'
+        done = {'p3': {'before': 15, 'after': 16, 'd': None, 'line': 'Moves: p3 right jobs 15 → 16 (1 run a side, same minute, usual difference not measured yet)'}}
+        kept = pair.settle(body, '[xx] DONT MERGE t', ['search-hold'], done, ['p3'], 1)
+        self.assertFalse(kept['lift'])
+        self.assertIn('no proven gain for p3', ' '.join(kept['verdict']))
+        done['p3']['after'] = 30
+        self.assertTrue(pair.settle(body, '[xx] DONT MERGE t', ['search-hold'], done, ['p3'], 1)['lift'], 'positive control: a proven gain lifts it')
+
+    def test_the_workflow_hands_the_prs_body_to_the_row(self):
+        text = (Path(__file__).resolve().parents[3] / '.github' / 'workflows' / 'search-pair.yml').read_text()
+        self.assertEqual(text.count('pair.py row dl'), text.count('--body=view.json'), 'every row call reads the people the PR names')
+
 
 class TheRowsPageLinksTheRun(unittest.TestCase):
     """Owner on #4187, 14 Nov 2026: "I don't see the actual run". GitHub ignores details_url for a check run the github-actions app creates (read back: its own page), so the summary is the link."""
