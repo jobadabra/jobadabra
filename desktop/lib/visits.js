@@ -342,7 +342,7 @@ function capPages(maxPages, pages, ticket, {jobs, added}) {
   waiting.delete(ticket);
   resolve({stopped: `${pages} pages read: the most for this read`, jobs, added: Number(added) || 0, pages});
 }
-// signal: Stop (lib/pipeline.js work): no further site opens, and the ones reading now end at once (their tabs are left as they are). maxPages: a site ends after that many pages (0 = the extension's own). Each result has `blocked`: 'login' | 'check' | ''.
+// signal: Stop (lib/pipeline.js work): no further site opens, and the ones reading now end at once (their tabs are left as they are). maxPages: a site ends after that many pages (0 = the extension's own). Each result has `blocked`: 'login' | 'check' | '', and `unreachable`: Chrome's load error code when the tab never loaded (extension/visit.js siteUnreachable), else ''.
 export async function runAll(sites, {hold = false, atOnce = 2, filter = true, tee = () => {}, openTab = open, waitMs = WAIT_MS, quietMs = QUIET_MS, siteMs = SITE_MS, prepare = null, signal = null, maxPages = 0} = {}) {
   const queue = [...sites], results = [];
   const mine = new Map();   // this run's tickets still waiting -> what each read so far, for Stop
@@ -435,7 +435,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
     tee(siteLine(ok ? 'done' : state.closed ? 'closed' : 'stopped', site.name, ok ? `${state.jobs} job${state.jobs === 1 ? '' : 's'} read (${state.added || 0} new), ${fits} matching your search${cut}` : state.stopped || 'nothing read'));
     tee(`⏳ Finding jobs in your browser: ${doneCount} of ${sites.length} · ${percent(doneCount, sites.length)}% · ${site.name}: ${ok ? `${state.jobs} jobs` : 'stopped'}`);   // the window's running step
     log('visit', 'site read by the Actions task', {host: new URL(site.url).hostname, jobs: state.jobs || 0, added: state.added || 0, fits, pages: state.pages || 0, stopped: String(state.stopped || '').slice(0, 80)});
-    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: blockedOf(state), pages: state.pages || 0, answered: answered || !!state.answered};
+    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: blockedOf(state), unreachable: String(state.unreachable || ''), pages: state.pages || 0, answered: answered || !!state.answered};
   };
   active = {queue, sites, lastPage: new Map(), tickets: new Map(), back: site => {   // "Open again": the site is next once more, and no longer counted as finished
     if (queue.includes(site)) return;

@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import {after, before, test} from 'node:test';
 import {ALLOWED, OTHER, startRig, until} from '../../e2e/lib/visits-auto-rig.mjs';
+import {CLOSE_MS, at, capOf, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 
 const LIVE_APP_PORT = 47111;   // lib/server-listen.js DEFAULT_PORT: the owner's own app
 let rig;
@@ -91,3 +92,25 @@ test('a marked tab whose site redirects by script and drops the mark is still re
     assert.equal(report.jobs, 3);
   });
 });
+
+// Why (Gitar on #4254, rule B): one clock for the whole test, so a hang names its stage instead of Node's bare "test timed out".
+const LOOP_MS = 40000, LOOP_CAP = {timeout: LOOP_MS + CLOSE_MS + 5000};
+test('a marked tab whose site redirects in a loop is reported at once as a redirect loop, with its ticket, and closed', LOOP_CAP, clocked(LOOP_MS, async () => {
+  const {app, context} = rig;
+  app.calls.length = 0;
+  await withGrant(async () => {
+    const tab = await context.newPage();
+    onHang(() => tab.close());
+    at('open the looping site');
+    await assert.rejects(tab.goto(`https://${ALLOWED}/loop-0#jp-read-10095eed`), /ERR_TOO_MANY_REDIRECTS/, 'the stand-in site did not loop (the control)');
+    at('wait for the report to the app');
+    const reported = await until(() => doneCalls().length > 0, capOf(20000));
+    assert.ok(reported, `no done report after a redirect loop (the app would wait 30 s on "waiting for the page to load"); calls: ${app.calls.map(call => call.path).join(', ')}`);
+    const report = doneCalls()[0].payload;
+    assert.equal(report.ticket, '10095eed', 'the app could not match the report to the run');
+    assert.equal(report.unreachable, 'TOO_MANY_REDIRECTS', 'the app cannot tell a redirect loop (a sign-in no longer accepted) from any other stop');
+    assert.match(report.stopped, /redirect/);
+    at('wait for the tab to close');
+    assert.ok(await until(() => tab.isClosed(), capOf(10000)), 'the tab stayed open');
+  });
+}));

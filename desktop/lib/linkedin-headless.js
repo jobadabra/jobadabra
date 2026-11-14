@@ -43,10 +43,13 @@ function tabOpener({browser, openCdp, end, tabs, sessions, seen}) {
   };
 }
 
-/** Why a read ends after one search, or null to go on: the 429-style status the tab saw, a sign-in page, a check page (the extension's page kind, not words), or Stop. */
+/** Why a read ends after one search, or null to go on: the 429-style status the tab saw, a sign-in page or a redirect loop, a check page (the extension's page kind, not words), or Stop. */
 export function endOf(result, seen, signal) {
   if (seen.status) return 'limited';
   if (result?.blocked === 'login') return 'signed-out';
+  // Why (14 Nov 2026, the twin: 3 of 3 searches looped, "www.linkedin.com redirected you too many times"): LinkedIn sends a kept session it no longer accepts round in a redirect loop
+  // instead of to its sign-in page; the person's fix is the same (renew the sign-in), so is the verdict, and the read stops with no retry.
+  if (result?.unreachable === 'TOO_MANY_REDIRECTS') return 'signed-out';
   if (result?.blocked === 'check') return 'check';
   return signal?.aborted || result?.why === 'Stopped by you' ? 'stopped' : null;
 }

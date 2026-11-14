@@ -58,6 +58,8 @@ export async function startRig() {
   const certs = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-visits-cert-'));
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=jp-e2e', '-keyout', path.join(certs, 'key.pem'), '-out', path.join(certs, 'cert.pem')], {stdio: 'ignore'});
   const sites = https.createServer({key: fs.readFileSync(path.join(certs, 'key.pem')), cert: fs.readFileSync(path.join(certs, 'cert.pem'))}, (req, res) => {
+    // A site that sends the browser round in circles (a signed-in read whose session the site no longer accepts: LinkedIn, 14 Nov 2026): Chrome ends it with ERR_TOO_MANY_REDIRECTS.
+    if (new URL(req.url, 'https://x').pathname.startsWith('/loop')) { res.writeHead(302, {location: `/loop-${Number(String(req.url).match(/\d+/)?.[0] || 0) + 1}`}); res.end(); return; }
     const file = path.join(FIXTURES, path.basename(new URL(req.url, 'https://x').pathname));
     if (!fs.existsSync(file) || !file.endsWith('.html')) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
