@@ -1,12 +1,5 @@
 [
  {
-  "seed": 20261108,
-  "pairs": [
-   "start → Settings: Developer options: Save",
-   "Settings: Developer options: Save → App: Read the app in another language"
-  ]
- },
- {
   "seed": 20261109,
   "pairs": [
    "start → Profile: Build a CV with the AI",
@@ -38,6 +31,10 @@
  },
  {
   "seed": 20261114,
+  "pairs": []
+ },
+ {
+  "seed": 20261115,
   "pairs": []
  }
 ]
