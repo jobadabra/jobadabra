@@ -1,0 +1,3 @@
+# Field notes: App
+
+- Read the app in Español: in Settings, Overview, pick "Español" in the Language dropdown (type "Español" into it), then open Focus, Jobs and Settings and read each one. Note every English word, sentence, button or message you still see on them (a person's own text, company and job names stay as they are). End on Settings and leave the language as it is: the test puts the app back in English.: Switched to Español, read Focus, Jobs and Settings, and noted the English "AI" label left on Settings; ended on Settings. | seen 1× | first 2026-11-20 | last 2026-11-20 | commit a80a6dd | session 2026-11-20-20261120

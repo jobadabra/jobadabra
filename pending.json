@@ -8,10 +8,6 @@
   "label": "Experience sources: Add another CV version"
  },
  {
-  "group": "App",
-  "label": "Read the app in another language"
- },
- {
   "group": "Jobs",
   "label": "Jobs filter: Applying"
  },
@@ -28,7 +24,11 @@
   "label": "Actions: More · 2"
  },
  {
-  "group": "Actions",
-  "label": "Actions: View details"
+  "group": "Jobs",
+  "label": "Show jobs as a list"
+ },
+ {
+  "group": "Settings",
+  "label": "Change app language"
  }
 ]
