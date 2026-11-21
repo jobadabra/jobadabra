@@ -12,6 +12,10 @@
   "label": "Jobs filter: Applying"
  },
  {
+  "group": "App",
+  "label": "Read the app in another language"
+ },
+ {
   "group": "Strategy",
   "label": "Tune my strategy"
  },
