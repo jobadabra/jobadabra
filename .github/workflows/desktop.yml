@@ -126,8 +126,10 @@ jobs:
           if [ "$NIGHTLY" != true ]; then echo "build=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           # Against the newest release that reached someone (a stable, or a build a platform's gate approved as beta), never a build that failed
           # its gate: 9 Oct 2026 the failed 0.6.12 counted as "the last release", the nightly built nothing and the fix waited for a manual beta.
+          # Why-changed: the pick — newest by published_at (created_at is the commit's date), not the list's first: GitHub lists the release marked Latest (the stable) first, so from 15 to 21 Nov 2026
+          # every night diffed against stable 0.9.29 and built a new beta (0.9.30-0.9.34) of the same commit a80a6dd (owner, 21 Nov 2026: "releasing beta every day, even if there are no new commits").
           tag=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
-            --jq '[.[] | select(.draft | not) | select((.prerelease | not) or ((.body // "") | test("(^|\n)Beta-approved")))][0].tag_name // empty' || true)
+            --jq '[.[] | select(.draft | not) | select((.prerelease | not) or ((.body // "") | test("(^|\n)Beta-approved")))] | sort_by(.published_at) | last | .tag_name // empty' || true)
           sha=$([ -n "$tag" ] && git rev-list -n 1 "$tag" 2>/dev/null || true)
           # The tests of the app (desktop/test, desktop/e2e) are not in the app: a night when only they changed builds nothing.
           paths=(desktop src config templates tools extension app-core/src requirements.txt requirements-transcribe.txt

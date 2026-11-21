@@ -61,13 +61,15 @@ class DesktopWorkflowTest(unittest.TestCase):
             self.skipTest('jq is not installed')
         query = re.search(r"--jq '(.*?)' \|\| true\)", WORKFLOW).group(1)
         releases = [
-            {'tag_name': 'draft', 'draft': True, 'prerelease': True, 'body': 'Beta-approved: x'},
-            {'tag_name': 'failed-build', 'draft': False, 'prerelease': True, 'body': 'Built from abc\nNot approved'},
-            {'tag_name': 'windows-beta', 'draft': False, 'prerelease': True, 'body': 'notes\nBeta-approved (Windows): passed'},
-            {'tag_name': 'stable', 'draft': False, 'prerelease': False, 'body': ''},
+            {'tag_name': 'draft', 'draft': True, 'prerelease': True, 'body': 'Beta-approved: x', 'published_at': None},
+            {'tag_name': 'failed-build', 'draft': False, 'prerelease': True, 'body': 'Built from abc\nNot approved', 'published_at': '2026-11-21T03:05:00Z'},
+            {'tag_name': 'windows-beta', 'draft': False, 'prerelease': True, 'body': 'notes\nBeta-approved (Windows): passed', 'published_at': '2026-11-20T03:05:00Z'},
+            {'tag_name': 'stable', 'draft': False, 'prerelease': False, 'body': '', 'published_at': '2026-11-14T03:05:00Z'},
         ]
         pick = lambda rows: subprocess.run([jq, '-r', query], input=json.dumps(rows), capture_output=True, text=True, check=True).stdout.strip()
         self.assertEqual(pick(releases), 'windows-beta')
+        # 15-21 Nov 2026: GitHub lists the release marked Latest (an older stable) first; the newest by publish time still wins.
+        self.assertEqual(pick([releases[3]] + releases[:3]), 'windows-beta')
         self.assertEqual(pick(releases[:2] + releases[3:]), 'stable')
         self.assertEqual(pick(releases[:2]), '')   # nothing reached anyone: build
 
