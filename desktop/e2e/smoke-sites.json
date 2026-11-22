@@ -656,6 +656,20 @@
     "https://careers.gudel.com/job/Langenthal-Senior-Accountant-%28mwd%29/1429998633/"
    ],
    "signature": "posting>account>posting>account>posting>account>posting>account@career5.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: bbv.ch",
+   "urls": [
+    "https://bbv.ch/freelancer-detail/2922/senior-net-entwickler-m-w-d-mit-blazor-kenntnissen"
+   ],
+   "signature": "posting>other>posting>posting>other>posting>posting@bbv.ch#posting"
+  },
+  {
+   "shape": "Discovery: karriere.akdb.de",
+   "urls": [
+    "https://karriere.akdb.de/karriere/Senior-Backend-Entwickler-Java-Spring-Boot-mwd-de-j1176.html"
+   ],
+   "signature": "posting>form>posting>form@karriere.akdb.de#form"
   }
  ]
 }
