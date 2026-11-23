@@ -39,9 +39,22 @@ PLATFORMS = {'linkedin', 'gmail', 'googlemail', 'google', 'outlook', 'hotmail', 
              'protonmail', 'gmx', 'calendly', 'cal', 'zoom', 'teams', 'microsoft', 'xing', 'indeed', 'glassdoor'}
 
 
+def _is_calendar_address(address):
+    """True for Google Calendar's own senders and organizers: they name no person or employer."""
+    address = (address or '').lower()
+    return address == 'calendar-notification@google.com' or address.endswith('calendar.google.com')
+
+
+def _people(row):
+    """The Contact field without Google Calendar's own entry. Why (owner, 23 Nov 2026): a job read from a calendar email had the contact
+    "Google Calendar · calendar-notification@google.com", and every flight Gmail put on the calendar became its "Interview tomorrow"."""
+    entries = _field(row, 'contact').split(';')
+    return ';'.join(e for e in entries if not any(_is_calendar_address(a) for a in re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', e)))
+
+
 def _contact_names(row):
     """Full names written in the Contact field ("Alex Morgan · alex@yupe.io" -> "alex morgan")."""
-    return {m.lower() for m in re.findall(r"\b[A-Z][a-zà-ÿ'-]+ [A-Z][a-zà-ÿ'-]+\b", _field(row, 'contact'))}
+    return {m.lower() for m in re.findall(r"\b[A-Z][a-zà-ÿ'-]+ [A-Z][a-zà-ÿ'-]+\b", _people(row))}
 
 
 def person_name(value):
@@ -56,7 +69,7 @@ def person_name(value):
 def _names_person(row, text):
     """True if the text names this job's contact person: first and last name both, in any order or format."""
     words = set(re.findall(r'[a-zà-ÿ]+', text.lower()))
-    for person in _field(row, 'contact').split(' · '):
+    for person in _people(row).split(' · '):
         if '@' in person:
             continue
         parts = {w for w in re.findall(r'[a-zà-ÿ]+', person_name(person).lower()) if len(w) >= 3}
@@ -101,14 +114,14 @@ def _matches(row, text):
     names = [n.lower() for n in (_field(row, 'company'), _field(row, 'via')) if len(n) > 2]
     names += [n.split()[0].lower() for n in names if len(n.split()[0]) >= 5]
     names += sorted(_contact_names(row))
-    emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', _field(row, 'contact').lower())
+    emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', _people(row).lower())
     return (any(re.search(rf'(?<![\w]){re.escape(n)}(?![\w])', text) for n in names) or any(e in text for e in emails)
             or _names_person(row, text))
 
 
 def _same_person(row, text):
     """True if the text carries a contact's email address of this application, or names one of its contacts."""
-    emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', _field(row, 'contact').lower())
+    emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', _people(row).lower())
     return any(e in text.lower() for e in emails) or _names_person(row, text)
 
 
@@ -128,7 +141,8 @@ def _about_tracked(apps, text):
 
 
 def _event_text(event):
-    people = [f"{a.get('displayName', '')} {a.get('email', '')}" for a in event.get('attendees', [])]
+    address = lambda person: '' if _is_calendar_address(person.get('email')) else person.get('email', '')
+    people = [f"{a.get('displayName', '')} {address(a)}" for a in event.get('attendees', [])]
     organizer = event.get('organizer') or {}
     return ' '.join([event.get('summary', ''), event.get('description', ''), event.get('location', ''),
-                     organizer.get('email', ''), organizer.get('displayName', ''), *people])
+                     address(organizer), organizer.get('displayName', ''), *people])
