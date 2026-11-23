@@ -298,5 +298,28 @@ class OneJobNameTests(MailCase):
         self.assertEqual((update.split(' · ', 1)[1], read['label']), ('R&D Talent — Lab Lead', 'R&D Talent — Lab Lead'))
 
 
+class CalendarSystemNamesTests(MailCase):
+    """Guard: a flight Gmail put on the calendar became "Interview tomorrow" on a job record named "Google Calendar" (owner, 23 Nov 2026)."""
+    FLIGHT = {'summary': 'Flight to Lisbon (XX 100)', 'location': 'Geneva GVA', 'organizer': {'email': 'unknownorganizer@calendar.google.com'}}
+
+    def test_a_job_whose_contact_is_the_calendar_does_not_claim_its_events(self):
+        job = record_of(app('p1', '', 'Notification: a call', contact='Google Calendar · calendar-notification@google.com'))
+        for event in (self.FLIGHT, {**self.FLIGHT, 'description': 'View in Google Calendar'}):
+            self.assertFalse(mail._matches(job, mail._event_text(event)))
+
+    def test_a_real_person_beside_the_calendar_entry_still_matches(self):
+        job = record_of(app('p4', '', 'SRE', contact='Google Calendar · calendar-notification@google.com; Alex Morgan · alex@yupe.io'))
+        self.assertTrue(mail._matches(job, 'Call with Alex Morgan'))
+
+    def test_a_real_google_job_needs_the_event_to_name_google(self):
+        job = record_of(app('p2', 'Google', 'SRE'))
+        self.assertFalse(mail._matches(job, mail._event_text(self.FLIGHT)))
+        self.assertTrue(mail._matches(job, mail._event_text({**self.FLIGHT, 'summary': 'Google SRE interview'})))
+
+    def test_a_person_at_the_company_still_matches(self):
+        event = {'summary': 'Call', 'organizer': {'email': 'sam@google.com'}}
+        self.assertTrue(mail._matches(record_of(app('p3', 'Google', 'SRE')), mail._event_text(event)))
+
+
 if __name__ == '__main__':
     unittest.main()
