@@ -656,6 +656,27 @@
     "https://careers.gudel.com/job/Langenthal-Senior-Accountant-%28mwd%29/1429998633/"
    ],
    "signature": "posting>account>posting>account>posting>account>posting>account@career5.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: careers.thalesgroup.com",
+   "urls": [
+    "https://careers.thalesgroup.com/global/en/job/TGPTGWGLOBALR0333964EXTERNALENGLOBAL"
+   ],
+   "signature": "posting>form>none>posting>form>none>form@careers.thalesgroup.com#form"
+  },
+  {
+   "shape": "Discovery: iawmqy.fa.ocs.oraclecloud.com",
+   "urls": [
+    "https://iawmqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/job/297160"
+   ],
+   "signature": "posting>form>posting>form@enterpriseplatform.dell.com#form"
+  },
+  {
+   "shape": "Discovery: fa-errt-saasfaprod1.fa.ocs.oraclecloud.com",
+   "urls": [
+    "https://fa-errt-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/5236"
+   ],
+   "signature": "posting>form>none>posting>form>none>form@fa-errt-saasfaprod1.fa.ocs.oraclecloud.com#form"
   }
  ]
 }
