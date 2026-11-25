@@ -656,6 +656,27 @@
     "https://careers.gudel.com/job/Langenthal-Senior-Accountant-%28mwd%29/1429998633/"
    ],
    "signature": "posting>account>posting>account>posting>account>posting>account@career5.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: teamtailor.salesconsulting.ro",
+   "urls": [
+    "https://teamtailor.salesconsulting.ro/jobs/3801653-senior-devops-engineer"
+   ],
+   "signature": "posting@teamtailor.salesconsulting.ro#form"
+  },
+  {
+   "shape": "Discovery: karriere.eins.de",
+   "urls": [
+    "https://karriere.eins.de/jobs/67331000/Mitarbeiter-IT--OT-Security-Informationssicherheit-m-w-d-/"
+   ],
+   "signature": "posting@karriere.eins.de#posting"
+  },
+  {
+   "shape": "Discovery: fa-eylc-saasfaeuraprod1.fa.ocs.oraclecloud.com",
+   "urls": [
+    "https://fa-eylc-saasfaeuraprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/585"
+   ],
+   "signature": "posting>form>none>posting>form>none>form@fa-eylc-saasfaeuraprod1.fa.ocs.oraclecloud.com#form"
   }
  ]
 }
