@@ -656,6 +656,20 @@
     "https://careers.gudel.com/job/Langenthal-Senior-Accountant-%28mwd%29/1429998633/"
    ],
    "signature": "posting>account>posting>account>posting>account>posting>account@career5.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: karriere.bk-international.com",
+   "urls": [
+    "https://karriere.bk-international.com/jobs/67216990/IT-Solution-Architect-m-w-d---Network/"
+   ],
+   "signature": "posting@karriere.bk-international.com#posting"
+  },
+  {
+   "shape": "Discovery: ebwg.fa.us2.oraclecloud.com",
+   "urls": [
+    "https://ebwg.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/job/20060"
+   ],
+   "signature": "posting>form>none>posting>form>none>form@ebwg.fa.us2.oraclecloud.com#form"
   }
  ]
 }
