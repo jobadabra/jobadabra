@@ -656,6 +656,20 @@
     "https://careers.gudel.com/job/Langenthal-Senior-Accountant-%28mwd%29/1429998633/"
    ],
    "signature": "posting>account>posting>account>posting>account>posting>account@career5.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: acronis.com",
+   "urls": [
+    "https://www.acronis.com/en/careers"
+   ],
+   "signature": "other>posting>other>posting@www.acronis.com#posting"
+  },
+  {
+   "shape": "Discovery: jobs.fourthwall.com",
+   "urls": [
+    "https://jobs.fourthwall.com/jobs/AJJqJjUC7nZXKZeA"
+   ],
+   "signature": "posting>form>posting>form@jobs.fourthwall.com#form"
   }
  ]
 }
